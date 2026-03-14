@@ -4,10 +4,11 @@ dotenv.config();
 
 const isAuth = async (req, res, next) => {
 
-    console.log("JWT_SECRET:", process.env.JWT_SECRET) // 👈 add this
-    console.log("Cookie:", req.cookies.token)
+    // for debugging purpose
+    // console.log("JWT_SECRET:", process.env.JWT_SECRET) // 👈 add this
+    // console.log("Cookie:", req.cookies.token)
     try {
-        let token = req.cookies.token;
+        let { token } = req.cookies;
 
         if (!token) {
             // ✅ Removed undefined `error` reference
@@ -16,6 +17,11 @@ const isAuth = async (req, res, next) => {
 
         // ✅ jwt.verify throws if invalid — wrap in try/catch or let the outer catch handle it
         const verifyToken = jwt.verify(token, process.env.JWT_SECRET);
+
+
+        if(!verifyToken) {
+            return res.status(400).json({message:"user don't have verified token"})
+        }
 
         req.userId = verifyToken.userId;
 
