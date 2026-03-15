@@ -5,10 +5,11 @@ import axios from 'axios';
 import { backendServerUrl } from '../App';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
-function Auth() {
+import { useNavigate } from 'react-router-dom';
+function Auth({ isModel = false }) {
 
     const dispatch = useDispatch()
-
+    const navigate = useNavigate()
     const handleGoogleAuth = async () => {
         try {
             const response = await signInWithPopup(auth, provider);
@@ -25,7 +26,13 @@ function Auth() {
 
             // console.log(result.data)
 
-            dispatch(setUserData(result.data))
+            // const userData = result.data.user
+
+            dispatch(setUserData(result.data.user))
+
+            if (!isModel) {
+                navigate('/');
+            }
 
         } catch (error) {
             console.log(error)
