@@ -10,6 +10,7 @@ function Auth({ isModel = false }) {
 
     const dispatch = useDispatch()
     const navigate = useNavigate()
+
     const handleGoogleAuth = async () => {
         try {
             const response = await signInWithPopup(auth, provider);
