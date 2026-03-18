@@ -2,8 +2,8 @@ import React from 'react'
 
 function Step1Setup({ onStart }) {
     return (
-        <div>
-            
+        <div className='text-lg font-bold ' > 
+
         </div>
     )
 }
