@@ -205,14 +205,18 @@ function Step1Setup({ onStart }) {
                                             <div>
                                                 <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCode /> Skills</p>
                                                 <div className='flex flex-wrap gap-1'>
-                                                    {skills.slice(0, 4).map((s, i) => (
+                                                    {skills.map((s, i) => (
                                                         <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{s}</span>
                                                     ))}
                                                 </div>
                                             </div>
                                             <div>
-                                                <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCollection /> Project</p>
-                                                <p className='text-[10px] font-bold truncate text-slate-200'>{projects[0] || 'Found'}</p>
+                                                <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCollection /> Projects</p>
+                                                <div className='flex flex-wrap gap-1'>
+                                                    {projects.map((p, i) => (
+                                                        <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </motion.div>
