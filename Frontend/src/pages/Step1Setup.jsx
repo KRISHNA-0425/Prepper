@@ -211,10 +211,10 @@ function Step1Setup({ onStart }) {
                                                 </div>
                                             </div>
                                             <div>
-                                                <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCollection /> Projects</p>
-                                                <div className='flex flex-wrap gap-1'>
+                                                <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex  items-center gap-1'><HiCollection /> Projects</p>
+                                                <div className='flex  flex-wrap gap-1'>
                                                     {projects.map((p, i) => (
-                                                        <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
+                                                        <span key={i} className='bg-white/10 text-[12px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
                                                     ))}
                                                 </div>
                                             </div>
