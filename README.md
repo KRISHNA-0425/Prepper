@@ -1,6 +1,6 @@
 # AI Interview Prep Website
 
-A comprehensive full-stack web application designed to help users prepare for interviews using AI. This platform includes user authentication, interview setup with resume uploads, and dynamic mock interview sessions. Built using the MERN stack (MongoDB, Express.js, React, Node.js).
+A comprehensive full-stack web application designed to help users prepare for interviews using AI. This platform includes user authentication, interview setup with resume uploads, and dynamic mock interview sessions. Built using the MERN stack
 
 ## 🌟 Features
 
