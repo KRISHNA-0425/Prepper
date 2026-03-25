@@ -9,5 +9,6 @@ const limiter = rateLimit({
     keyGenerator: (req) => req.userId || req.headers['x-forwarded-for'] || req.ip,
     message: { message: 'Too many requests, please try again later.' }
 })
-
+loss, accuracy = model.evaluate(X_test, y_test)
+print("Test Accuracy:", accuracy)
 export default limiter
