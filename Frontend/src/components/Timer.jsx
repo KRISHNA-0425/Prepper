@@ -27,7 +27,7 @@ function Timer({ timeLeft, totalTime }) {
                 styles={buildStyles({
                     textSize: '24px',
                     pathColor: getColor(),
-                    textColor: '#1e293b', // Slate-800 to match your UI
+                    textColor: '#F59E0B', // Slate-800 to match your UI
                     trailColor: '#e2e8f0', // Slate-200
                     pathTransitionDuration: 1, // Smooth sweep
                     strokeLinecap: 'round',

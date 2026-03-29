@@ -5,7 +5,7 @@ import Step3Report from './Step3Report'
 
 function InterviewPage() {
 
-    const [step, setStep] = useState(2)
+    const [step, setStep] = useState(1)
     const [interviewData, setInterviewData] = useState(null)
 
 
