@@ -327,12 +327,8 @@ export const finishInterview = async (req, res) => {
         const { interviewId } = req.body;
         const interview = await Interview.findById(interviewId);
 
-        if (!interview) {
-            return res.status(404).json({ message: "Interview not found" });
-        }
-
-        const totalQuestions = interview.questions.length;
         let totalScore = 0, totalConfidence = 0, totalCorrectness = 0, totalCommunication = 0;
+        const totalQuestions = interview.questions.length;
 
         interview.questions.forEach((q) => {
             totalScore += q.score || 0;
@@ -341,26 +337,74 @@ export const finishInterview = async (req, res) => {
             totalCommunication += q.communication || 0;
         });
 
-        // Calculate and round
-        interview.finalScore = totalQuestions ? Math.round(totalScore / totalQuestions) : 0;
-        // CRITICAL: Ensure these fields exist in your Mongoose Schema!
-        interview.confidence = totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0;
-        interview.communication = totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0;
-        interview.correctness = totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0;
-        
+        // Use precise keys that match what the frontend expects
+        const data = {
+            finalScore: totalQuestions ? Math.round(totalScore / totalQuestions) : 0,
+            confidence: totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0,
+            communication: totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0,
+            correctness: totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0,
+            questions: interview.questions // Matching the frontend key
+        };
+
+        // Save these to DB if you want them stored permanently
+        interview.finalScore = data.finalScore;
         interview.status = "Completed";
         await interview.save();
 
-        // RETURN EVERYTHING TO FRONTEND
+        return res.status(200).json(data);
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+export const getMyInterviews = async (req, res) => {
+    try {
+        // Change findOne to find to get the ARRAY of interviews
+        const interviews = await Interview.find({ userId: req.userId })
+            .sort({ createdAt: -1 })
+            .select('role experience mode finalScore status createdAt'); 
+
+        return res.status(200).json(interviews);
+
+    } catch (error) {
+        return res.status(500).json({ message: 'Error in getMyInterviews', error: error.message });
+    }
+}
+
+export const getInterviewReport = async (req, res) => {
+    try {
+        const interview = await Interview.findById(req.params.id);
+
+        if (!interview) {
+            return res.status(404).json({ message: "Interview not found" });
+        }
+
+        const totalQuestions = interview.questions.length;
+        let totalConfidence = 0, totalCorrectness = 0, totalCommunication = 0;
+
+        interview.questions.forEach((q) => {
+            totalConfidence += q.confidence || 0;
+            totalCorrectness += q.correctness || 0;
+            totalCommunication += q.communication || 0;
+        });
+
+        // Calculate averages based on current questions
+        const avgConfidence = totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0;
+        const avgCommunication = totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0;
+        const avgCorrectness = totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0;
+
+        // RETURN THE CALCULATED CONSTANTS
         return res.status(200).json({
+            role: interview.role,
             finalScore: interview.finalScore,
-            confidence: interview.confidence,
-            communication: interview.communication,
-            correctness: interview.correctness,
-            questions: interview.questions // Optional: for detailed review
+            confidence: avgConfidence, 
+            communication: avgCommunication,
+            correctness: avgCorrectness,
+            // CRITICAL: Change this key from 'questionsWiseScore' to 'questions'
+            questions: interview.questions 
         });
 
     } catch (error) {
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: 'Error in getInterviewReport', error: error.message });
     }
 }

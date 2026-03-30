@@ -1,21 +1,51 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
+import Step2Interview from './Step2Interview';
+import Step3Report from './Step3Report';
 import Step1Setup from './Step1Setup'
-import Step2Interview from './Step2Interview'
-import Step3Report from './Step3Report'
+import { motion } from 'framer-motion'
+
 
 function InterviewPage() {
+    const [step, setStep] = useState(1);
+    const [interviewData, setInterviewData] = useState(null);
+    const [finalReport, setFinalReport] = useState(null);
 
-    const [step, setStep] = useState(1)
-    const [interviewData, setInterviewData] = useState(null)
+    // Called when Step 1 (Setup) is done
+    const handleStartInterview = (data) => {
+        setInterviewData(data);
+        setStep(2);
+    };
 
+    // Called when Step 2 (Interview) is finished
+    const handleInterviewFinished = (reportData) => {
+        console.log("PARENT RECEIVED DATA:", reportData);
+        setFinalReport(reportData);
+        setStep(3); // Move to Step 3
+    };
 
     return (
-        <div className='min-h-screen bg-[#F5EC5A] ' >
-            {step === 1 && (<Step1Setup onStart={(data) => { setInterviewData(data); setStep(2) }} />)}
-            {step === 2 && (<Step2Interview interviewData={interviewData} onFinish={(report) => { setInterviewData(report); setStep(3) }} />)}
-            {step === 3 && <Step3Report report={interviewData} />}
+        <div className="min-h-screen bg-slate-950">
+            {step === 1 && (
+                <Step1Setup onStart={handleStartInterview} />
+            )}
+
+            {step === 2 && interviewData && (
+                <Step2Interview
+                    interviewData={interviewData}
+                    onFinish={handleInterviewFinished}
+                />
+            )}
+
+            {step === 3 && finalReport && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                >
+                    <Step3Report report={finalReport} />
+                </motion.div>
+            )}
         </div>
-    )
+    );
 }
 
-export default InterviewPage
+export default InterviewPage;

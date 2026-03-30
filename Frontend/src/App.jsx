@@ -7,6 +7,9 @@ import { Toaster } from 'react-hot-toast'
 import { useDispatch } from 'react-redux'
 import { setUserData } from './redux/userSlice'
 import InterviewPage from './pages/InterviewPage'
+import InterViewHistory from './pages/InterViewHistory'
+import Pricing from './pages/Pricing'
+import InterviewReport from './pages/InterviewReport'
 
 
 export const backendServerUrl = import.meta.env.VITE_SERVER_URL
@@ -37,7 +40,7 @@ function App() {
         position="top-center"
         reverseOrder={false}
         toastOptions={{
-          // Professional styling to match your Slate/Yellow theme
+          // Professional styling to match Slate/Yellow theme
           style: {
             borderRadius: '12px',
             background: '#333',
@@ -52,6 +55,9 @@ function App() {
         <Route path='/' element={<Home />} />
         <Route path='/auth' element={<Auth />} />
         <Route path='/interview' element={<InterviewPage />} />
+        <Route path='/history' element={<InterViewHistory/>}/>
+        <Route path='/pricing' element={<Pricing/>}/>
+        <Route path='/report/:id' element={<InterviewReport/>}/>
       </Routes>
     </>
   )

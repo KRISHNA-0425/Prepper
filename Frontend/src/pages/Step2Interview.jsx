@@ -135,7 +135,7 @@ function Step2Interview({ interviewData, onFinish }) {
     const finishInterview = async () => {
         stopMic();
         setIsSubmitting(true);
-        const loadToast = toast.loading("Generating final report...");
+        const loadToast = toast.loading("Generating final assessment...");
 
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/finish',
@@ -143,13 +143,13 @@ function Step2Interview({ interviewData, onFinish }) {
                 { withCredentials: true }
             );
 
-            // This console log should now show confidence, communication, and correctness
-            console.log("FINAL RESULTS:", result.data);
-
+            console.log("FINAL RESULTS SENT TO PARENT:", result.data);
             toast.success("Interview Complete", { id: loadToast });
 
-            // Pass the data from 'result.data' to your parent component
-            onFinish(result.data);
+            // This triggers handleInterviewFinished in InterviewPage.jsx
+            if (onFinish) {
+                onFinish(result.data);
+            }
 
         } catch (error) {
             toast.error("Error finalizing results");
@@ -176,7 +176,7 @@ function Step2Interview({ interviewData, onFinish }) {
             toast.success("Answer Recorded", { id: loadToast });
             setFeedback(result.data.feedback);
 
-            // Speak feedback
+            // 1. Await the AI speaking the feedback
             await speak(result.data.feedback);
 
             if (currentIndex < questions.length - 1) {
@@ -186,7 +186,8 @@ function Step2Interview({ interviewData, onFinish }) {
                 setTimeLeft(questions[nextIdx].timeLimit);
                 setFeedback('');
             } else {
-                finishInterview();
+                // 2. CRITICAL: Now that feedback is spoken, finalize the interview
+                await finishInterview();
             }
         } catch (error) {
             toast.error("Failed to submit", { id: loadToast });
