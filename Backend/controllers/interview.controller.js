@@ -324,55 +324,43 @@ Answer: ${answer}
 
 export const finishInterview = async (req, res) => {
     try {
-        const { interviewId } = req.body
+        const { interviewId } = req.body;
+        const interview = await Interview.findById(interviewId);
 
-        if (!interviewId) {
-            return res.status(404).json({ message: "interviewId not found" });
+        if (!interview) {
+            return res.status(404).json({ message: "Interview not found" });
         }
 
-        const interview = await Interview.findById(interviewId)
         const totalQuestions = interview.questions.length;
-
-        let totalScore = 0;
-        let totalConfidence = 0;
-        let totalCorrectness = 0;
-        let totalCommunication = 0;
+        let totalScore = 0, totalConfidence = 0, totalCorrectness = 0, totalCommunication = 0;
 
         interview.questions.forEach((q) => {
             totalScore += q.score || 0;
             totalConfidence += q.confidence || 0;
             totalCorrectness += q.correctness || 0;
             totalCommunication += q.communication || 0;
-        })
+        });
 
-        const finalScore = totalQuestions ? totalScore / totalQuestions : 0;
-
-        const avgConfidence = totalConfidence ? totalConfidence / totalQuestions : 0;
-
-        const avgCommunication = totalCommunication ? totalCommunication / totalQuestions : 0;
-
-        const avgCorrectness = totalCorrectness ? totalCorrectness / totalQuestions : 0;
-
-        interview.finalScore = finalScore;
+        // Calculate and round
+        interview.finalScore = totalQuestions ? Math.round(totalScore / totalQuestions) : 0;
+        // CRITICAL: Ensure these fields exist in your Mongoose Schema!
+        interview.confidence = totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0;
+        interview.communication = totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0;
+        interview.correctness = totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0;
+        
         interview.status = "Completed";
+        await interview.save();
 
-        await interview.save()
-
+        // RETURN EVERYTHING TO FRONTEND
         return res.status(200).json({
-            finalScore: Number(finalScore.toFixed(1)),
-            confidence: Number(avgConfidence.toFixed(1)),
-            correctness: Number(avgCorrectness.toFixed(1)),
-            communication: Number(avgCommunication.toFixed(1)),
-            questionWiseScore: interview.questions.map((q) => ({
-                question: q.question,
-                score: q.score || 0,
-                correctness: q.correctness || 0,
-                communication: q.communication || 0,
-                feedback: q.feedback || 0,
-            }))
+            finalScore: interview.finalScore,
+            confidence: interview.confidence,
+            communication: interview.communication,
+            correctness: interview.correctness,
+            questions: interview.questions // Optional: for detailed review
         });
 
     } catch (error) {
-        return res.status(500).json({ message: "internal server error in finishInterview controller" })
+        return res.status(500).json({ message: "Internal server error" });
     }
 }

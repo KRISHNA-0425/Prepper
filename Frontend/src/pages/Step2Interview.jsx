@@ -23,7 +23,7 @@ function Step2Interview({ interviewData, onFinish }) {
 
     const currentQuestion = questions[currentIndex];
 
-    // 1. Load Voice
+    // 1. Voice Initialization
     useEffect(() => {
         const loadVoice = () => {
             const voices = window.speechSynthesis.getVoices();
@@ -41,17 +41,28 @@ function Step2Interview({ interviewData, onFinish }) {
         return () => window.speechSynthesis.cancel();
     }, []);
 
-    // 2. Speak Logic
+    // 2. Universal Cleanup
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            window.speechSynthesis.cancel();
+        };
+    }, []);
+
+    // 3. Speak Logic (Promise-based for awaiting)
     const speak = (text) => {
         return new Promise((resolve) => {
             if (!window.speechSynthesis) { resolve(); return; }
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
-            utterance.rate = 0.9;
+            utterance.rate = 0.95;
+
             utterance.onstart = () => {
                 setIsAIPlaying(true);
-                if (videoRef.current) videoRef.current.play();
+                if (videoRef.current) videoRef.current.play().catch(() => { });
             };
             utterance.onend = () => {
                 setIsAIPlaying(false);
@@ -65,17 +76,22 @@ function Step2Interview({ interviewData, onFinish }) {
         });
     };
 
-    // 3. Speech to Text (Mic Logic)
+    // 4. Speech Recognition Logic
     const startMic = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) return toast.error("Browser doesn't support Speech Recognition");
+
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
+
         recognitionRef.current.onresult = (event) => {
-            const transcript = Array.from(event.results).map(result => result[0]).map(result => result.transcript).join('');
+            const transcript = Array.from(event.results)
+                .map(result => result[0].transcript)
+                .join('');
             setAnswer(transcript);
         };
+
         recognitionRef.current.start();
         setIsMicOn(true);
     };
@@ -87,7 +103,7 @@ function Step2Interview({ interviewData, onFinish }) {
         }
     };
 
-    // 4. Workflow (Question Sequence)
+    // 5. Sequence Workflow (Triggers on Index Change)
     useEffect(() => {
         if (femaleVoiceRef.current) {
             const runSequence = async () => {
@@ -101,33 +117,66 @@ function Step2Interview({ interviewData, onFinish }) {
         }
     }, [currentIndex, femaleVoiceRef.current]);
 
-    // 5. Timer Logic
+    // 6. Timer Logic
     useEffect(() => {
         if (timeLeft <= 0 || isAIPlaying || isSubmitting) return;
         const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-        if (timeLeft === 0) handleSubmit();
         return () => clearInterval(timer);
     }, [timeLeft, isAIPlaying, isSubmitting]);
 
-    // 6. Handle Submission
+    // 7. Auto-submit logic when timer hits 0
+    useEffect(() => {
+        if (timeLeft === 0 && !isSubmitting) {
+            handleSubmit();
+        }
+    }, [timeLeft]);
+
+    // 8. Submit and Finish Functions
+    const finishInterview = async () => {
+        stopMic();
+        setIsSubmitting(true);
+        const loadToast = toast.loading("Generating final report...");
+
+        try {
+            const result = await axios.post(backendServerUrl + '/api/interview/finish',
+                { interviewId },
+                { withCredentials: true }
+            );
+
+            // This console log should now show confidence, communication, and correctness
+            console.log("FINAL RESULTS:", result.data);
+
+            toast.success("Interview Complete", { id: loadToast });
+
+            // Pass the data from 'result.data' to your parent component
+            onFinish(result.data);
+
+        } catch (error) {
+            toast.error("Error finalizing results");
+            console.error(error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleSubmit = async () => {
         if (isSubmitting) return;
         stopMic();
         setIsSubmitting(true);
-        const loadToast = toast.loading("Evaluating your answer...");
+        const loadToast = toast.loading("Evaluating...");
 
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/submitAnswer', {
                 interviewId,
                 answer,
                 questionIndex: currentIndex,
-                timeTaken: currentQuestion.timeLimit - timeLeft,
+                timeTaken: (currentQuestion.timeLimit - timeLeft),
             }, { withCredentials: true });
 
-            toast.success("Evaluating done", { id: loadToast });
+            toast.success("Answer Recorded", { id: loadToast });
+            setFeedback(result.data.feedback);
 
-            setFeedback(result.data.feedback)
-            // Speak feedback, then move to next question
+            // Speak feedback
             await speak(result.data.feedback);
 
             if (currentIndex < questions.length - 1) {
@@ -135,47 +184,16 @@ function Step2Interview({ interviewData, onFinish }) {
                 setCurrentIndex(nextIdx);
                 setAnswer('');
                 setTimeLeft(questions[nextIdx].timeLimit);
+                setFeedback('');
             } else {
-                finishInterview(); // All questions done
+                finishInterview();
             }
         } catch (error) {
-            toast.error("Failed to submit answer", { id: loadToast });
-            console.error(error);
+            toast.error("Failed to submit", { id: loadToast });
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    // const finishInterview = async () => {
-    //     stopMic()
-    //     setIsMicOn(false);
-    //     try {
-    //         const result = await axios.post(backendServerUrl + '/api/interview/finish', { interviewId }, { withCredentials: true });
-    //         console.log(result.data)
-
-    //         useEffect(() => {
-    //             if (!currentQuestion) return;
-
-    //             if (timeLeft === 0 && !isSubmitting && !feedback) {
-    //                 handleSubmit();
-    //             }
-    //         }, [timeLeft]);
-
-    //         useEffect(() => {
-    //             return (() => {
-    //                 if(recognitionRef.current){
-    //                     recognitionRef.current.stop();
-    //                     recognitionRef.current.abort();
-
-    //                 }
-    //                 window.speechSynthesis.cancel();
-    //             })
-    //         },[])
-
-    //     } catch (error) {
-
-    //     }
-    // }
 
     return (
         <div className='h-screen w-full bg-[#F5EC5A] flex items-center justify-center p-4 md:p-6 font-poppins overflow-hidden'>
@@ -283,9 +301,6 @@ function Step2Interview({ interviewData, onFinish }) {
                                 <HiArrowRight size={16} className='text-yellow-400' />
                             </motion.button>
                         </div>
-                    </div>
-                    <div className='absolute -bottom-6 -right-6 text-[80px] font-black text-slate-50 pointer-events-none select-none z-[-1] uppercase text-opacity-10'>
-                        Prepper
                     </div>
                 </div>
             </motion.div>
