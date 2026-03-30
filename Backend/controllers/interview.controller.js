@@ -200,7 +200,8 @@ export const generateQuestions = async (req, res) => {
             interviewId: interview._id,
             creditsLeft: user.credits,
             userName: user.name,
-            questions: interview.questions
+            questions: interview.questions,
+            mode
         })
 
     } catch (error) {
