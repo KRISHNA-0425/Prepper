@@ -24,7 +24,7 @@ function CapabilityCard({ image, title, desc, tag }) {
                     transition: { type: 'spring', stiffness: 400, damping: 25 }
                 }
             }}
-            className='group relative bg-white/60 backdrop-blur-xl border border-white/80 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-stretch h-full transition-all duration-500 hover:shadow-[0_30px_60px_rgba(15,23,42,0.12)] hover:border-yellow-500/30'
+            className='group rounded-2xl  relative bg-white/60 backdrop-blur-xl border border-white/80 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row items-stretch h-full transition-all duration-500 hover:shadow-[0_30px_60px_rgba(15,23,42,0.12)] hover:border-yellow-500/30'
         >
             {/* ── Image panel ── */}
             <div className='relative md:w-[45%] h-48 md:h-auto overflow-hidden flex-shrink-0 bg-white/40'>
@@ -81,13 +81,13 @@ function CapabilityCard({ image, title, desc, tag }) {
                 </p>
                 
                 {/* Decorative Arrow Icon Elements */}
-                <div className="absolute right-6 bottom-6 opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-500 ease-out">
+                {/* <div className="absolute right-6 bottom-6 opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-500 ease-out">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-100 to-yellow-50 border border-yellow-200 text-yellow-700 flex items-center justify-center shadow-md">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
                     </div>
-                </div>
+                </div> */}
             </div>
 
             {/* Card border highlight on hover */}

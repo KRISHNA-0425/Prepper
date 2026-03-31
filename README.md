@@ -6,25 +6,29 @@ A comprehensive full-stack web application designed to help users prepare for in
 
 - **User Authentication**: Secure login and authorization powered by Firebase and JWT.
 - **AI-Powered Interview Sessions**: Start and interact with AI for mock interview rounds.
-- **Resume/Document Processing**: Upload functionality for resumes via Multer, with PDF parsing capabilities via `pdfjs-dist`.
-- **Modern & Responsive UI**: Beautiful interfaces built with React, TailwindCSS, and smooth animations using Framer Motion.
+- **Advanced Resume Analysis**: Upload functionality for resumes via Multer, with PDF parsing utilizing `pdfjs-dist`. Instantly extracts and displays key information like past projects for a comprehensive interview setup.
+- **Modern & Responsive UI**: Beautiful interfaces built with React, TailwindCSS, and smooth animations using Framer Motion. Features custom components like `CapabilityCard` and dynamic data visualization.
+- **Data Visualization**: Integrated `recharts` and `react-circular-progressbar` for clear visual feedback on user progress and interview analytics.
 - **State Management**: Robust frontend data management with Redux Toolkit.
 - **Real-time Server Comm**: Fast API communication via Axios.
+- **API Security**: Built-in rate limiting using `express-rate-limit` to prevent abuse, secure endpoints, and ensure high availability.
 
 ## 🚀 Tech Stack
 
 ### Frontend
 - **Framework**: React 19 + Vite
-- **Styling**: TailwindCSS, Framer Motion for animations
+- **Styling & UI**: TailwindCSS, Framer Motion for animations
+- **Data Visualization**: Recharts, React Circular Progressbar
 - **State Management**: Redux Toolkit & React-Redux
 - **Routing**: React Router DOM (v7)
-- **Other Tools**: Axios, Firebase SDK, React Icons
+- **Other Tools**: Axios, Firebase Web SDK, React Icons
 
 ### Backend
 - **Server Environment**: Node.js & Express.js
 - **Database**: MongoDB (via Mongoose)
 - **Authentication**: Firebase Auth, `jsonwebtoken` (JWT), `bcryptjs`
 - **File Uploads & Processing**: `multer`, `pdfjs-dist`
+- **Security & Rate Limiting**: `express-rate-limit`
 - **Other Utilities**: `cors`, `cookie-parser`, `dotenv` for environment variables
 
 ## 📁 Project Structure
