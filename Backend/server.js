@@ -6,11 +6,15 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import userRouter from './routes/user.routes.js'
 import interviewRouter from './routes/interview.routes.js'
+import helmet from 'helmet'
 dotenv.config()
 
 const app = express()
 
 const port = process.env.PORT || 5000
+
+app.use(helmet())
+
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
