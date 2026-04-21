@@ -176,7 +176,7 @@ export const generateQuestions = async (req, res) => {
             return res.status(500).json({
                 message: "AI didn't generate questions"
             })
-        }
+        };
 
         user.credits -= 50;
         await user.save()
