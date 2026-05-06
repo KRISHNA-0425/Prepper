@@ -1,27 +1,30 @@
-import React, { useState } from 'react'; // Added useState
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import {
-    HiOutlineArrowLeft,
-    HiOutlineCheckCircle,
-    HiSparkles,
-    HiBolt,
-    HiCircleStack
+import { useDispatch } from 'react-redux';
+import { 
+    HiOutlineArrowLeft, 
+    HiOutlineCheckCircle, 
+    HiSparkles, 
+    HiBolt, 
+    HiCircleStack 
 } from 'react-icons/hi2';
 import axios from 'axios';
+import toast from 'react-hot-toast';
+
+// Internal Imports
 import { backendServerUrl } from '../App';
-import toast from 'react-hot-toast'; // Optional: for feedback
+import { setUserData } from '../redux/userSlice';
 
 function Pricing() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
 
+    // Animation Config
     const containerVars = {
         hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.15 }
-        }
+        visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
     };
 
     const cardVars = {
@@ -66,12 +69,17 @@ function Pricing() {
         setLoading(true);
         try {
             // 1. Create Order on Backend
-            const { data: order } = await axios.post(`${backendServerUrl}/api/payment/order`, {
-                planId: tier.id,
-                amount: tier.price,
-                credits: tier.credits,
-            }, { withCredentials: true });
+            const { data: order } = await axios.post(
+                `${backendServerUrl}/api/payment/order`,
+                {
+                    planId: tier.id,
+                    amount: tier.price,
+                    credits: tier.credits,
+                },
+                { withCredentials: true }
+            );
 
+            // 2. Razorpay Modal Options
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
                 amount: order.amount,
@@ -80,36 +88,41 @@ function Pricing() {
                 description: `${tier.name} - ${tier.credits} Credits`,
                 order_id: order.id,
                 handler: async function (response) {
-                    console.log("Razorpay Response:", response);
                     try {
-                        // Try hardcoding the URL once to eliminate variable issues
-                        const { data } = await axios.post("http://localhost:3000/api/payment/verify", {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        }, { withCredentials: true });
+                        // 3. Verify Payment
+                        const { data } = await axios.post(
+                            `${backendServerUrl}/api/payment/verify`,
+                            {
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            },
+                            { withCredentials: true }
+                        );
 
                         if (data.success) {
-                            alert("Payment Successful");
+                            // 4. Update Redux State instantly
+                            dispatch(setUserData(data.user)); 
+                            toast.success("Credits added successfully!");
                             navigate('/');
                         }
                     } catch (err) {
-                        console.error("Verification Error details:", err.response); // Check this log!
+                        console.error("Verification Error:", err);
+                        toast.error("Payment verification failed. Please contact support.");
                     }
                 },
-                prefill: {
-                    name: "User Name", // You can pull this from your User Context
-                    email: "user@example.com"
-                },
-                theme: { color: "#fbbf24" }, // Yellow-400
+                theme: { color: "#fbbf24" },
+                modal: {
+                    ondismiss: () => setLoading(false)
+                }
             };
 
             const rzp = new window.Razorpay(options);
             rzp.open();
+
         } catch (error) {
             console.error("Payment initiation failed", error);
-            toast.error("Failed to initiate payment");
-        } finally {
+            toast.error("Failed to start payment process.");
             setLoading(false);
         }
     };
@@ -117,7 +130,8 @@ function Pricing() {
     return (
         <div className='min-h-screen bg-slate-950 text-slate-200 font-poppins p-4 md:p-12 overflow-x-hidden relative'>
             <div className='max-w-7xl mx-auto relative z-10'>
-                {/* Top Navigation */}
+                
+                {/* Back Button */}
                 <motion.button
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -134,11 +148,11 @@ function Pricing() {
                         Recharge <span className='text-yellow-400'>Credits</span>
                     </h1>
                     <p className='text-slate-400 max-w-xl mx-auto text-sm md:text-base'>
-                        One standard AI interview consumes <strong>50 credits</strong>.
+                        One standard AI interview consumes <strong>50 credits</strong>. No subscriptions required.
                     </p>
                 </div>
 
-                {/* Grid */}
+                {/* Pricing Grid */}
                 <motion.div
                     variants={containerVars}
                     initial="hidden"
@@ -150,8 +164,9 @@ function Pricing() {
                             key={tier.id}
                             variants={cardVars}
                             whileHover={{ y: -10 }}
-                            className={`relative group bg-slate-900/40 backdrop-blur-xl border rounded-[2.5rem] p-8 flex flex-col h-full transition-all duration-500 ${tier.isPopular ? 'border-yellow-400/50 lg:-mt-8 lg:mb-8' : 'border-slate-800'
-                                }`}
+                            className={`relative group bg-slate-900/40 backdrop-blur-xl border rounded-[2.5rem] p-8 flex flex-col h-full transition-all duration-500 ${
+                                tier.isPopular ? 'border-yellow-400/50 lg:-mt-8 lg:mb-8' : 'border-slate-800'
+                            }`}
                         >
                             {tier.isPopular && (
                                 <div className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full z-20'>
@@ -191,10 +206,11 @@ function Pricing() {
                                 <button
                                     disabled={loading}
                                     onClick={() => handlePayment(tier)}
-                                    className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-300 ${tier.isPopular
-                                            ? 'bg-yellow-400 text-slate-950 hover:bg-yellow-300 disabled:opacity-50'
-                                            : 'bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50'
-                                        }`}
+                                    className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-300 ${
+                                        tier.isPopular 
+                                        ? 'bg-yellow-400 text-slate-950 hover:bg-yellow-300 disabled:opacity-50' 
+                                        : 'bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50'
+                                    }`}
                                 >
                                     {loading ? 'Processing...' : `Buy ${tier.credits} Credits`}
                                 </button>
