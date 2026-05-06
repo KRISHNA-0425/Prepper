@@ -7,13 +7,14 @@ import cors from 'cors'
 import userRouter from './routes/user.routes.js'
 import interviewRouter from './routes/interview.routes.js'
 import helmet from 'helmet'
+import paymentRouter from './routes/payment.routes.js'
 dotenv.config()
 
 const app = express()
 
 const port = process.env.PORT || 5000
 
-app.use(helmet())
+// app.use(helmet())
 
 
 app.use(express.json())
@@ -27,6 +28,7 @@ app.use(cors({
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/interview", interviewRouter);
+app.use("/api/payment", paymentRouter);
 
 
 const startServer = async () => {

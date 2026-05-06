@@ -5,15 +5,29 @@ const paymentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true,
-        planId: String,
-        credits: Number,
-        razorpayOrderId: String,
-        razorpayPaymentId: String,
-        status: {
-            type: String,
-            enum: ["Created", "Paid", "Failed"],
-            default: "Created",
-        }
+    }, // <--- The brace must close here
+    planId: {
+        type: String,
+    },
+    amount: {
+        type: Number,
+    },
+    credits: {
+        type: Number,
+    },
+    razorpayOrderId: {
+        type: String,
+    },
+    razorpayPaymentId: {
+        type: String,
+    },
+    razorpaySignature: {
+        type: String,
+    },
+    status: {
+        type: String,
+        enum: ["Created", "Paid", "Failed"],
+        default: "Created",
     }
 }, { timestamps: true })
 
