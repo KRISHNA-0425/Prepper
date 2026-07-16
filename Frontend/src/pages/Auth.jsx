@@ -14,11 +14,13 @@ function Auth({ isModel = false }) {
     const handleGoogleAuth = async () => {
         try {
             const response = await signInWithPopup(auth, provider);
-            console.log(response)
+            // console.log(response)
 
             let User = response.user;
             let name = User.displayName;
             let email = User.email;
+
+            
 
             const result = await axios.post(backendServerUrl + '/api/auth/googleAuth',
                 { name, email },
