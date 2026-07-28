@@ -18,11 +18,11 @@ function Navbar() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    const navLinks = [
-        { name: 'Dashboard', href: '/dashboard' },
-        { name: 'Mock Tests', href: '/tests' },
-        { name: 'Resources', href: '/resources' }
-    ];
+    // const navLinks = [
+    //     { name: 'Dashboard', href: '/dashboard' },
+    //     { name: 'Mock Tests', href: '/tests' },
+    //     { name: 'Resources', href: '/resources' }
+    // ];
 
     const handleLogout = async () => {
         try {
@@ -54,7 +54,7 @@ function Navbar() {
                 </Link>
 
                 {/* Desktop Nav Links */}
-                <div className='hidden lg:flex items-center gap-1 bg-white/20 p-1 rounded-full border border-white/30'>
+                {/*<div className='hidden lg:flex items-center gap-1 bg-white/20 p-1 rounded-full border border-white/30'>
                     {navLinks.map((item) => (
                         <motion.button
                             key={item.name}
@@ -65,7 +65,7 @@ function Navbar() {
                             {item.name}
                         </motion.button>
                     ))}
-                </div>
+                </div>*/}
 
                 {/* User Actions & Hamburger */}
                 <div className='flex items-center gap-2 md:gap-3'>
