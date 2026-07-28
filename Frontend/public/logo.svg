@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0f1f2e" />
+      <stop offset="60%" stop-color="#080c14" />
+      <stop offset="100%" stop-color="#04060a" />
+    </radialGradient>
+
+    <!-- Cyber Neon Gradient -->
+    <linearGradient id="cyberNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="45%" stop-color="#00E5FF" />
+      <stop offset="80%" stop-color="#00F5A0" />
+      <stop offset="100%" stop-color="#7B2CBF" />
+    </linearGradient>
+
+    <linearGradient id="lineNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38EF7D" />
+      <stop offset="50%" stop-color="#11998E" />
+      <stop offset="100%" stop-color="#00F2FE" />
+    </linearGradient>
+
+    <!-- Intense Neon Glow Filter -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="18" result="blur2" />
+      <feGaussianBlur stdDeviation="30" result="blur3" />
+      <feMerge>
+        <feMergeNode in="blur3" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Soft Glow Filter -->
+    <filter id="softGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Subtle Circuit Grid Pattern -->
+    <pattern id="techGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(0, 242, 254, 0.04)" stroke-width="1" />
+      <circle cx="0" cy="0" r="1" fill="rgba(0, 245, 160, 0.1)" />
+    </pattern>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="512" height="512" rx="40" fill="url(#bgGlow)" />
+  <rect width="512" height="512" rx="40" fill="url(#techGrid)" />
+
+  <!-- Outer Frame (Chamfered Tech Shield) -->
+  <g filter="url(#neonGlow)">
+    <!-- Outer Border Path with Cut Corners -->
+    <path d="M 140 80 
+             L 372 80 
+             Q 432 80 432 140 
+             L 432 372 
+             Q 432 432 372 432 
+             L 140 432 
+             Q 80 432 80 372 
+             L 80 140 
+             Q 80 80 140 80 Z" 
+          fill="#0a121c" 
+          fill-opacity="0.7"
+          stroke="url(#cyberNeon)" 
+          stroke-width="10" 
+          stroke-linejoin="round" />
+
+    <!-- Chamfer Accent Notch Top-Left -->
+    <path d="M 80 130 L 130 80" stroke="url(#cyberNeon)" stroke-width="10" stroke-linecap="round" />
+    <!-- Chamfer Accent Notch Bottom-Right -->
+    <path d="M 432 382 L 382 432" stroke="url(#cyberNeon)" stroke-width="10" stroke-linecap="round" />
+
+    <!-- Inner Parallel Contour Line -->
+    <path d="M 146 100 
+             L 366 100 
+             Q 412 100 412 146 
+             L 412 366 
+             Q 412 412 366 412 
+             L 146 412 
+             Q 100 412 100 366 
+             L 100 146 
+             Q 100 100 146 100 Z" 
+          fill="none" 
+          stroke="url(#cyberNeon)" 
+          stroke-width="3" 
+          stroke-opacity="0.6" 
+          stroke-linejoin="round" />
+  </g>
+
+  <!-- Central 'P' Circuit Logo -->
+  <g filter="url(#neonGlow)">
+    <!-- Outer 'P' Silhouette / Main Path -->
+    <path d="M 180 360 
+             L 180 152 
+             L 285 152 
+             C 335 152 355 175 355 218 
+             C 355 260 335 284 285 284 
+             L 242 284 
+             L 242 360" 
+          fill="none" 
+          stroke="url(#cyberNeon)" 
+          stroke-width="24" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Inner Circuit Detail Line Inside 'P' Stem & Loop -->
+    <path d="M 212 335 
+             L 212 284 
+             L 212 210 
+             L 270 210 
+             C 295 210 310 215 310 226 
+             C 310 238 295 244 270 244 
+             L 242 244" 
+          fill="none" 
+          stroke="url(#lineNeon)" 
+          stroke-width="8" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Diagonal Circuit Trace Branch -->
+    <path d="M 212 290 L 235 267 L 275 267" 
+          fill="none" 
+          stroke="url(#cyberNeon)" 
+          stroke-width="7" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Circuit Nodes (Glowing Dots) -->
+    <circle cx="212" cy="340" r="7" fill="#00F5A0" filter="url(#softGlow)" />
+    <circle cx="212" cy="175" r="7" fill="#00F2FE" filter="url(#softGlow)" />
+    <circle cx="275" cy="267" r="6" fill="#00F5A0" filter="url(#softGlow)" />
+    <circle cx="280" cy="210" r="6" fill="#00E5FF" filter="url(#softGlow)" />
+    <circle cx="180" cy="360" r="8" fill="#00F2FE" filter="url(#softGlow)" />
+  </g>
+</svg>

@@ -46,9 +46,11 @@ function Navbar() {
                 {/* Logo Section */}
                 <Link to="/" onClick={() => setIsMobileMenuOpen(false)}>
                     <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
-                        <div className='bg-[#F7D63A] p-2 md:p-2.5 rounded-xl md:rounded-2xl shadow-sm group-hover:rotate-12 transition-transform duration-300'>
-                            <RiRobot3Line size={20} className="text-[#8B7D10] md:w-6 md:h-6" />
-                        </div>
+                        <img 
+                            src="/logo.svg" 
+                            alt="Prepper Logo" 
+                            className="w-9 h-9 md:w-11 md:h-11 object-contain drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] group-hover:rotate-6 transition-transform duration-300"
+                        />
                         <h1 className='text-lg md:text-xl font-black text-slate-800 tracking-tighter'>PREPPER</h1>
                     </motion.div>
                 </Link>

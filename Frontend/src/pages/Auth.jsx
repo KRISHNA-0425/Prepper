@@ -56,15 +56,13 @@ function Auth({ isModel = false }) {
 
                 {/* Logo row */}
                 <div className="flex items-center justify-center gap-3 mb-7">
-                    <div className="bg-[#F5EC5A] rounded-xl p-2 flex items-center justify-center hover:rotate-[-10deg] hover:scale-110 transition-transform duration-300 cursor-pointer">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#1a1a00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            <circle cx="12" cy="16" r="1" fill="#1a1a00" />
-                        </svg>
-                    </div>
+                    <img 
+                        src="/logo.svg" 
+                        alt="Prepper Logo" 
+                        className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(0,242,254,0.5)] hover:scale-110 transition-transform duration-300 cursor-pointer"
+                    />
                     <span className="font-extrabold text-2xl tracking-widest text-[#1a1a00]">
-                        PEPPER
+                        PREPPER
                     </span>
                 </div>
 
