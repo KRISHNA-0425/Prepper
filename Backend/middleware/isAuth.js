@@ -5,7 +5,7 @@ dotenv.config();
 const isAuth = async (req, res, next) => {
 
     // for debugging purpose
-    // console.log("JWT_SECRET:", process.env.JWT_SECRET) // 👈 add this
+    // console.log("JWT_SECRET:", process.env.JWT_SECRET) 
     // console.log("Cookie:", req.cookies.token)
     try {
         let { token } = req.cookies;
