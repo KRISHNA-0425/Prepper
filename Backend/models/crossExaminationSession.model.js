@@ -152,6 +152,39 @@ const questionSchema = new mongoose.Schema(
       enum: ['pending', 'current', 'answered', 'skipped'],
       default: 'pending',
     },
+    opportunityId: {
+      type: String,
+      default: null,
+    },
+    dimension: {
+      type: String,
+      default: null,
+    },
+    examinationIntent: {
+      type: String,
+      default: null,
+    },
+    difficulty: {
+      type: String,
+      enum: ['easy', 'medium', 'hard'],
+      default: 'medium',
+    },
+    rationale: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: '',
+    },
+    expectedEvidence: {
+      type: [String],
+      default: [],
+    },
+    followUpGuidance: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: '',
+    },
   },
   { _id: false }
 );

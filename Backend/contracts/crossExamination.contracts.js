@@ -311,3 +311,66 @@ export const validateExaminationOpportunityContract = (opportunity) => {
   };
 };
 
+/**
+ * Question difficulty tiers.
+ */
+export const QUESTION_DIFFICULTY = Object.freeze({
+  EASY: 'easy',
+  MEDIUM: 'medium',
+  HARD: 'hard',
+});
+
+/**
+ * Validates a generated cross-examination question against domain contract.
+ * @param {object} question
+ * @returns {{ isValid: boolean, errors: string[] }}
+ */
+export const validateQuestionContract = (question) => {
+  const errors = [];
+  if (!question || typeof question !== 'object') {
+    return { isValid: false, errors: ['Question must be an object'] };
+  }
+
+  if (!question.questionId || typeof question.questionId !== 'string') {
+    errors.push('questionId is required');
+  }
+
+  if (!question.targetProjectId || typeof question.targetProjectId !== 'string') {
+    errors.push('targetProjectId is required');
+  }
+
+  if (!question.questionText || typeof question.questionText !== 'string' || !question.questionText.trim()) {
+    errors.push('questionText is required and must be non-empty');
+  }
+
+  if (question.questionText && (question.questionText.length < 15 || question.questionText.length > 500)) {
+    errors.push('questionText must be between 15 and 500 characters');
+  }
+
+  if (question.difficulty && !Object.values(QUESTION_DIFFICULTY).includes(question.difficulty)) {
+    errors.push(`Invalid difficulty: ${question.difficulty}`);
+  }
+
+  if (question.inquiryType && !INQUIRY_TYPES[question.inquiryType]) {
+    errors.push(`Invalid inquiryType: ${question.inquiryType}`);
+  }
+
+  if (question.dimension && !EXAMINATION_DIMENSIONS[question.dimension]) {
+    errors.push(`Invalid dimension: ${question.dimension}`);
+  }
+
+  if (question.examinationIntent && !EXAMINATION_INTENTS[question.examinationIntent]) {
+    errors.push(`Invalid examinationIntent: ${question.examinationIntent}`);
+  }
+
+  if (question.expectedEvidence && !Array.isArray(question.expectedEvidence)) {
+    errors.push('expectedEvidence must be an array of concept strings');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
+
