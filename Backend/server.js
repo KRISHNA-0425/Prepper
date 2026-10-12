@@ -8,6 +8,7 @@ import userRouter from './routes/user.routes.js'
 import interviewRouter from './routes/interview.routes.js'
 import helmet from 'helmet'
 import paymentRouter from './routes/payment.routes.js'
+import crossExaminationRouter from './routes/crossExamination.routes.js'
 
 dotenv.config()
 
@@ -31,6 +32,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/user", userRouter)
 app.use("/api/interview", interviewRouter)
 app.use("/api/payment", paymentRouter)
+app.use("/api/cross-examination", crossExaminationRouter)
 
 const startServer = async () => {
   try {
