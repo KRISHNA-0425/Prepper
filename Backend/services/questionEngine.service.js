@@ -33,6 +33,11 @@ export const ENGINE_LIMITS = Object.freeze({
  * @param {string} strB
  * @returns {number} 0.0 to 1.0
  */
+const STOP_WORDS = new Set([
+  'how', 'did', 'you', 'was', 'were', 'the', 'under', 'during', 'conditions',
+  'what', 'which', 'when', 'where', 'with', 'for', 'and', 'that', 'this', 'your'
+]);
+
 export const calculateTokenSimilarity = (strA, strB) => {
   if (!strA || !strB) return 0;
   const tokenize = (s) =>
@@ -41,7 +46,8 @@ export const calculateTokenSimilarity = (strA, strB) => {
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
         .split(/\s+/)
-        .filter((w) => w.length > 2)
+        .filter((w) => w.length > 2 && !STOP_WORDS.has(w))
+        .map((w) => w.replace(/(ing|ed|es|s)$/, ''))
     );
 
   const setA = tokenize(strA);

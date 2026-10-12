@@ -176,10 +176,15 @@ export const safeParseJson = (rawResponse) => {
     cleaned = match[1].trim();
   }
 
-  // Find outermost JSON object if model added conversational preamble
+  // Find outermost JSON structure (array or object) if model added conversational preamble
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+
+  if (firstBracket !== -1 && lastBracket > firstBracket && (firstBrace === -1 || firstBracket < firstBrace)) {
+    cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+  } else if (firstBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
 
