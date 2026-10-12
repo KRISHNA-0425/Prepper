@@ -213,3 +213,101 @@ export const isValidStateTransition = (currentStatus, targetStatus) => {
   if (!allowed) return false;
   return allowed.includes(targetStatus);
 };
+
+/**
+ * 12 Examination dimensions for in-depth project cross-examination.
+ */
+export const EXAMINATION_DIMENSIONS = Object.freeze({
+  PROBLEM_AND_REQUIREMENTS: 'PROBLEM_AND_REQUIREMENTS',
+  INDIVIDUAL_CONTRIBUTION: 'INDIVIDUAL_CONTRIBUTION',
+  ARCHITECTURE_BOUNDARIES: 'ARCHITECTURE_BOUNDARIES',
+  TECHNOLOGY_SELECTION: 'TECHNOLOGY_SELECTION',
+  API_AND_DATA_FLOW: 'API_AND_DATA_FLOW',
+  DATABASE_AND_CONSISTENCY: 'DATABASE_AND_CONSISTENCY',
+  SECURITY_AND_AUTH: 'SECURITY_AND_AUTH',
+  PERFORMANCE_AND_SCALE: 'PERFORMANCE_AND_SCALE',
+  ERROR_AND_FAILURE_HANDLING: 'ERROR_AND_FAILURE_HANDLING',
+  TESTING_AND_DEPLOYMENT: 'TESTING_AND_DEPLOYMENT',
+  METRICS_AND_OUTCOMES: 'METRICS_AND_OUTCOMES',
+  TRADEOFFS_AND_LIMITATIONS: 'TRADEOFFS_AND_LIMITATIONS',
+});
+
+/**
+ * Examination intents defining the probe objective.
+ */
+export const EXAMINATION_INTENTS = Object.freeze({
+  VERIFY_OWNERSHIP: 'VERIFY_OWNERSHIP',
+  EXPLORE_TRADEOFF: 'EXPLORE_TRADEOFF',
+  CLARIFY_METRIC: 'CLARIFY_METRIC',
+  INVESTIGATE_FAILURE: 'INVESTIGATE_FAILURE',
+  PROBE_ARCHITECTURE: 'PROBE_ARCHITECTURE',
+  VALIDATE_TECH_SELECTION: 'VALIDATE_TECH_SELECTION',
+  INSPECT_DATA_CONSISTENCY: 'INSPECT_DATA_CONSISTENCY',
+  ASSESS_SECURITY_MEASURES: 'ASSESS_SECURITY_MEASURES',
+  EVALUATE_OPERATIONAL_PRACTICES: 'EVALUATE_OPERATIONAL_PRACTICES',
+  PROBE_IMPLEMENTATION_DETAIL: 'PROBE_IMPLEMENTATION_DETAIL',
+});
+
+/**
+ * Grounding types for examination opportunities.
+ */
+export const OPPORTUNITY_TYPES = Object.freeze({
+  DIRECT_CLAIM_PROBE: 'DIRECT_CLAIM_PROBE',
+  INFORMATION_GAP_PROBE: 'INFORMATION_GAP_PROBE',
+  AMBIGUITY_RESOLVER: 'AMBIGUITY_RESOLVER',
+});
+
+/**
+ * Discrete priority levels for examination opportunities.
+ */
+export const PRIORITY_LEVELS = Object.freeze({
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+});
+
+/**
+ * Validates an examination opportunity against contract rules.
+ * @param {object} opportunity
+ * @returns {{ isValid: boolean, errors: string[] }}
+ */
+export const validateExaminationOpportunityContract = (opportunity) => {
+  const errors = [];
+  if (!opportunity || typeof opportunity !== 'object') {
+    return { isValid: false, errors: ['Opportunity must be an object'] };
+  }
+
+  if (!opportunity.opportunityId || typeof opportunity.opportunityId !== 'string') {
+    errors.push('opportunityId is required');
+  }
+
+  if (!opportunity.projectId || typeof opportunity.projectId !== 'string') {
+    errors.push('projectId is required');
+  }
+
+  if (!opportunity.dimension || !EXAMINATION_DIMENSIONS[opportunity.dimension]) {
+    errors.push(`Invalid examination dimension: ${opportunity.dimension}`);
+  }
+
+  if (!opportunity.examinationIntent || !EXAMINATION_INTENTS[opportunity.examinationIntent]) {
+    errors.push(`Invalid examination intent: ${opportunity.examinationIntent}`);
+  }
+
+  if (!opportunity.opportunityType || !OPPORTUNITY_TYPES[opportunity.opportunityType]) {
+    errors.push(`Invalid opportunity type: ${opportunity.opportunityType}`);
+  }
+
+  if (!opportunity.priorityLevel || !PRIORITY_LEVELS[opportunity.priorityLevel]) {
+    errors.push(`Invalid priority level: ${opportunity.priorityLevel}`);
+  }
+
+  if (!opportunity.rationale || typeof opportunity.rationale !== 'string' || !opportunity.rationale.trim()) {
+    errors.push('Rationale is required and must be non-empty');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
