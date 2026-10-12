@@ -424,6 +424,39 @@ crossExaminationSessionSchema.methods.recordAnswer = function ({
   return newAnswer;
 };
 
+/**
+ * Helper to get currently active question.
+ */
+crossExaminationSessionSchema.methods.getActiveQuestion = function () {
+  return this.questions.find((q) => q.status === 'current') || null;
+};
+
+/**
+ * Helper to advance to the next pending question.
+ * Ensures any active question is answered or skipped before advancing.
+ */
+crossExaminationSessionSchema.methods.advanceQuestion = function () {
+  const currentQuestion = this.getActiveQuestion();
+  if (currentQuestion) {
+    const isAnswered = this.answers.some((a) => a.questionId === currentQuestion.questionId);
+    if (!isAnswered && currentQuestion.status !== 'skipped') {
+      throw new Error(`Cannot advance while question '${currentQuestion.questionId}' is unanswered`);
+    }
+  }
+
+  const nextPending = this.questions
+    .filter((q) => q.status === 'pending')
+    .sort((a, b) => a.order - b.order)[0];
+
+  if (!nextPending) {
+    return null;
+  }
+
+  nextPending.status = 'current';
+  this.status = SESSION_STATUSES.AWAITING_ANSWER;
+  return nextPending;
+};
+
 const CrossExaminationSession = mongoose.model(
   'CrossExaminationSession',
   crossExaminationSessionSchema
