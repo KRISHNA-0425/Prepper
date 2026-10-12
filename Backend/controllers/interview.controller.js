@@ -1,6 +1,7 @@
 import fs from 'fs';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { askAI } from '../services/openRouter.service.js';
+import { extractResumeClaims } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
 
@@ -40,39 +41,29 @@ export const resumeAnalyse = async (req, res) => {
 
         resumeText = resumeText.replace(/\s/g, " ").trim();
 
-        // the main prompt for the ai
-        const messages = [
-            {
-                role: 'system',
-                content: `Extract structured data form the resume.
-                Return strictly JSON:
-                {
-                    "role":"string",
-                    "experience":"string",
-                    "projects":["project1", "project2" ],
-                    "skills":["skill1", "skill2"]
-                }
-                `
-            },
-            {
-                role: "user",
-                content: resumeText
-            }
-        ];
+        // Source-grounded Resume Intelligence extraction pipeline
+        const extraction = await extractResumeClaims({ resumeText });
 
-        const aiResponse = await askAI(messages)
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
 
-        const parsed = JSON.parse(aiResponse);
-
-        fs.unlinkSync(filePath)
-
+        // Return legacy backward-compatible fields alongside the cross-examination claims profile
         return res.status(200).json({
-            role: parsed.role,
-            experience: parsed.experience,
-            projects: parsed.projects,
-            skills: parsed.skills,
-            resumeText
-        })
+            role: extraction.role || '',
+            experience: extraction.experience || '',
+            projects: extraction.projects.map((p) => p.title),
+            skills: extraction.skills || [],
+            resumeText,
+            crossExaminationProfile: {
+                projects: extraction.projects,
+                standaloneClaims: extraction.standaloneClaims,
+                allClaims: extraction.allClaims,
+                resumeHash: extraction.resumeHash,
+                provenanceStats: extraction.provenanceStats,
+                warnings: extraction.warnings,
+            },
+        });
 
     } catch (error) {
 
