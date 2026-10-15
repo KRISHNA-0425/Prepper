@@ -12,6 +12,12 @@ import {
   validateClaimContract,
   validateProjectProfileContract,
   isValidStateTransition,
+  validatePreparationReportContract,
+  validateReportEvidenceReferences,
+  REPORT_SCHEMA_VERSION,
+  REPORT_METHODOLOGY,
+  SEVERITY_LEVELS,
+  READINESS_LEVELS,
 } from '../contracts/crossExamination.contracts.js';
 
 describe('Cross-Examination Domain Contracts', () => {
@@ -150,6 +156,37 @@ describe('Cross-Examination Domain Contracts', () => {
       assert.strictEqual(isValidStateTransition(SESSION_STATUSES.COMPLETED, SESSION_STATUSES.DRAFT), false);
       assert.strictEqual(isValidStateTransition(SESSION_STATUSES.FAILED, SESSION_STATUSES.ACTIVE), false);
       assert.strictEqual(isValidStateTransition('unknown_status', SESSION_STATUSES.ACTIVE), false);
+    });
+  });
+
+  describe('Preparation Report Contracts', () => {
+    it('should validate a complete and well-formed report structure', () => {
+      const validReport = {
+        reportId: 'rpt_12345',
+        version: REPORT_SCHEMA_VERSION,
+        completionState: { totalQuestions: 5, answeredCount: 5, skippedCount: 0, evaluatedCount: 5 },
+        claimVerificationMatrix: [],
+        demonstratedStrengths: [],
+        preparationGaps: [],
+        studyRecommendations: [],
+        limitations: ['Verified in session.'],
+      };
+
+      const result = validatePreparationReportContract(validReport);
+      assert.strictEqual(result.isValid, true);
+    });
+
+    it('should reject reports with missing mandatory arrays or invalid numbers', () => {
+      const invalidReport = {
+        reportId: 'rpt_999',
+        version: '1.0.0',
+        completionState: { totalQuestions: 'bad', answeredCount: 0 },
+        claimVerificationMatrix: 'not-an-array',
+      };
+
+      const result = validatePreparationReportContract(invalidReport);
+      assert.strictEqual(result.isValid, false);
+      assert.ok(result.errors.length >= 2);
     });
   });
 });

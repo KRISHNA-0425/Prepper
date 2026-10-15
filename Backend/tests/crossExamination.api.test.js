@@ -1239,4 +1239,177 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
       assert.strictEqual(persistedSession.answers[0].rawTranscript, 'Answer submitted during AI outage.');
     });
   });
+
+  describe('Phase 8: Preparation Report Generation and Retrieval APIs', () => {
+    let completedSessionId;
+
+    beforeEach(async () => {
+      // Create session for userA
+      const createRes = createMockRes();
+      await controller.createSession(
+        { userId: userAId, body: { crossExaminationProfile: createSampleProjectProfile() } },
+        createRes
+      );
+      completedSessionId = createRes.body.session.sessionId.toString();
+
+      // Answer Q1 with autoAdvance
+      await controller.submitAnswer(
+        {
+          userId: userAId,
+          params: { sessionId: completedSessionId },
+          body: { questionId: 'ceq_q1', rawTranscript: 'Answered Q1 completely', autoAdvance: true },
+        },
+        createMockRes()
+      );
+
+      // Answer Q2 without autoAdvance
+      await controller.submitAnswer(
+        {
+          userId: userAId,
+          params: { sessionId: completedSessionId },
+          body: { questionId: 'ceq_q2', rawTranscript: 'Answered Q2 completely', autoAdvance: false },
+        },
+        createMockRes()
+      );
+
+      // Complete session
+      await controller.completeSession(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        createMockRes()
+      );
+    });
+
+    it('should reject report generation for incomplete session with 400', async () => {
+      // Create an incomplete draft/active session
+      const createRes = createMockRes();
+      await controller.createSession(
+        { userId: userAId, body: { crossExaminationProfile: createSampleProjectProfile() } },
+        createRes
+      );
+      const activeSessionId = createRes.body.session.sessionId.toString();
+
+      const res = createMockRes();
+      await controller.generateReport(
+        { userId: userAId, params: { sessionId: activeSessionId } },
+        res
+      );
+
+      assert.strictEqual(res.statusCode, 400);
+      assert.match(res.body.message, /incomplete/i);
+    });
+
+    it('should generate report upon session completion and expose it in candidate response', async () => {
+      const getRes = createMockRes();
+      await controller.getSession(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        getRes
+      );
+
+      assert.strictEqual(getRes.statusCode, 200);
+      assert.ok(getRes.body.session.report);
+      assert.ok(getRes.body.session.report.executiveSummary.length > 0);
+      assert.strictEqual(getRes.body.session.report.completionState.totalQuestions, 2);
+      assert.strictEqual(getRes.body.session.report.completionState.answeredCount, 2);
+    });
+
+    it('should retrieve existing report via GET /api/cross-examination/sessions/:sessionId/report', async () => {
+      const res = createMockRes();
+      await controller.getReport(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        res
+      );
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.ok(res.body.report);
+      assert.ok(res.body.report.reportId.startsWith('rpt_'));
+      assert.strictEqual(res.body.report.version, '1.0.0');
+      assert.ok(Array.isArray(res.body.report.claimVerificationMatrix));
+      assert.ok(Array.isArray(res.body.report.demonstratedStrengths));
+      assert.ok(Array.isArray(res.body.report.preparationGaps));
+      assert.ok(Array.isArray(res.body.report.studyRecommendations));
+      assert.ok(Array.isArray(res.body.report.dimensionScores));
+    });
+
+    it('should be idempotent: POST /sessions/:sessionId/report without regenerate flag returns existing report', async () => {
+      const res1 = createMockRes();
+      await controller.generateReport(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        res1
+      );
+      assert.strictEqual(res1.statusCode, 200);
+      const initialReportId = res1.body.report.reportId;
+
+      const res2 = createMockRes();
+      await controller.generateReport(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        res2
+      );
+      assert.strictEqual(res2.statusCode, 200);
+      assert.strictEqual(res2.body.report.reportId, initialReportId);
+      assert.match(res2.body.message, /retrieved successfully/i);
+    });
+
+    it('should regenerate report when regenerate query flag is set', async () => {
+      const res1 = createMockRes();
+      await controller.generateReport(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        res1
+      );
+      const initialReportId = res1.body.report.reportId;
+
+      const res2 = createMockRes();
+      await controller.generateReport(
+        { userId: userAId, params: { sessionId: completedSessionId }, query: { regenerate: 'true' } },
+        res2
+      );
+      assert.strictEqual(res2.statusCode, 200);
+      assert.match(res2.body.message, /generated successfully/i);
+      assert.notStrictEqual(res2.body.report.reportId, initialReportId);
+    });
+
+    it('should enforce authentication on report endpoints (401 when unauthenticated)', async () => {
+      const resGen = createMockRes();
+      await controller.generateReport(
+        { userId: null, params: { sessionId: completedSessionId } },
+        resGen
+      );
+      assert.strictEqual(resGen.statusCode, 401);
+
+      const resGet = createMockRes();
+      await controller.getReport(
+        { userId: null, params: { sessionId: completedSessionId } },
+        resGet
+      );
+      assert.strictEqual(resGet.statusCode, 401);
+    });
+
+    it('should enforce resource authorization (404 when requested by different user)', async () => {
+      const resGen = createMockRes();
+      await controller.generateReport(
+        { userId: userBId, params: { sessionId: completedSessionId } },
+        resGen
+      );
+      assert.strictEqual(resGen.statusCode, 404);
+
+      const resGet = createMockRes();
+      await controller.getReport(
+        { userId: userBId, params: { sessionId: completedSessionId } },
+        resGet
+      );
+      assert.strictEqual(resGet.statusCode, 404);
+    });
+
+    it('should sanitize candidate-facing report payload (exclude _id and internal fields)', async () => {
+      const res = createMockRes();
+      await controller.getReport(
+        { userId: userAId, params: { sessionId: completedSessionId } },
+        res
+      );
+
+      assert.strictEqual(res.statusCode, 200);
+      const report = res.body.report;
+      assert.strictEqual(report._id, undefined);
+      assert.strictEqual(report.__v, undefined);
+    });
+  });
 });

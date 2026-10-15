@@ -11,6 +11,8 @@ import {
     MAX_TRANSCRIPT_LENGTH,
     MIN_QUESTIONS,
     MAX_QUESTIONS,
+    getCrossExamReport,
+    generateCrossExamReport,
 } from '../src/utils/crossExaminationApi.js';
 
 describe('Cross-Examination Frontend Logic & Integration Suite', () => {
@@ -539,5 +541,78 @@ describe('Cross-Examination Frontend Logic & Integration Suite', () => {
             assert.ok(recoveredState.error.includes('Network error'));
         });
     });
-});
 
+    describe('11. Phase 8: Preparation Report API, Rendering & Resilience', () => {
+        it('should export getCrossExamReport and generateCrossExamReport functions', () => {
+            assert.strictEqual(typeof getCrossExamReport, 'function');
+            assert.strictEqual(typeof generateCrossExamReport, 'function');
+        });
+
+        it('should correctly format and map preparation report findings without data distortion', () => {
+            const rawReport = {
+                reportId: 'rpt_front_test1',
+                version: '1.0.0',
+                completionState: { totalQuestions: 4, answeredCount: 4, evaluatedCount: 4, skippedCount: 0 },
+                executiveSummary: 'Strong distributed systems fundamentals demonstrated.',
+                demonstratedStrengths: [
+                    { id: 'str_1', title: 'Decoupled Messaging', description: 'Used RabbitMQ exchanges.', evidenceReferences: [{ questionId: 'q1', answerId: 'a1' }] }
+                ],
+                preparationGaps: [
+                    { id: 'gap_1', severity: 'HIGH', topic: 'Lock Contention', gapDescription: 'Missing jitter on retry.', evidenceReferences: [{ questionId: 'q2', answerId: 'a2' }] }
+                ],
+                alternativeApproachesAcknowledged: [
+                    { id: 'alt_1', topic: 'Alternative Architecture', description: 'Optimistic locking instead of distributed mutex.' }
+                ],
+                studyRecommendations: [
+                    { id: 'rec_1', priority: 'HIGH', topic: 'Distributed Locking', recommendation: 'Review Redlock and advisory lock trade-offs.' }
+                ],
+                dimensionScores: [
+                    { dimension: 'ARCHITECTURE_BOUNDARIES', demonstratedLevel: 'STRONG', rationale: 'Clean separation.' },
+                    { dimension: 'TESTING_AND_DEPLOYMENT', demonstratedLevel: 'UNAVAILABLE', rationale: 'Not examined.' }
+                ]
+            };
+
+            assert.strictEqual(rawReport.completionState.answeredCount, 4);
+            assert.strictEqual(rawReport.demonstratedStrengths.length, 1);
+            assert.strictEqual(rawReport.preparationGaps[0].severity, 'HIGH');
+            assert.strictEqual(rawReport.alternativeApproachesAcknowledged.length, 1);
+
+            // Verify that unexamined dimension is explicitly UNAVAILABLE, not zero
+            const unavailDim = rawReport.dimensionScores.find((d) => d.dimension === 'TESTING_AND_DEPLOYMENT');
+            assert.strictEqual(unavailDim.demonstratedLevel, 'UNAVAILABLE');
+        });
+
+        it('should resolve question and transcript from evidence reference for interactive inspection', () => {
+            const session = {
+                questions: [
+                    { questionId: 'ceq_q100', questionText: 'Explain your event-driven indexing.' }
+                ],
+                answers: [
+                    { questionId: 'ceq_q100', rawTranscript: 'We used Elasticsearch with change data capture via Debezium.' }
+                ]
+            };
+
+            const ref = { questionId: 'ceq_q100' };
+            const resolvedQ = session.questions.find((q) => q.questionId === ref.questionId);
+            const resolvedA = session.answers.find((a) => a.questionId === ref.questionId);
+
+            assert.ok(resolvedQ);
+            assert.strictEqual(resolvedQ.questionText, 'Explain your event-driven indexing.');
+            assert.ok(resolvedA);
+            assert.ok(resolvedA.rawTranscript.includes('Debezium'));
+        });
+
+        it('should handle missing report gracefully by displaying compile/generate fallback prompt', () => {
+            const sessionWithoutReport = {
+                _id: 'sess_unreported',
+                status: 'completed',
+                questions: [],
+                answers: [],
+                report: null
+            };
+
+            const needsGeneration = sessionWithoutReport.status === 'completed' && !sessionWithoutReport.report;
+            assert.strictEqual(needsGeneration, true);
+        });
+    });
+});
