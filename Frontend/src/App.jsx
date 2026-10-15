@@ -10,6 +10,8 @@ import InterviewPage from './pages/InterviewPage'
 import InterViewHistory from './pages/InterViewHistory'
 import Pricing from './pages/Pricing'
 import InterviewReport from './pages/InterviewReport'
+import CrossExaminationSetup from './pages/CrossExaminationSetup'
+import CrossExaminationSession from './pages/CrossExaminationSession'
 
 
 export const backendServerUrl = import.meta.env.VITE_SERVER_URL
@@ -58,6 +60,8 @@ function App() {
         <Route path='/history' element={<InterViewHistory/>}/>
         <Route path='/pricing' element={<Pricing/>}/>
         <Route path='/report/:id' element={<InterviewReport/>}/>
+        <Route path='/cross-examination' element={<CrossExaminationSetup />} />
+        <Route path='/cross-examination/:sessionId' element={<CrossExaminationSession />} />
       </Routes>
     </>
   )
