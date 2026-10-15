@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine } from "react-icons/ri";
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { backendServerUrl } from '../App';
 import { setUserData } from '../redux/userSlice';
@@ -14,8 +14,11 @@ function Navbar() {
     const [showCreditPopup, setShowCreditPopup] = useState(false);
     const [showAuth, setShowAuth] = useState(false);
 
+    const location = useLocation();
     const navigate = useNavigate();
     const dispatch = useDispatch();
+
+    const isCrossExamActive = location.pathname.startsWith('/cross-examination');
 
     const handleLogout = async () => {
         try {
@@ -35,9 +38,9 @@ function Navbar() {
                 transition={{ type: "spring", stiffness: 120, damping: 20 }}
                 className='w-full max-w-6xl bg-white/30 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/60 px-4 md:px-6 py-3 flex items-center justify-between relative'
             >
-                {/* Logo Section */}
-                <div className='flex items-center gap-3 sm:gap-4'>
-                    <Link to="/">
+                {/* Logo Section & Dedicated Nav Links */}
+                <div className='flex items-center gap-2 sm:gap-4'>
+                    <Link to="/" aria-label="Prepper AI Home">
                         <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
                             <img 
                                 src="/logo.svg" 
@@ -48,12 +51,20 @@ function Navbar() {
                         </motion.div>
                     </Link>
 
+                    {/* Dedicated Cross-Examination Navigation Item */}
                     <Link 
                         to="/cross-examination" 
-                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black text-slate-800 bg-white/40 hover:bg-white/70 border border-white/60 transition-all shadow-xs"
+                        aria-label="Cross-Examination"
+                        aria-current={isCrossExamActive ? "page" : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-all shadow-xs border ${
+                            isCrossExamActive 
+                                ? 'bg-yellow-400/30 text-yellow-900 border-yellow-400/70 shadow-sm ring-1 ring-yellow-400/40' 
+                                : 'bg-white/50 hover:bg-white/80 text-slate-800 border-white/70'
+                        }`}
                     >
-                        <RiShieldFlashLine className="text-yellow-600 text-sm" />
-                        Cross-Exam
+                        <RiShieldFlashLine className="text-yellow-600 text-sm shrink-0" />
+                        <span className="hidden sm:inline">Cross-Examination</span>
+                        <span className="sm:hidden text-[11px]">Cross-Exam</span>
                     </Link>
                 </div>
 
@@ -71,6 +82,7 @@ function Navbar() {
                                     }}
                                     whileTap={{ scale: 0.95 }}
                                     className='flex items-center gap-1.5 bg-[#F7D63A] hover:bg-[#ffe04d] px-3 md:px-4 py-2 rounded-full shadow-sm'
+                                    aria-label="View practice credits"
                                 >
                                     <RiCoinsLine className='text-[#8B7D10]' size={16} />
                                     <span className='text-xs font-black text-[#8B7D10]'>{userData.credits || 0}</span>
@@ -107,18 +119,20 @@ function Navbar() {
 
                             {/* Profile Dropdown */}
                             <div className='relative'>
-                                <motion.div
+                                <motion.button
                                     onClick={() => {
                                         setIsDropdownOpen(!isDropdownOpen);
                                         setShowCreditPopup(false);
                                     }}
                                     className='flex items-center gap-1 cursor-pointer bg-white/50 p-1 rounded-full'
+                                    aria-label="Open user menu"
+                                    aria-expanded={isDropdownOpen}
                                 >
                                     <div className='w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-slate-800 flex items-center justify-center border-2 border-white shadow-sm text-yellow-400 font-black text-xs lg:text-sm'>
                                         {userData.name.charAt(0).toUpperCase()}
                                     </div>
                                     <RiArrowDownSLine className={`text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                                </motion.div>
+                                </motion.button>
 
                                 <AnimatePresence>
                                     {isDropdownOpen && (
@@ -132,12 +146,6 @@ function Navbar() {
                                                 <p className='text-[10px] uppercase font-bold text-slate-400'>Identity</p>
                                                 <p className='text-sm font-black text-slate-800 truncate'>{userData.name}</p>
                                             </div>
-                                            <button 
-                                                onClick={() => { navigate('/cross-examination'); setIsDropdownOpen(false); }} 
-                                                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-800 hover:bg-yellow-50 rounded-xl font-bold transition-all'
-                                            >
-                                                <RiShieldFlashLine size={18} className="text-yellow-600" /> Cross-Examination
-                                            </button>
                                             <button 
                                                 onClick={() => { navigate('/history'); setIsDropdownOpen(false); }} 
                                                 className='w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all'

@@ -22,6 +22,7 @@ function Step1Setup({ onStart }) {
     const [resumeText, setResumeText] = useState('')
     const [anaylsisDone, setAnaylsisDone] = useState(false)
     const [anaylzing, setAnaylzing] = useState(false)
+    const [enableCrossQuestioning, setEnableCrossQuestioning] = useState(false)
 
     const navigate = useNavigate();
 
@@ -77,7 +78,7 @@ function Step1Setup({ onStart }) {
         setLoading(true);
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/generateQuestions',
-                { role, experience, mode, skills, projects, resumeText }, { withCredentials: true }
+                { role, experience, mode, skills, projects, resumeText, enableCrossQuestioning: Boolean(enableCrossQuestioning) }, { withCredentials: true }
             )
             console.log(result.data)
 
@@ -203,6 +204,28 @@ function Step1Setup({ onStart }) {
                                         <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><RiUserVoiceLine /> Mode</label>
                                         <select value={mode} onChange={(e) => setMode(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'><option value="Technical">Technical</option><option value="HR">HR/Behavioral</option></select>
                                     </div>
+                                </motion.div>
+
+                                {/* Feature D: Optional Cross-Questioning Option */}
+                                <motion.div layout className='p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-yellow-400/60 transition-colors'>
+                                    <label htmlFor="enableCrossQuestioning" className='flex items-start gap-3 cursor-pointer select-none'>
+                                        <input
+                                            type="checkbox"
+                                            id="enableCrossQuestioning"
+                                            name="enableCrossQuestioning"
+                                            checked={enableCrossQuestioning}
+                                            onChange={(e) => setEnableCrossQuestioning(e.target.checked)}
+                                            className='mt-0.5 w-4 h-4 text-yellow-500 rounded border-slate-300 focus:ring-yellow-400 cursor-pointer accent-yellow-500'
+                                        />
+                                        <div className='flex-1'>
+                                            <span className='text-xs font-black text-slate-800 block'>
+                                                Enable cross-questioning
+                                            </span>
+                                            <span className='text-[10px] text-slate-500 leading-tight block mt-0.5'>
+                                                Allows the AI to ask relevant follow-up questions based on your answers to test depth and clarity.
+                                            </span>
+                                        </div>
+                                    </label>
                                 </motion.div>
 
                                 <AnimatePresence mode='wait'>
