@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineCheckBadge,
@@ -24,11 +23,7 @@ function SessionCompletion({ session }) {
     : new Date().toLocaleString();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-12 shadow-2xl backdrop-blur-md text-center max-w-2xl mx-auto"
-    >
+    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-12 shadow-2xl backdrop-blur-md text-center max-w-2xl mx-auto">
       <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-3xl mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
         <HiOutlineCheckBadge />
       </div>
@@ -40,6 +35,8 @@ function SessionCompletion({ session }) {
       <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight mb-2">
         {session?.targetRole || 'Cross-Examination'} Finished
       </h2>
+
+      <p className="text-[11px] font-mono text-slate-500 mb-4">Completed: {completedTime}</p>
 
       <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
         {session?.report?.summary ||
@@ -92,7 +89,7 @@ function SessionCompletion({ session }) {
           Home Dashboard
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

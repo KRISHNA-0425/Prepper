@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { HiOutlineClock, HiOutlineQuestionMarkCircle } from 'react-icons/hi';
 import { RiFocus2Line, RiCpuLine } from 'react-icons/ri';
 import { sanitizeCandidateQuestion } from '../../utils/crossExaminationApi';

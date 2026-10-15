@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineCheckBadge,
@@ -210,7 +210,6 @@ function PreparationReport({ session, initialReport, onReportUpdated }) {
             const isStrong = dim.demonstratedLevel === 'STRONG';
             const isMod = dim.demonstratedLevel === 'MODERATE';
             const isWeak = dim.demonstratedLevel === 'WEAK';
-            const isUnavail = dim.demonstratedLevel === 'UNAVAILABLE';
 
             const badgeColor = isStrong
               ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/80'

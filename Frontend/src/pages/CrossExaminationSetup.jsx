@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -46,7 +45,7 @@ function CrossExaminationSetup() {
   const currentIdempotencyKeyRef = useRef(null);
 
   // Load past sessions
-  const fetchPastSessions = async () => {
+  const fetchPastSessions = useCallback(async () => {
     if (!userData) return;
     try {
       setLoadingPastSessions(true);
@@ -57,11 +56,11 @@ function CrossExaminationSetup() {
     } finally {
       setLoadingPastSessions(false);
     }
-  };
+  }, [userData]);
 
   useEffect(() => {
     fetchPastSessions();
-  }, [userData]);
+  }, [fetchPastSessions]);
 
   // Handle Drag & Drop
   const handleDragOver = (e) => {

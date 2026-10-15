@@ -11,8 +11,8 @@ const resolveServerUrl = () => {
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SERVER_URL) {
     return import.meta.env.VITE_SERVER_URL;
   }
-  if (typeof process !== 'undefined' && process?.env?.VITE_SERVER_URL) {
-    return process.env.VITE_SERVER_URL;
+  if (typeof globalThis !== 'undefined' && globalThis.process?.env?.VITE_SERVER_URL) {
+    return globalThis.process.env.VITE_SERVER_URL;
   }
   return 'http://localhost:5000';
 };

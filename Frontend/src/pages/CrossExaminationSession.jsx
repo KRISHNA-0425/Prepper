@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   HiOutlineExclamationCircle,
@@ -40,7 +39,7 @@ function CrossExaminationSession() {
   const [showEndConfirmModal, setShowEndConfirmModal] = useState(false);
 
   // Fetch Session Data from Server
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async () => {
     if (!sessionId) return;
     try {
       setIsLoading(true);
@@ -69,11 +68,11 @@ function CrossExaminationSession() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sessionId]);
 
   useEffect(() => {
     fetchSession();
-  }, [sessionId]);
+  }, [fetchSession]);
 
   // Handle Answer Submission
   const handleSubmitAnswer = async ({ questionId, rawTranscript, autoAdvance }) => {
