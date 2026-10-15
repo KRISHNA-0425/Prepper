@@ -15,6 +15,7 @@ import QuestionCard from '../components/cross-examination/QuestionCard';
 import AnswerConsole from '../components/cross-examination/AnswerConsole';
 import SessionCompletion from '../components/cross-examination/SessionCompletion';
 import PreparationReport from '../components/cross-examination/PreparationReport';
+import { DEFAULT_QUESTION_DURATION } from '../utils/interviewTimer';
 import {
   getCrossExaminationSession,
   submitCrossExamAnswer,
@@ -38,6 +39,10 @@ function CrossExaminationSession() {
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showEndConfirmModal, setShowEndConfirmModal] = useState(false);
+
+  // Active question countdown timer (configurable default of 120s)
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_QUESTION_DURATION);
+  const [totalQuestionTime, setTotalQuestionTime] = useState(DEFAULT_QUESTION_DURATION);
 
   // Fetch Session Data from Server
   const fetchSession = useCallback(async () => {
@@ -74,6 +79,34 @@ function CrossExaminationSession() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  // Synchronize timer when active question changes
+  useEffect(() => {
+    if (activeQuestion) {
+      const duration = activeQuestion.timeLimit || DEFAULT_QUESTION_DURATION;
+      setTimeLeft(duration);
+      setTotalQuestionTime(duration);
+    }
+  }, [activeQuestion?.questionId, activeQuestion?.timeLimit]);
+
+  // Determine if active question is already answered and waiting for manual advance
+  const isCurrentAnswered = Boolean(
+    activeQuestion &&
+    Array.isArray(session?.questions) &&
+    session.questions.find((q) => q.questionId === activeQuestion.questionId)?.status === 'answered'
+  );
+
+  // Active countdown timer effect: continuous updates, cleans up on unmount or question change
+  useEffect(() => {
+    if (isSubmitting || isAdvancing || isCompleting || !activeQuestion || isCurrentAnswered) return;
+    if (timeLeft <= 0) return; // Expired, pause at 0 (never auto-submits or discards answer)
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeLeft, isSubmitting, isAdvancing, isCompleting, activeQuestion, isCurrentAnswered]);
 
   // Handle Answer Submission
   const handleSubmitAnswer = async ({ questionId, rawTranscript, autoAdvance }) => {
@@ -201,11 +234,7 @@ function CrossExaminationSession() {
   const totalQuestions = session.progress?.totalQuestions || session.questions?.length || 0;
   const currentNumber = activeQuestion?.order || (session.progress?.answeredCount || 0) + 1;
 
-  // Determine if active question is already answered and waiting for manual advance
-  const isCurrentAnswered =
-    activeQuestion &&
-    Array.isArray(session.questions) &&
-    session.questions.find((q) => q.questionId === activeQuestion.questionId)?.status === 'answered';
+  // isCurrentAnswered hoisted above
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-poppins selection:bg-yellow-400 selection:text-slate-900 pb-20">
@@ -232,6 +261,8 @@ function CrossExaminationSession() {
               question={activeQuestion}
               currentNumber={currentNumber}
               totalQuestions={totalQuestions}
+              timeLeft={timeLeft}
+              totalTime={totalQuestionTime}
             />
 
             {activeQuestion && (
@@ -242,6 +273,7 @@ function CrossExaminationSession() {
                 onAdvanceQuestion={handleAdvance}
                 isSubmitting={isSubmitting}
                 isAdvancing={isAdvancing}
+                timeLeft={timeLeft}
               />
             )}
           </div>

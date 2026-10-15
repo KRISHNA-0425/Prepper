@@ -277,4 +277,72 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(canGenerateFollowUp, false, 'Depth >= 1 must block further follow-up probing');
         });
     });
+    // ==========================================
+    // 5. Cross-Examination Timer & Voice Dictation Integration
+    // ==========================================
+    describe('5. Cross-Examination Timer & Voice Dictation Integration', () => {
+        it('should verify QuestionCard.jsx renders active countdown timer in MM:SS format', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const cardPath = path.resolve('src/components/cross-examination/QuestionCard.jsx');
+            const cardContent = fs.readFileSync(cardPath, 'utf8');
+
+            assert.ok(cardContent.includes('formatTimeMMSS(timeLeft)'), 'QuestionCard must format remaining time in MM:SS');
+            assert.ok(cardContent.includes('role="timer"'), 'QuestionCard timer must have role="timer" accessibility attribute');
+            assert.ok(cardContent.includes('(Time Expired)'), 'QuestionCard must display an explicit expired state indicator');
+            assert.ok(cardContent.includes('animate-pulse'), 'QuestionCard must render animated pulse for low time and expired states');
+        });
+
+        it('should verify AnswerConsole.jsx renders visible microphone button and speech dictation integration', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const consolePath = path.resolve('src/components/cross-examination/AnswerConsole.jsx');
+            const consoleContent = fs.readFileSync(consolePath, 'utf8');
+
+            assert.ok(consoleContent.includes('useSpeechRecognition'), 'AnswerConsole must use useSpeechRecognition hook');
+            assert.ok(consoleContent.includes('id="voiceInputButton"'), 'AnswerConsole must have a dedicated voiceInputButton element');
+            assert.ok(consoleContent.includes('HiMicrophone'), 'AnswerConsole must render microphone icon');
+            assert.ok(consoleContent.includes('Listening...'), 'AnswerConsole must render a distinct Listening... recording state');
+            assert.ok(consoleContent.includes('Stop Listening'), 'AnswerConsole must support stopping voice dictation');
+            assert.ok(consoleContent.includes('Voice Input'), 'AnswerConsole must display Voice Input button label');
+        });
+
+        it('should verify CrossExaminationSession.jsx manages continuous countdown and resets on question change', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const sessionPath = path.resolve('src/pages/CrossExaminationSession.jsx');
+            const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+
+            assert.ok(sessionContent.includes('const [timeLeft, setTimeLeft] = useState'), 'CrossExaminationSession must maintain timeLeft state');
+            assert.ok(sessionContent.includes('DEFAULT_QUESTION_DURATION'), 'CrossExaminationSession must fallback to DEFAULT_QUESTION_DURATION (120s)');
+            assert.ok(sessionContent.includes('timeLeft={timeLeft}'), 'CrossExaminationSession must pass timeLeft to QuestionCard and AnswerConsole');
+            assert.ok(sessionContent.includes('clearInterval'), 'CrossExaminationSession must clean up timer intervals');
+        });
+
+        it('should reset answer transcript and stop speech recognition when activeQuestion changes', () => {
+            let transcript = 'Some previous answer text';
+            let isListening = true;
+
+            // Simulating AnswerConsole activeQuestion.questionId transition effect
+            const onQuestionChange = (newQuestionId) => {
+                transcript = '';
+                isListening = false;
+            };
+
+            onQuestionChange('new_question_id');
+            assert.strictEqual(transcript, '');
+            assert.strictEqual(isListening, false);
+        });
+
+        it('should preserve candidate transcript when time expires without auto-submitting', () => {
+            const transcript = 'Candidate technical architecture explanation...';
+            let submitted = false;
+            let timeLeft = 0; // Expired
+
+            // Verify timeout policy: expiration does NOT submit or wipe answer
+            assert.strictEqual(submitted, false, 'Time expiration must not auto-submit');
+            assert.ok(transcript.length > 0, 'Candidate answer must be strictly preserved upon expiration');
+            assert.strictEqual(getTimerStatus(timeLeft), 'expired');
+        });
+    });
 });

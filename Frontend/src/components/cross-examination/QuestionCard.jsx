@@ -1,21 +1,22 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { HiOutlineClock, HiOutlineQuestionMarkCircle } from 'react-icons/hi';
-import { RiFocus2Line, RiCpuLine } from 'react-icons/ri';
-import { sanitizeCandidateQuestion } from '../../utils/crossExaminationApi';
+import { HiOutlineClock } from 'react-icons/hi';
+import { RiFocus2Line } from 'react-icons/ri';
+import { formatTimeMMSS } from '../../utils/interviewTimer';
 
-function QuestionCard({ question, currentNumber, totalQuestions }) {
-  // Defensive client-side sanitization to strictly prevent exposing evaluator metadata
-  const safeQuestion = sanitizeCandidateQuestion(question);
-
-  if (!safeQuestion) {
-    return (
-      <div className="w-full bg-slate-900/60 border border-slate-800 rounded-3xl p-8 text-center text-slate-400">
-        <RiCpuLine className="text-3xl text-slate-600 mx-auto mb-2" />
-        <p className="text-sm font-medium">No active question currently selected.</p>
-      </div>
-    );
+function QuestionCard({ question, currentNumber, totalQuestions, timeLeft = 120, totalTime = 120 }) {
+  if (!question) {
+    return null;
   }
+
+  const safeQuestion = {
+    questionId: question.questionId || 'unknown',
+    questionText: question.questionText || 'Question prompt unavailable',
+    inquiryType: question.inquiryType || 'TECHNICAL_INQUIRY',
+    difficulty: question.difficulty || 'medium',
+    timeLimit: question.timeLimit || totalTime || 120,
+    order: question.order || currentNumber || 1,
+  };
 
   // Format inquiry type into human-friendly label
   const formatInquiryType = (type) => {
@@ -40,6 +41,9 @@ function QuestionCard({ question, currentNumber, totalQuestions }) {
     }
   };
 
+  const isExpired = timeLeft <= 0;
+  const isLowTime = timeLeft > 0 && timeLeft <= 30;
+
   return (
     <motion.div
       key={safeQuestion.questionId}
@@ -48,9 +52,9 @@ function QuestionCard({ question, currentNumber, totalQuestions }) {
       transition={{ duration: 0.3 }}
       className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md mb-6 text-left"
     >
-      {/* Top Metadata Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-slate-800/80 mb-5">
-        <div className="flex items-center gap-2">
+      {/* Top Metadata Badges & Active Countdown Timer */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800/80 mb-5">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black uppercase text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-3 py-1 rounded-full font-mono">
             Question {currentNumber || safeQuestion.order || 1} of {totalQuestions || '?'}
           </span>
@@ -62,20 +66,40 @@ function QuestionCard({ question, currentNumber, totalQuestions }) {
           >
             {safeQuestion.difficulty || 'Medium'} Tier
           </span>
-        </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <span className="flex items-center gap-1 font-medium bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-800/80">
+          <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 font-medium bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-800/80">
             <RiFocus2Line className="text-yellow-400 text-sm" />
             {formatInquiryType(safeQuestion.inquiryType)}
           </span>
+        </div>
 
-          {safeQuestion.timeLimit && (
-            <span className="flex items-center gap-1 font-mono text-[11px] text-slate-400">
-              <HiOutlineClock className="text-slate-500" />
-              ~{safeQuestion.timeLimit}s suggested
-            </span>
-          )}
+        {/* Visible Active Countdown Timer */}
+        <div className="flex items-center gap-2" role="timer" aria-label={isExpired ? "Time expired" : `${timeLeft} seconds remaining`}>
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-black border transition-all shadow-xs ${
+              isExpired
+                ? 'bg-red-500/20 text-red-400 border-red-500/50 shadow-red-500/20 animate-pulse'
+                : isLowTime
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 animate-pulse'
+                : 'bg-slate-950/90 text-yellow-400 border-slate-700/80'
+            }`}
+          >
+            <HiOutlineClock className={`text-sm ${isLowTime ? 'animate-spin' : isExpired ? 'text-red-400' : 'text-yellow-400'}`} />
+            <span className="font-bold">{formatTimeMMSS(timeLeft)}</span>
+            {isExpired ? (
+              <span className="text-[10px] uppercase font-black text-red-400 tracking-wider ml-0.5">
+                (Time Expired)
+              </span>
+            ) : isLowTime ? (
+              <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider ml-0.5">
+                Low Time
+              </span>
+            ) : (
+              <span className="text-[10px] uppercase text-slate-400 tracking-wider ml-0.5">
+                Remaining
+              </span>
+            )}
+          </span>
         </div>
       </div>
 
