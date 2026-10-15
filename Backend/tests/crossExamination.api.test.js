@@ -245,6 +245,14 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
         success: true,
         questions: createSampleQuestions(),
       }),
+      evaluateAnswerFn: async () => ({
+        success: true,
+        evaluation: null,
+      }),
+      generateFollowUpFn: async () => ({
+        success: true,
+        followUpQuestion: null,
+      }),
     });
   });
 
@@ -1037,6 +1045,198 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
         nextCalled = true;
       });
       assert.strictEqual(nextCalled, true);
+    });
+  });
+
+  describe('Phase 7: Answer Analysis & Adaptive Probing Integration', () => {
+    it('should evaluate answer and attach evaluation to answer record on submitAnswer', async () => {
+      const mockEvaluateAnswer = async ({ question, answer }) => ({
+        success: true,
+        evaluation: {
+          evaluationId: 'evl_mock_01',
+          version: '1.0.0',
+          questionId: question.questionId,
+          answerId: answer.answerId,
+          directEvidence: ['Demonstrated Sentinel quorum consensus'],
+          partialEvidence: [],
+          ambiguities: [],
+          unsupportedAssertions: [],
+          contradictions: [],
+          alternativeApproaches: [],
+          missingInformation: [],
+          dimensionEvaluations: [
+            {
+              dimension: 'ARCHITECTURE_BOUNDARIES',
+              score: 'STRONG',
+              rationale: 'Clean explanation',
+            },
+          ],
+          confidence: 'HIGH',
+          followUpEligible: false,
+          clarificationTargets: [],
+          evaluatedAt: new Date(),
+        },
+      });
+
+      const customStore = new MockSessionStore();
+      const customController = createCrossExaminationController({
+        SessionModel: customStore.createModelClass(),
+        evaluateAnswerFn: mockEvaluateAnswer,
+      });
+
+      // Create session
+      const createReq = {
+        userId: userAId,
+        body: { crossExaminationProfile: createSampleProjectProfile() },
+      };
+      const createRes = createMockRes();
+      await customController.createSession(createReq, createRes);
+      const sessionId = createRes.body.session.sessionId;
+
+      // Submit answer
+      const activeQId = createRes.body.session.currentQuestion.questionId;
+      const submitReq = {
+        userId: userAId,
+        params: { sessionId },
+        body: {
+          questionId: activeQId,
+          rawTranscript: 'Sentinel quorum=2 ensures no split brain when partitioned.',
+          autoAdvance: false,
+        },
+      };
+      const submitRes = createMockRes();
+      await customController.submitAnswer(submitReq, submitRes);
+
+      assert.strictEqual(submitRes.statusCode, 200);
+
+      // Verify answer has evaluation in persisted store
+      const persistedSession = customStore.sessions.get(sessionId.toString());
+      assert.ok(persistedSession.answers[0].evaluation);
+      assert.strictEqual(persistedSession.answers[0].evaluation.evaluationId, 'evl_mock_01');
+      assert.strictEqual(persistedSession.answers[0].evaluation.directEvidence[0], 'Demonstrated Sentinel quorum consensus');
+
+      // Verify candidate-facing response did not leak evaluation internals
+      assert.strictEqual(submitRes.body.answer.evaluation, undefined);
+      assert.strictEqual(submitRes.body.answer.rationale, undefined);
+    });
+
+    it('should dynamically insert targeted follow-up question and auto-advance to it when eligible', async () => {
+      const mockEvaluateAnswer = async ({ question, answer }) => ({
+        success: true,
+        evaluation: {
+          evaluationId: 'evl_mock_02',
+          version: '1.0.0',
+          questionId: question.questionId,
+          answerId: answer.answerId,
+          directEvidence: [],
+          partialEvidence: ['Mentions Redis Sentinel'],
+          ambiguities: ['Unclear how split-brain was prevented'],
+          unsupportedAssertions: [],
+          contradictions: [],
+          alternativeApproaches: [],
+          missingInformation: ['Specific quorum number and partition timeout'],
+          dimensionEvaluations: [],
+          confidence: 'LOW',
+          followUpEligible: true,
+          clarificationTargets: ['Explain specific quorum number and partition detection timeout'],
+          evaluatedAt: new Date(),
+        },
+      });
+
+      const mockGenerateFollowUp = async ({ parentQuestion }) => ({
+        success: true,
+        followUpQuestion: {
+          questionId: 'ceq_followup_99',
+          targetProjectId: parentQuestion.targetProjectId,
+          targetClaimIds: parentQuestion.targetClaimIds,
+          inquiryType: 'FOLLOW_UP_PROBE',
+          parentQuestionId: parentQuestion.questionId,
+          depth: parentQuestion.depth + 1,
+          order: parentQuestion.order + 1,
+          questionText: 'What exact down-after-milliseconds threshold did you configure to detect the partition?',
+          difficulty: 'hard',
+          timeLimit: 90,
+          status: 'pending',
+          dimension: parentQuestion.dimension,
+          examinationIntent: parentQuestion.examinationIntent,
+          rationale: 'Clarify partition timeout',
+          expectedEvidence: ['Down-after-milliseconds threshold'],
+          followUpGuidance: 'Candidate specifies exact timing',
+        },
+      });
+
+      const customStore = new MockSessionStore();
+      const customController = createCrossExaminationController({
+        SessionModel: customStore.createModelClass(),
+        evaluateAnswerFn: mockEvaluateAnswer,
+        generateFollowUpFn: mockGenerateFollowUp,
+      });
+
+      // Create session
+      const createRes = createMockRes();
+      await customController.createSession({ userId: userAId, body: { crossExaminationProfile: createSampleProjectProfile() } }, createRes);
+      const sessionId = createRes.body.session.sessionId;
+      const initialTotalQuestions = createRes.body.session.progress.totalQuestions;
+
+      // Submit answer with autoAdvance=true
+      const activeQId = createRes.body.session.currentQuestion.questionId;
+      const submitRes = createMockRes();
+      await customController.submitAnswer({
+        userId: userAId,
+        params: { sessionId },
+        body: {
+          questionId: activeQId,
+          rawTranscript: 'We used Redis Sentinel with clustering.',
+          autoAdvance: true,
+        },
+      }, submitRes);
+
+      assert.strictEqual(submitRes.statusCode, 200);
+
+      // Verify nextQuestion is the generated follow-up
+      assert.ok(submitRes.body.nextQuestion);
+      assert.strictEqual(submitRes.body.nextQuestion.questionId, 'ceq_followup_99');
+      assert.strictEqual(submitRes.body.nextQuestion.inquiryType, 'FOLLOW_UP_PROBE');
+
+      // Verify totalQuestions incremented by 1 in session
+      const persistedSession = customStore.sessions.get(sessionId.toString());
+      assert.strictEqual(persistedSession.questions.length, initialTotalQuestions + 1);
+    });
+
+    it('should degrade gracefully when evaluateAnswerFn throws error without aborting answer submission', async () => {
+      const failingEvaluateAnswer = async () => {
+        throw new Error('AI evaluation timed out');
+      };
+
+      const customStore = new MockSessionStore();
+      const customController = createCrossExaminationController({
+        SessionModel: customStore.createModelClass(),
+        evaluateAnswerFn: failingEvaluateAnswer,
+      });
+
+      const createRes = createMockRes();
+      await customController.createSession({ userId: userAId, body: { crossExaminationProfile: createSampleProjectProfile() } }, createRes);
+      const sessionId = createRes.body.session.sessionId;
+
+      const activeQId = createRes.body.session.currentQuestion.questionId;
+      const submitRes = createMockRes();
+      await customController.submitAnswer({
+        userId: userAId,
+        params: { sessionId },
+        body: {
+          questionId: activeQId,
+          rawTranscript: 'Answer submitted during AI outage.',
+          autoAdvance: false,
+        },
+      }, submitRes);
+
+      // Successfully records answer even if evaluation failed
+      assert.strictEqual(submitRes.statusCode, 200);
+      assert.strictEqual(submitRes.body.message, 'Answer submitted successfully');
+
+      const persistedSession = customStore.sessions.get(sessionId.toString());
+      assert.strictEqual(persistedSession.answers.length, 1);
+      assert.strictEqual(persistedSession.answers[0].rawTranscript, 'Answer submitted during AI outage.');
     });
   });
 });
