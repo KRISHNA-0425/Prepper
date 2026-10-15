@@ -5,7 +5,19 @@
  */
 
 import axios from 'axios';
-import { backendServerUrl } from '../App';
+
+// Get backend server URL safely in both Vite client and Node test environments
+const resolveServerUrl = () => {
+  if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SERVER_URL) {
+    return import.meta.env.VITE_SERVER_URL;
+  }
+  if (typeof process !== 'undefined' && process?.env?.VITE_SERVER_URL) {
+    return process.env.VITE_SERVER_URL;
+  }
+  return 'http://localhost:5000';
+};
+
+export const backendServerUrl = resolveServerUrl();
 
 // Configuration boundaries matching backend engine limits
 export const CROSS_EXAM_BOUNDS = Object.freeze({
@@ -18,54 +30,72 @@ export const CROSS_EXAM_BOUNDS = Object.freeze({
   MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
 });
 
+export const MIN_QUESTIONS = CROSS_EXAM_BOUNDS.MIN_QUESTION_COUNT;
+export const MAX_QUESTIONS = CROSS_EXAM_BOUNDS.MAX_QUESTION_COUNT;
+export const MIN_RESUME_TEXT_LENGTH = CROSS_EXAM_BOUNDS.MIN_RESUME_TEXT_CHARS;
+export const MAX_RESUME_TEXT_LENGTH = CROSS_EXAM_BOUNDS.MAX_RESUME_TEXT_CHARS;
+export const MAX_FILE_SIZE_BYTES = CROSS_EXAM_BOUNDS.MAX_FILE_SIZE_BYTES;
+export const MAX_TRANSCRIPT_LENGTH = CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS;
+
 /**
  * Validates session setup inputs on the client before network transmission.
  * @param {object} params
- * @returns {{ isValid: boolean, error?: string }}
+ * @returns {{ isValid: boolean, error?: string, errors: Record<string, string> }}
  */
-export const validateSessionSetupInput = ({ resumeFile, resumeText, questionCount }) => {
+export const validateSessionSetupInput = ({
+  inputMode = 'upload',
+  resumeFile,
+  resumeText,
+  targetRole,
+  targetDomain,
+  questionCount,
+}) => {
+  const errors = {};
+
+  // Validate targetRole if provided
+  if (targetRole !== undefined && (!targetRole || typeof targetRole !== 'string' || !targetRole.trim())) {
+    errors.targetRole = 'Target role is required';
+  }
+
+  // Validate targetDomain if provided
+  if (targetDomain !== undefined && (!targetDomain || typeof targetDomain !== 'string' || !targetDomain.trim())) {
+    errors.targetDomain = 'Target domain is required';
+  }
+
   // Validate question count
   const count = Number(questionCount);
   if (isNaN(count) || count < CROSS_EXAM_BOUNDS.MIN_QUESTION_COUNT || count > CROSS_EXAM_BOUNDS.MAX_QUESTION_COUNT) {
-    return {
-      isValid: false,
-      error: `Question count must be between ${CROSS_EXAM_BOUNDS.MIN_QUESTION_COUNT} and ${CROSS_EXAM_BOUNDS.MAX_QUESTION_COUNT}`,
-    };
+    errors.questionCount = `Question count must be between ${CROSS_EXAM_BOUNDS.MIN_QUESTION_COUNT} and ${CROSS_EXAM_BOUNDS.MAX_QUESTION_COUNT}`;
   }
 
-  // If a file is uploaded
-  if (resumeFile) {
-    if (!resumeFile.name.toLowerCase().endsWith('.pdf')) {
-      return {
-        isValid: false,
-        error: 'Only PDF resume files (.pdf) are currently supported for upload',
-      };
+  // If file mode
+  if (inputMode === 'file' || (inputMode === 'upload' && resumeFile)) {
+    if (!resumeFile) {
+      errors.resumeFile = 'Please select a resume PDF file';
+    } else {
+      const fileName = resumeFile.name ? resumeFile.name.toLowerCase() : '';
+      if (!fileName.endsWith('.pdf') && resumeFile.type !== 'application/pdf') {
+        errors.resumeFile = 'Only PDF format is supported for resume upload';
+      } else if (resumeFile.size > CROSS_EXAM_BOUNDS.MAX_FILE_SIZE_BYTES) {
+        errors.resumeFile = 'File size cannot exceed 10MB';
+      }
     }
-    if (resumeFile.size > CROSS_EXAM_BOUNDS.MAX_FILE_SIZE_BYTES) {
-      return {
-        isValid: false,
-        error: 'Resume PDF exceeds maximum allowed file size of 10MB',
-      };
+  } else {
+    // Text mode
+    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < CROSS_EXAM_BOUNDS.MIN_RESUME_TEXT_CHARS) {
+      errors.resumeText = `Resume text must be at least ${CROSS_EXAM_BOUNDS.MIN_RESUME_TEXT_CHARS} characters`;
+    } else if (resumeText.length > CROSS_EXAM_BOUNDS.MAX_RESUME_TEXT_CHARS) {
+      errors.resumeText = `Resume text cannot exceed ${CROSS_EXAM_BOUNDS.MAX_RESUME_TEXT_CHARS.toLocaleString()} characters`;
     }
-    return { isValid: true };
   }
 
-  // If text is provided
-  if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < CROSS_EXAM_BOUNDS.MIN_RESUME_TEXT_CHARS) {
-    return {
-      isValid: false,
-      error: `Please upload a PDF resume or paste resume text (minimum ${CROSS_EXAM_BOUNDS.MIN_RESUME_TEXT_CHARS} characters)`,
-    };
-  }
-
-  if (resumeText.length > CROSS_EXAM_BOUNDS.MAX_RESUME_TEXT_CHARS) {
-    return {
-      isValid: false,
-      error: `Resume text exceeds maximum limit of ${CROSS_EXAM_BOUNDS.MAX_RESUME_TEXT_CHARS.toLocaleString()} characters`,
-    };
-  }
-
-  return { isValid: true };
+  const isValid = Object.keys(errors).length === 0;
+  const firstErrorKey = Object.keys(errors)[0];
+  return {
+    isValid,
+    error: firstErrorKey ? errors[firstErrorKey] : null,
+    errors,
+  };
 };
 
 /**
@@ -77,23 +107,23 @@ export const validateAnswerInput = (rawTranscript) => {
   if (!rawTranscript || typeof rawTranscript !== 'string' || !rawTranscript.trim()) {
     return {
       isValid: false,
-      error: 'Answer cannot be empty. Please enter your technical explanation.',
+      error: 'Please enter your response before submitting.',
     };
   }
 
   if (rawTranscript.trim().length > CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS) {
     return {
       isValid: false,
-      error: `Answer exceeds maximum limit of ${CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS} characters`,
+      error: `Answer cannot exceed ${CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS.toLocaleString()} characters`,
     };
   }
 
-  return { isValid: true };
+  return { isValid: true, error: null };
 };
 
 /**
  * Defensive client-side allowlist for candidate-facing questions.
- * Ensures evaluator-only metadata (rationale, expectedEvidence, followUpGuidance)
+ * Ensures evaluator-only metadata (rationale, expectedEvidence, followUpGuidance, scoring, claims)
  * is never retained or rendered in UI state.
  * @param {object} question
  * @returns {object|null}
@@ -101,16 +131,31 @@ export const validateAnswerInput = (rawTranscript) => {
 export const sanitizeCandidateQuestion = (question) => {
   if (!question || typeof question !== 'object') return null;
 
-  return {
-    questionId: question.questionId,
-    order: question.order,
-    questionText: question.questionText,
-    difficulty: question.difficulty || 'medium',
-    timeLimit: question.timeLimit || 90,
-    status: question.status || 'pending',
-    targetProjectId: question.targetProjectId || null,
-    inquiryType: question.inquiryType || null,
-  };
+  const candidateQuestion = {};
+
+  if (question.questionId !== undefined) candidateQuestion.questionId = question.questionId;
+  if (question.order !== undefined) candidateQuestion.order = question.order;
+  if (question.questionText !== undefined) candidateQuestion.questionText = question.questionText;
+  if (question.inquiryType !== undefined) candidateQuestion.inquiryType = question.inquiryType;
+  if (question.status !== undefined) candidateQuestion.status = question.status;
+  if (question.targetProjectId !== undefined) candidateQuestion.targetProjectId = question.targetProjectId;
+  if (question.dimension !== undefined) candidateQuestion.dimension = question.dimension;
+
+  // Handle difficulty
+  if (question.difficulty !== undefined) candidateQuestion.difficulty = question.difficulty;
+  if (question.difficultyTier !== undefined) candidateQuestion.difficultyTier = question.difficultyTier;
+  if (!candidateQuestion.difficulty && !candidateQuestion.difficultyTier) {
+    candidateQuestion.difficulty = 'medium';
+  }
+
+  // Handle timeLimit
+  if (question.timeLimit !== undefined) candidateQuestion.timeLimit = question.timeLimit;
+  if (question.timeLimitSeconds !== undefined) candidateQuestion.timeLimitSeconds = question.timeLimitSeconds;
+  if (!candidateQuestion.timeLimit && !candidateQuestion.timeLimitSeconds) {
+    candidateQuestion.timeLimit = 90;
+  }
+
+  return candidateQuestion;
 };
 
 /**
