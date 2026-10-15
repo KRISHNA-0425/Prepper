@@ -97,10 +97,23 @@ function Home() {
                                 if (!userData) return setShowAuth(true);
                                 navigate('/interview');
                             }}
-                            className='group w-full sm:w-auto bg-slate-900 text-white px-10 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(15,23,42,0.25)] hover:bg-slate-800 transition-all'
+                            className='group w-full sm:w-auto bg-slate-900 text-white px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(15,23,42,0.25)] hover:bg-slate-800 transition-all'
                         >
-                            Get Started Free
+                            Mock Interview
                             <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                                if (!userData) return setShowAuth(true);
+                                navigate('/cross-examination');
+                            }}
+                            className='group w-full sm:w-auto bg-white/70 hover:bg-white text-slate-900 border-2 border-slate-900/30 px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2.5 shadow-sm transition-all'
+                        >
+                            <RiShieldFlashLine className='text-yellow-600 text-xl group-hover:rotate-6 transition-transform' />
+                            Cross-Examination
                         </motion.button>
 
                         <motion.button
@@ -110,9 +123,9 @@ function Home() {
                                 if (!userData) return setShowAuth(true);
                                 navigate('/history');
                             }}
-                            className='w-full sm:w-auto flex items-center justify-center gap-3 bg-white/40 backdrop-blur-md text-slate-900 border-2 border-white/60 px-10 py-5 rounded-2xl font-black text-lg shadow-sm transition-all group'
+                            className='w-full sm:w-auto flex items-center justify-center gap-3 bg-white/40 backdrop-blur-md text-slate-900 border-2 border-white/60 px-8 py-5 rounded-2xl font-black text-lg shadow-sm transition-all group'
                         >
-                            View History
+                            History
                             <RiHistoryLine className='text-slate-500 group-hover:rotate-[360deg] transition-transform duration-700 ease-in-out' />
                         </motion.button>
                     </motion.div>

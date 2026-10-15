@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine } from "react-icons/ri";
+import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine } from "react-icons/ri";
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { backendServerUrl } from '../App';
@@ -36,16 +36,26 @@ function Navbar() {
                 className='w-full max-w-6xl bg-white/30 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/60 px-4 md:px-6 py-3 flex items-center justify-between relative'
             >
                 {/* Logo Section */}
-                <Link to="/">
-                    <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
-                        <img 
-                            src="/logo.svg" 
-                            alt="Prepper Logo" 
-                            className="w-9 h-9 md:w-11 md:h-11 object-contain drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] group-hover:rotate-6 transition-transform duration-300"
-                        />
-                        <h1 className='text-lg md:text-xl font-black text-slate-800 tracking-tighter'>PREPPER</h1>
-                    </motion.div>
-                </Link>
+                <div className='flex items-center gap-3 sm:gap-4'>
+                    <Link to="/">
+                        <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
+                            <img 
+                                src="/logo.svg" 
+                                alt="Prepper Logo" 
+                                className="w-9 h-9 md:w-11 md:h-11 object-contain drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] group-hover:rotate-6 transition-transform duration-300"
+                            />
+                            <h1 className='text-lg md:text-xl font-black text-slate-800 tracking-tighter'>PREPPER</h1>
+                        </motion.div>
+                    </Link>
+
+                    <Link 
+                        to="/cross-examination" 
+                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black text-slate-800 bg-white/40 hover:bg-white/70 border border-white/60 transition-all shadow-xs"
+                    >
+                        <RiShieldFlashLine className="text-yellow-600 text-sm" />
+                        Cross-Exam
+                    </Link>
+                </div>
 
                 {/* User Actions */}
                 <div className='flex items-center gap-2 md:gap-3'>
@@ -122,6 +132,12 @@ function Navbar() {
                                                 <p className='text-[10px] uppercase font-bold text-slate-400'>Identity</p>
                                                 <p className='text-sm font-black text-slate-800 truncate'>{userData.name}</p>
                                             </div>
+                                            <button 
+                                                onClick={() => { navigate('/cross-examination'); setIsDropdownOpen(false); }} 
+                                                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-800 hover:bg-yellow-50 rounded-xl font-bold transition-all'
+                                            >
+                                                <RiShieldFlashLine size={18} className="text-yellow-600" /> Cross-Examination
+                                            </button>
                                             <button 
                                                 onClick={() => { navigate('/history'); setIsDropdownOpen(false); }} 
                                                 className='w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all'
