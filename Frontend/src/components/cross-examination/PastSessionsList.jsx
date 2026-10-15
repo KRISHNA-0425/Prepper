@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowRight, HiOutlineClock, HiOutlineDocumentText, HiOutlineQuestionMarkCircle } from 'react-icons/hi';
 import { RiShieldCheckLine } from 'react-icons/ri';
