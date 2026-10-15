@@ -7,8 +7,10 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'fs';
 import mongoose from 'mongoose';
 import CrossExaminationSession from '../models/crossExaminationSession.model.js';
+import { handleOptionalResumeUpload } from '../routes/crossExamination.routes.js';
 import {
   createCrossExaminationController,
   sanitizeQuestionForCandidate,
@@ -68,7 +70,18 @@ class MockSessionStore {
       }
 
       static async findOne(query) {
-        const { _id, userId } = query;
+        const { _id, userId, idempotencyKey } = query;
+        if (idempotencyKey) {
+          for (const session of store.sessions.values()) {
+            if (
+              session.idempotencyKey === idempotencyKey &&
+              (!userId || session.userId.toString() === userId.toString())
+            ) {
+              return session;
+            }
+          }
+          return null;
+        }
         if (!_id) return null;
         const session = store.sessions.get(_id.toString());
         if (!session) return null;
@@ -744,6 +757,242 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
       assert.strictEqual(res.statusCode, 500);
       assert.match(res.body.message, /Internal server error creating cross-examination session/i);
       assert.match(res.body.error, /Database write failure/i);
+    });
+  });
+
+  describe('Resume File Upload & PDF Parsing (POST /sessions with req.file)', () => {
+    it('should parse uploaded PDF resume and clean up uploaded file from disk', async () => {
+      const mockFilePath = 'public/temp_test_resume.pdf';
+      fs.writeFileSync(mockFilePath, 'dummy pdf buffer');
+
+      let parsedFilePath = null;
+      const uploadController = createCrossExaminationController({
+        SessionModel: MockSessionModel,
+        parsePdfFn: async (filePath) => {
+          parsedFilePath = filePath;
+          return 'Valid parsed resume text containing engineering experience and projects with more than fifty characters.';
+        },
+        extractClaimsFn: async () => ({
+          ...createSampleProjectProfile(),
+          role: 'Backend Architect',
+          resumeHash: 'pdf_hash_123',
+        }),
+        analyzeBlueprintFn: () => createSampleBlueprint(),
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
+      });
+
+      const req = {
+        userId: userAId,
+        file: { path: mockFilePath },
+        body: { targetRole: 'Backend Architect' },
+      };
+      const res = createMockRes();
+
+      await uploadController.createSession(req, res);
+
+      assert.strictEqual(res.statusCode, 201);
+      assert.strictEqual(parsedFilePath, mockFilePath);
+      assert.strictEqual(fs.existsSync(mockFilePath), false); // File unlinked immediately
+      assert.strictEqual(res.body.session.targetRole, 'Backend Architect');
+    });
+
+    it('should handle PDF parsing failure gracefully and clean up file path', async () => {
+      const mockFilePath = 'public/corrupt_resume.pdf';
+      fs.writeFileSync(mockFilePath, 'corrupted data');
+
+      const failingPdfController = createCrossExaminationController({
+        SessionModel: MockSessionModel,
+        parsePdfFn: async () => {
+          throw new Error('Invalid or password-protected PDF document');
+        },
+      });
+
+      const req = {
+        userId: userAId,
+        file: { path: mockFilePath },
+        body: {},
+      };
+      const res = createMockRes();
+
+      await failingPdfController.createSession(req, res);
+
+      assert.strictEqual(res.statusCode, 400);
+      assert.match(res.body.message, /Failed to parse uploaded PDF/i);
+      assert.strictEqual(fs.existsSync(mockFilePath), false); // File cleaned up on failure
+    });
+  });
+
+  describe('Forged Provenance & Trust Boundary Guardrails', () => {
+    it('should detect and demote forged explicit claims when excerpt is not in source text', async () => {
+      const sourceResume = 'Real source text: Developed Node.js REST API with Redis cache.';
+      const profileWithForgedClaim = {
+        resumeExcerpt: sourceResume,
+        projects: [
+          {
+            title: 'Payment Gateway',
+            claims: [
+              {
+                statement: 'Fabricated scale claim with forged provenance',
+                category: CLAIM_CATEGORIES.SCALE_METRIC,
+                provenanceType: PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT,
+                sourceExcerpt: 'This phrase absolutely does NOT exist anywhere in the source text',
+                confidence: CONFIDENCE_LEVELS.HIGH,
+              },
+            ],
+          },
+        ],
+      };
+
+      let passedProfile = null;
+      const guardController = createCrossExaminationController({
+        SessionModel: MockSessionModel,
+        analyzeBlueprintFn: ({ crossExaminationProfile }) => {
+          passedProfile = crossExaminationProfile;
+          return createSampleBlueprint();
+        },
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
+      });
+
+      const req = {
+        userId: userAId,
+        body: { crossExaminationProfile: profileWithForgedClaim },
+      };
+      const res = createMockRes();
+
+      await guardController.createSession(req, res);
+
+      assert.strictEqual(res.statusCode, 201);
+      // Verify claim was demoted
+      const checkedClaim = passedProfile.projects[0].claims[0];
+      assert.strictEqual(checkedClaim.provenanceType, PROVENANCE_TYPES.AI_INFERRED_CATEGORY);
+      assert.strictEqual(checkedClaim.confidence, CONFIDENCE_LEVELS.UNCERTAIN);
+    });
+
+    it('should demote claims if no source text is provided to substantiate explicit statements', async () => {
+      const profileNoSource = {
+        projects: [
+          {
+            title: 'Microservices Platform',
+            claims: [
+              {
+                statement: 'Scaled to 10k TPS without source text',
+                category: CLAIM_CATEGORIES.SCALE_METRIC,
+                provenanceType: PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT,
+                sourceExcerpt: 'Scaled to 10k TPS',
+                confidence: CONFIDENCE_LEVELS.HIGH,
+              },
+            ],
+          },
+        ],
+      };
+
+      let passedProfile = null;
+      const guardController = createCrossExaminationController({
+        SessionModel: MockSessionModel,
+        analyzeBlueprintFn: ({ crossExaminationProfile }) => {
+          passedProfile = crossExaminationProfile;
+          return createSampleBlueprint();
+        },
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
+      });
+
+      const req = {
+        userId: userAId,
+        body: { crossExaminationProfile: profileNoSource },
+      };
+      const res = createMockRes();
+
+      await guardController.createSession(req, res);
+
+      assert.strictEqual(res.statusCode, 201);
+      const checkedClaim = passedProfile.projects[0].claims[0];
+      assert.strictEqual(checkedClaim.provenanceType, PROVENANCE_TYPES.AI_INFERRED_CATEGORY);
+      assert.strictEqual(checkedClaim.confidence, CONFIDENCE_LEVELS.UNCERTAIN);
+    });
+  });
+
+  describe('Idempotency & Duplicate Session Prevention', () => {
+    it('should return existing session when idempotency key is repeated', async () => {
+      const idempotencyKey = 'client-req-uuid-999';
+
+      const req1 = {
+        userId: userAId,
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { crossExaminationProfile: createSampleProjectProfile() },
+      };
+      const res1 = createMockRes();
+      await controller.createSession(req1, res1);
+
+      assert.strictEqual(res1.statusCode, 201);
+      const firstSessionId = res1.body.session.sessionId.toString();
+
+      // Second request with same idempotency key
+      const req2 = {
+        userId: userAId,
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { crossExaminationProfile: createSampleProjectProfile() },
+      };
+      const res2 = createMockRes();
+      await controller.createSession(req2, res2);
+
+      assert.strictEqual(res2.statusCode, 200);
+      assert.strictEqual(res2.body.isIdempotentReplay, true);
+      assert.strictEqual(res2.body.session.sessionId.toString(), firstSessionId);
+      // No duplicate session persisted
+      assert.strictEqual(sessionStore.sessions.size, 1);
+    });
+  });
+
+  describe('Strict Authentication Guards Across All Endpoints', () => {
+    it('should reject unauthenticated getSession with 401', async () => {
+      const res = createMockRes();
+      await controller.getSession({ params: { sessionId: 'some_id' } }, res);
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated listSessions with 401', async () => {
+      const res = createMockRes();
+      await controller.listSessions({ query: {} }, res);
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated submitAnswer with 401', async () => {
+      const res = createMockRes();
+      await controller.submitAnswer({ params: { sessionId: 'some_id' }, body: {} }, res);
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated advanceQuestion with 401', async () => {
+      const res = createMockRes();
+      await controller.advanceQuestion({ params: { sessionId: 'some_id' } }, res);
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated completeSession with 401', async () => {
+      const res = createMockRes();
+      await controller.completeSession({ params: { sessionId: 'some_id' } }, res);
+      assert.strictEqual(res.statusCode, 401);
+    });
+  });
+
+  describe('Route Middleware (handleOptionalResumeUpload)', () => {
+    it('should bypass non-multipart requests to next() without error', () => {
+      let nextCalled = false;
+      const req = { is: () => false };
+      const res = createMockRes();
+      handleOptionalResumeUpload(req, res, () => {
+        nextCalled = true;
+      });
+      assert.strictEqual(nextCalled, true);
     });
   });
 });
