@@ -14,6 +14,7 @@ import SessionHeader from '../components/cross-examination/SessionHeader';
 import QuestionCard from '../components/cross-examination/QuestionCard';
 import AnswerConsole from '../components/cross-examination/AnswerConsole';
 import SessionCompletion from '../components/cross-examination/SessionCompletion';
+import PreparationReport from '../components/cross-examination/PreparationReport';
 import {
   getCrossExaminationSession,
   submitCrossExamAnswer,
@@ -218,7 +219,13 @@ function CrossExaminationSession() {
         />
 
         {isCompleted ? (
-          <SessionCompletion session={session} />
+          <PreparationReport
+            session={session}
+            initialReport={session.report}
+            onReportUpdated={(updatedReport) => {
+              setSession((prev) => (prev ? { ...prev, report: updatedReport } : prev));
+            }}
+          />
         ) : (
           <div>
             <QuestionCard

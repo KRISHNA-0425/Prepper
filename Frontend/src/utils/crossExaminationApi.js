@@ -287,3 +287,28 @@ export const completeCrossExamSession = async (sessionId) => {
   );
   return response.data;
 };
+
+/**
+ * GET /api/cross-examination/sessions/:sessionId/report
+ * Retrieves the evidence-linked preparation report for a completed session.
+ */
+export const getCrossExamReport = async (sessionId) => {
+  const response = await axios.get(
+    `${backendServerUrl}/api/cross-examination/sessions/${sessionId}/report`,
+    { withCredentials: true }
+  );
+  return response.data;
+};
+
+/**
+ * POST /api/cross-examination/sessions/:sessionId/report
+ * Generates or regenerates the preparation report.
+ */
+export const generateCrossExamReport = async (sessionId, regenerate = false) => {
+  const response = await axios.post(
+    `${backendServerUrl}/api/cross-examination/sessions/${sessionId}/report?regenerate=${Boolean(regenerate)}`,
+    {},
+    { withCredentials: true }
+  );
+  return response.data;
+};
