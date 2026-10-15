@@ -146,19 +146,21 @@ export const createCrossExaminationController = ({
    * Creates an authenticated, initialized cross-examination session.
    */
   const createSession = async (req, res) => {
+    let userId = null;
+    let idempotencyKey = null;
     try {
-      const userId = req.userId || req.user?._id || req.user?.id;
+      userId = req.userId || req.user?._id || req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
       // Check for Idempotency-Key
-      const idempotencyKey = req.headers?.['idempotency-key'] || req.body?.idempotencyKey;
-      if (idempotencyKey && typeof idempotencyKey === 'string' && idempotencyKey.trim()) {
-        const cleanKey = idempotencyKey.trim();
+      const rawKey = req.headers?.['idempotency-key'] || req.body?.idempotencyKey;
+      idempotencyKey = (rawKey && typeof rawKey === 'string' && rawKey.trim()) ? rawKey.trim() : null;
+      if (idempotencyKey) {
         const existingSession = await SessionModel.findOne({
           userId,
-          idempotencyKey: cleanKey,
+          idempotencyKey,
         });
         if (existingSession) {
           return res.status(200).json({
@@ -356,9 +358,8 @@ export const createCrossExaminationController = ({
       });
     } catch (err) {
       // Handle concurrent creation race condition when duplicate key error (E11000) occurs on idempotencyKey
-      if (err.code === 11000 && idempotencyKey) {
-        const cleanKey = idempotencyKey.trim();
-        const winningSession = await SessionModel.findOne({ userId, idempotencyKey: cleanKey });
+      if (err.code === 11000 && idempotencyKey && userId) {
+        const winningSession = await SessionModel.findOne({ userId, idempotencyKey });
         if (winningSession) {
           return res.status(200).json({
             message: 'Existing session retrieved for idempotency key',
@@ -649,8 +650,14 @@ export const createCrossExaminationController = ({
         return res.status(404).json({ message: 'Cross-examination session not found' });
       }
 
-      if (session.status === SESSION_STATUSES.COMPLETED) {
-        return res.status(409).json({ message: 'Cannot advance a completed session' });
+      if (
+        session.status === SESSION_STATUSES.COMPLETED ||
+        session.status === SESSION_STATUSES.FAILED ||
+        session.status === SESSION_STATUSES.ABANDONED
+      ) {
+        return res.status(409).json({
+          message: `Cannot advance a session with status '${session.status}'`,
+        });
       }
 
       // Enforce that any active question is already answered before advancing

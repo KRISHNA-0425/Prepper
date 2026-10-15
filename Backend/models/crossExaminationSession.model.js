@@ -585,7 +585,7 @@ const crossExaminationSessionSchema = new mongoose.Schema(
       trim: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true, optimisticConcurrency: true }
 );
 
 // Compound indexes for user querying, idempotency, and status filtering
