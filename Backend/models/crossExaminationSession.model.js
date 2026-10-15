@@ -14,6 +14,9 @@ import {
   SESSION_STATUSES,
   INQUIRY_TYPES,
   EVIDENCE_STRENGTHS,
+  EXAMINATION_DIMENSIONS,
+  EVALUATION_VERSION,
+  PROBING_LIMITS,
   isValidStateTransition,
   generateDomainId,
 } from '../contracts/crossExamination.contracts.js';
@@ -221,6 +224,92 @@ const findingSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const dimensionEvaluationSchema = new mongoose.Schema(
+  {
+    dimension: {
+      type: String,
+      enum: Object.values(EXAMINATION_DIMENSIONS),
+      required: true,
+    },
+    score: {
+      type: String,
+      enum: Object.values(EVIDENCE_STRENGTHS),
+      required: true,
+    },
+    rationale: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const evaluationSchema = new mongoose.Schema(
+  {
+    evaluationId: {
+      type: String,
+      required: true,
+      default: () => generateDomainId('evl'),
+    },
+    version: {
+      type: String,
+      default: EVALUATION_VERSION,
+    },
+    directEvidence: {
+      type: [String],
+      default: [],
+    },
+    partialEvidence: {
+      type: [String],
+      default: [],
+    },
+    ambiguities: {
+      type: [String],
+      default: [],
+    },
+    unsupportedAssertions: {
+      type: [String],
+      default: [],
+    },
+    contradictions: {
+      type: [String],
+      default: [],
+    },
+    alternativeApproaches: {
+      type: [String],
+      default: [],
+    },
+    missingInformation: {
+      type: [String],
+      default: [],
+    },
+    dimensionEvaluations: {
+      type: [dimensionEvaluationSchema],
+      default: [],
+    },
+    confidence: {
+      type: String,
+      enum: Object.values(CONFIDENCE_LEVELS),
+      default: CONFIDENCE_LEVELS.HIGH,
+    },
+    followUpEligible: {
+      type: Boolean,
+      default: false,
+    },
+    clarificationTargets: {
+      type: [String],
+      default: [],
+    },
+    evaluatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const answerSchema = new mongoose.Schema(
   {
     answerId: {
@@ -250,6 +339,10 @@ const answerSchema = new mongoose.Schema(
     findings: {
       type: [findingSchema],
       default: [],
+    },
+    evaluation: {
+      type: evaluationSchema,
+      default: null,
     },
   },
   { _id: false }
@@ -462,6 +555,134 @@ crossExaminationSessionSchema.methods.advanceQuestion = function () {
   nextPending.status = 'current';
   this.status = SESSION_STATUSES.AWAITING_ANSWER;
   return nextPending;
+};
+
+/**
+ * Attaches structured evaluation to an existing answer and updates claim verification states.
+ */
+crossExaminationSessionSchema.methods.attachAnswerEvaluation = function (questionId, evaluationData) {
+  const answer = this.answers.find((a) => a.questionId === questionId);
+  if (!answer) {
+    throw new Error(`Answer for question '${questionId}' not found`);
+  }
+
+  answer.evaluation = evaluationData;
+
+  // Update claim verification statuses if targeted claims are present
+  const question = this.findQuestion(questionId);
+  if (question && Array.isArray(question.targetClaimIds) && question.targetClaimIds.length > 0) {
+    const targetClaimIdsSet = new Set(question.targetClaimIds);
+
+    // Determine verification level from evaluation
+    let inferredStatus = null;
+    if (evaluationData.contradictions && evaluationData.contradictions.length > 0) {
+      inferredStatus = VERIFICATION_STATUSES.UNRESOLVED_CONTRADICTION;
+    } else if (evaluationData.directEvidence && evaluationData.directEvidence.length > 0) {
+      inferredStatus = VERIFICATION_STATUSES.DEMONSTRATED;
+    } else if (
+      (evaluationData.partialEvidence && evaluationData.partialEvidence.length > 0) ||
+      (evaluationData.alternativeApproaches && evaluationData.alternativeApproaches.length > 0)
+    ) {
+      inferredStatus = VERIFICATION_STATUSES.PARTIALLY_SUPPORTED;
+    } else if (evaluationData.missingInformation && evaluationData.missingInformation.length > 0) {
+      inferredStatus = VERIFICATION_STATUSES.INSUFFICIENT_EVIDENCE;
+    }
+
+    if (inferredStatus) {
+      for (const project of this.projects) {
+        for (const claim of project.claims) {
+          if (targetClaimIdsSet.has(claim.claimId)) {
+            // Do not downgrade a DEMONSTRATED claim unless contradiction found
+            if (
+              claim.verificationStatus !== VERIFICATION_STATUSES.DEMONSTRATED ||
+              inferredStatus === VERIFICATION_STATUSES.UNRESOLVED_CONTRADICTION
+            ) {
+              claim.verificationStatus = inferredStatus;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return answer;
+};
+
+/**
+ * Dynamically inserts a targeted follow-up question immediately after current question.
+ * Bounded by PROBING_LIMITS.MAX_FOLLOW_UP_DEPTH and PROBING_LIMITS.MAX_TOTAL_SESSION_QUESTIONS.
+ */
+crossExaminationSessionSchema.methods.addFollowUpQuestion = function ({
+  questionId,
+  parentQuestionId,
+  questionText,
+  timeLimit = 90,
+  dimension = null,
+  examinationIntent = null,
+  rationale = '',
+  expectedEvidence = [],
+  followUpGuidance = '',
+  difficulty = 'medium',
+  targetProjectId = null,
+  targetClaimIds = [],
+}) {
+  const parent = this.findQuestion(parentQuestionId);
+  if (!parent) {
+    throw new Error(`Parent question '${parentQuestionId}' not found`);
+  }
+
+  if (parent.depth >= PROBING_LIMITS.MAX_FOLLOW_UP_DEPTH) {
+    throw new Error(
+      `Maximum follow-up depth (${PROBING_LIMITS.MAX_FOLLOW_UP_DEPTH}) reached for question '${parentQuestionId}'`
+    );
+  }
+
+  if (this.questions.length >= PROBING_LIMITS.MAX_TOTAL_SESSION_QUESTIONS) {
+    throw new Error(
+      `Maximum session question count (${PROBING_LIMITS.MAX_TOTAL_SESSION_QUESTIONS}) reached`
+    );
+  }
+
+  // Check if a follow-up already exists for this parent
+  const existingFollowUps = this.questions.filter((q) => q.parentQuestionId === parentQuestionId);
+  if (existingFollowUps.length >= PROBING_LIMITS.MAX_FOLLOW_UPS_PER_QUESTION) {
+    throw new Error(`Follow-up already generated for parent question '${parentQuestionId}'`);
+  }
+
+  const followUpQuestionId = questionId || generateDomainId('ceq');
+  const insertionOrder = parent.order + 1;
+
+  // Shift orders of subsequent questions
+  for (const q of this.questions) {
+    if (q.order >= insertionOrder) {
+      q.order += 1;
+    }
+  }
+
+  const followUpQuestion = {
+    questionId: followUpQuestionId,
+    targetClaimIds: targetClaimIds.length > 0 ? targetClaimIds : parent.targetClaimIds,
+    targetProjectId: targetProjectId || parent.targetProjectId,
+    inquiryType: INQUIRY_TYPES.FOLLOW_UP_PROBE,
+    parentQuestionId,
+    depth: parent.depth + 1,
+    order: insertionOrder,
+    questionText,
+    timeLimit,
+    status: 'pending',
+    dimension: dimension || parent.dimension,
+    examinationIntent: examinationIntent || parent.examinationIntent,
+    difficulty,
+    rationale,
+    expectedEvidence,
+    followUpGuidance,
+  };
+
+  this.questions.push(followUpQuestion);
+  // Keep questions sorted by order
+  this.questions.sort((a, b) => a.order - b.order);
+
+  return followUpQuestion;
 };
 
 const CrossExaminationSession = mongoose.model(

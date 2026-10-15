@@ -373,4 +373,97 @@ export const validateQuestionContract = (question) => {
   };
 };
 
+/**
+ * Version identifier for answer evaluation schemas.
+ */
+export const EVALUATION_VERSION = '1.0.0';
+
+/**
+ * Configurable boundaries and depth limits for adaptive targeted follow-up probing.
+ */
+export const PROBING_LIMITS = Object.freeze({
+  MAX_FOLLOW_UP_DEPTH: 2,
+  MAX_TOTAL_SESSION_QUESTIONS: 12,
+  MAX_FOLLOW_UPS_PER_QUESTION: 1,
+  SIMILARITY_THRESHOLD: 0.65,
+});
+
+/**
+ * Validates an Answer Evaluation object against domain contract.
+ * @param {object} evaluation
+ * @returns {{ isValid: boolean, errors: string[] }}
+ */
+export const validateAnswerEvaluationContract = (evaluation) => {
+  const errors = [];
+  if (!evaluation || typeof evaluation !== 'object') {
+    return { isValid: false, errors: ['Evaluation must be an object'] };
+  }
+
+  if (!evaluation.evaluationId || typeof evaluation.evaluationId !== 'string') {
+    errors.push('evaluationId is required');
+  }
+
+  if (!evaluation.questionId || typeof evaluation.questionId !== 'string') {
+    errors.push('questionId is required');
+  }
+
+  if (!evaluation.answerId || typeof evaluation.answerId !== 'string') {
+    errors.push('answerId is required');
+  }
+
+  if (!evaluation.confidence || !CONFIDENCE_LEVELS[evaluation.confidence]) {
+    errors.push(`Invalid evaluation confidence: ${evaluation.confidence}`);
+  }
+
+  if (typeof evaluation.followUpEligible !== 'boolean') {
+    errors.push('followUpEligible must be a boolean');
+  }
+
+  if (evaluation.directEvidence && !Array.isArray(evaluation.directEvidence)) {
+    errors.push('directEvidence must be an array of strings');
+  }
+
+  if (evaluation.partialEvidence && !Array.isArray(evaluation.partialEvidence)) {
+    errors.push('partialEvidence must be an array of strings');
+  }
+
+  if (evaluation.ambiguities && !Array.isArray(evaluation.ambiguities)) {
+    errors.push('ambiguities must be an array of strings');
+  }
+
+  if (evaluation.unsupportedAssertions && !Array.isArray(evaluation.unsupportedAssertions)) {
+    errors.push('unsupportedAssertions must be an array of strings');
+  }
+
+  if (evaluation.contradictions && !Array.isArray(evaluation.contradictions)) {
+    errors.push('contradictions must be an array of strings');
+  }
+
+  if (evaluation.alternativeApproaches && !Array.isArray(evaluation.alternativeApproaches)) {
+    errors.push('alternativeApproaches must be an array of strings');
+  }
+
+  if (evaluation.missingInformation && !Array.isArray(evaluation.missingInformation)) {
+    errors.push('missingInformation must be an array of strings');
+  }
+
+  if (evaluation.dimensionEvaluations && !Array.isArray(evaluation.dimensionEvaluations)) {
+    errors.push('dimensionEvaluations must be an array');
+  } else if (Array.isArray(evaluation.dimensionEvaluations)) {
+    evaluation.dimensionEvaluations.forEach((dim, idx) => {
+      if (!dim.dimension || !EXAMINATION_DIMENSIONS[dim.dimension]) {
+        errors.push(`Invalid dimension at index ${idx}: ${dim.dimension}`);
+      }
+      if (!dim.score || !EVIDENCE_STRENGTHS[dim.score]) {
+        errors.push(`Invalid score at index ${idx}: ${dim.score}`);
+      }
+    });
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
 
