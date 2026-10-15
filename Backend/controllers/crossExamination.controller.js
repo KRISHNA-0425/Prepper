@@ -330,6 +330,19 @@ export const createCrossExaminationController = ({
         session: sanitizeSessionForCandidate(savedSession),
       });
     } catch (err) {
+      // Handle concurrent creation race condition when duplicate key error (E11000) occurs on idempotencyKey
+      if (err.code === 11000 && idempotencyKey) {
+        const cleanKey = idempotencyKey.trim();
+        const winningSession = await SessionModel.findOne({ userId, idempotencyKey: cleanKey });
+        if (winningSession) {
+          return res.status(200).json({
+            message: 'Existing session retrieved for idempotency key',
+            session: sanitizeSessionForCandidate(winningSession),
+            isIdempotentReplay: true,
+          });
+        }
+      }
+
       return res.status(500).json({
         message: 'Internal server error creating cross-examination session',
         error: err.message,

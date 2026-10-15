@@ -950,6 +950,50 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
       // No duplicate session persisted
       assert.strictEqual(sessionStore.sessions.size, 1);
     });
+
+    it('should recover gracefully from concurrent Mongo E11000 duplicate key error and return winning session', async () => {
+      const idempotencyKey = 'concurrent-race-key-101';
+      // First session exists in store
+      const req1 = {
+        userId: userAId,
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { crossExaminationProfile: createSampleProjectProfile() },
+      };
+      const res1 = createMockRes();
+      await controller.createSession(req1, res1);
+      const expectedSessionId = res1.body.session.sessionId.toString();
+
+      // Controller simulating save() throwing E11000 duplicate key
+      class DuplicateKeyThrowingModel extends MockSessionModel {
+        async save() {
+          const dupErr = new Error('E11000 duplicate key error collection: crossexaminationsessions index: userId_1_idempotencyKey_1');
+          dupErr.code = 11000;
+          throw dupErr;
+        }
+      }
+
+      const raceController = createCrossExaminationController({
+        SessionModel: DuplicateKeyThrowingModel,
+        analyzeBlueprintFn: () => createSampleBlueprint(),
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
+      });
+
+      const req2 = {
+        userId: userAId,
+        headers: { 'idempotency-key': idempotencyKey },
+        body: { crossExaminationProfile: createSampleProjectProfile() },
+      };
+      const res2 = createMockRes();
+
+      await raceController.createSession(req2, res2);
+
+      assert.strictEqual(res2.statusCode, 200);
+      assert.strictEqual(res2.body.isIdempotentReplay, true);
+      assert.strictEqual(res2.body.session.sessionId.toString(), expectedSessionId);
+    });
   });
 
   describe('Strict Authentication Guards Across All Endpoints', () => {
