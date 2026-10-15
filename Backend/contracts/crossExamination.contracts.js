@@ -51,6 +51,7 @@ export const VERIFICATION_STATUSES = Object.freeze({
   PARTIALLY_SUPPORTED: 'PARTIALLY_SUPPORTED',
   INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
   UNRESOLVED_CONTRADICTION: 'UNRESOLVED_CONTRADICTION',
+  UNEXAMINED: 'UNEXAMINED',
 });
 
 /**
@@ -466,4 +467,136 @@ export const validateAnswerEvaluationContract = (evaluation) => {
   };
 };
 
+/**
+ * Report schema and methodology versions for preparation gap analysis.
+ */
+export const REPORT_SCHEMA_VERSION = '1.0.0';
+export const REPORT_METHODOLOGY = 'evidence-grounded-synthesis-v1';
 
+/**
+ * Severity levels for identified preparation gaps.
+ */
+export const SEVERITY_LEVELS = Object.freeze({
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+});
+
+/**
+ * Interpretable readiness levels for evaluation dimensions.
+ * Avoids arbitrary numerical scores; explicitly reflects evidence availability.
+ */
+export const READINESS_LEVELS = Object.freeze({
+  STRONG: 'STRONG',
+  MODERATE: 'MODERATE',
+  WEAK: 'WEAK',
+  INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+  UNAVAILABLE: 'UNAVAILABLE',
+});
+
+/**
+ * Validates a Preparation Report object against domain contract.
+ * @param {object} report
+ * @returns {{ isValid: boolean, errors: string[] }}
+ */
+export const validatePreparationReportContract = (report) => {
+  const errors = [];
+  if (!report || typeof report !== 'object') {
+    return { isValid: false, errors: ['Report must be an object'] };
+  }
+
+  if (!report.reportId || typeof report.reportId !== 'string') {
+    errors.push('reportId is required and must be a string');
+  }
+
+  if (!report.version || typeof report.version !== 'string') {
+    errors.push('version is required and must be a string');
+  }
+
+  if (!report.completionState || typeof report.completionState !== 'object') {
+    errors.push('completionState is required');
+  } else {
+    if (typeof report.completionState.totalQuestions !== 'number') {
+      errors.push('completionState.totalQuestions must be a number');
+    }
+    if (typeof report.completionState.answeredCount !== 'number') {
+      errors.push('completionState.answeredCount must be a number');
+    }
+  }
+
+  if (!Array.isArray(report.claimVerificationMatrix)) {
+    errors.push('claimVerificationMatrix must be an array');
+  }
+
+  if (!Array.isArray(report.demonstratedStrengths)) {
+    errors.push('demonstratedStrengths must be an array');
+  }
+
+  if (!Array.isArray(report.preparationGaps)) {
+    errors.push('preparationGaps must be an array');
+  }
+
+  if (!Array.isArray(report.studyRecommendations)) {
+    errors.push('studyRecommendations must be an array');
+  }
+
+  if (!Array.isArray(report.limitations)) {
+    errors.push('limitations must be an array of strings');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
+/**
+ * Validates that all evidence references in the report point to real questions and answers
+ * in the session, preventing fabricated or forged evidence links.
+ *
+ * @param {object} report
+ * @param {object} session
+ * @returns {{ isValid: boolean, errors: string[] }}
+ */
+export const validateReportEvidenceReferences = (report, session) => {
+  const errors = [];
+  if (!session || typeof session !== 'object') {
+    return { isValid: false, errors: ['Session is required to validate references'] };
+  }
+
+  const validQuestionIds = new Set((session.questions || []).map((q) => q.questionId));
+  const validAnswerIds = new Set((session.answers || []).map((a) => a.answerId));
+
+  const checkRefs = (items, itemName) => {
+    if (!Array.isArray(items)) return;
+    items.forEach((item, idx) => {
+      if (Array.isArray(item.evidenceReferences)) {
+        item.evidenceReferences.forEach((ref, refIdx) => {
+          if (ref.questionId && !validQuestionIds.has(ref.questionId)) {
+            errors.push(`${itemName}[${idx}].evidenceReferences[${refIdx}]: invalid questionId '${ref.questionId}'`);
+          }
+          if (ref.answerId && !validAnswerIds.has(ref.answerId)) {
+            errors.push(`${itemName}[${idx}].evidenceReferences[${refIdx}]: invalid answerId '${ref.answerId}'`);
+          }
+        });
+      }
+      if (item.questionId && !validQuestionIds.has(item.questionId)) {
+        errors.push(`${itemName}[${idx}]: invalid questionId '${item.questionId}'`);
+      }
+      if (item.answerId && !validAnswerIds.has(item.answerId)) {
+        errors.push(`${itemName}[${idx}]: invalid answerId '${item.answerId}'`);
+      }
+    });
+  };
+
+  checkRefs(report.demonstratedStrengths, 'demonstratedStrengths');
+  checkRefs(report.preparationGaps, 'preparationGaps');
+  checkRefs(report.alternativeApproachesAcknowledged, 'alternativeApproachesAcknowledged');
+  checkRefs(report.unresolvedContradictions, 'unresolvedContradictions');
+  checkRefs(report.claimVerificationMatrix, 'claimVerificationMatrix');
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};

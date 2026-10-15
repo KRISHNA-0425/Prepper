@@ -8,6 +8,8 @@ import {
   submitAnswer,
   advanceQuestion,
   completeSession,
+  generateReport,
+  getReport,
 } from '../controllers/crossExamination.controller.js';
 
 const crossExaminationRouter = express.Router();
@@ -46,5 +48,9 @@ crossExaminationRouter.get('/sessions/:sessionId', isAuth, getSession);
 crossExaminationRouter.post('/sessions/:sessionId/answers', isAuth, submitAnswer);
 crossExaminationRouter.post('/sessions/:sessionId/advance', isAuth, advanceQuestion);
 crossExaminationRouter.post('/sessions/:sessionId/complete', isAuth, completeSession);
+
+// Preparation Report generation and retrieval
+crossExaminationRouter.post('/sessions/:sessionId/report', isAuth, generateReport);
+crossExaminationRouter.get('/sessions/:sessionId/report', isAuth, getReport);
 
 export default crossExaminationRouter;

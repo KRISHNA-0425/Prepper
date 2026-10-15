@@ -17,6 +17,11 @@ import {
   EXAMINATION_DIMENSIONS,
   EVALUATION_VERSION,
   PROBING_LIMITS,
+  REPORT_SCHEMA_VERSION,
+  REPORT_METHODOLOGY,
+  SEVERITY_LEVELS,
+  PRIORITY_LEVELS,
+  READINESS_LEVELS,
   isValidStateTransition,
   generateDomainId,
 } from '../contracts/crossExamination.contracts.js';
@@ -350,6 +355,18 @@ const answerSchema = new mongoose.Schema(
 
 const reportSchema = new mongoose.Schema(
   {
+    reportId: {
+      type: String,
+      default: () => generateDomainId('rpt'),
+    },
+    version: {
+      type: String,
+      default: REPORT_SCHEMA_VERSION,
+    },
+    generatedAt: {
+      type: Date,
+      default: Date.now,
+    },
     completedAt: {
       type: Date,
       default: Date.now,
@@ -357,8 +374,25 @@ const reportSchema = new mongoose.Schema(
     summary: {
       type: String,
       trim: true,
-      maxlength: 2000,
+      maxlength: 3000,
       default: '',
+    },
+    executiveSummary: {
+      type: String,
+      trim: true,
+      maxlength: 3000,
+      default: '',
+    },
+    methodology: {
+      type: String,
+      default: REPORT_METHODOLOGY,
+    },
+    completionState: {
+      totalQuestions: { type: Number, default: 0 },
+      answeredCount: { type: Number, default: 0 },
+      skippedCount: { type: Number, default: 0 },
+      evaluatedCount: { type: Number, default: 0 },
+      unexaminedClaimsCount: { type: Number, default: 0 },
     },
     verifiedClaimsCount: {
       type: Number,
@@ -372,13 +406,108 @@ const reportSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    claimVerificationMatrix: {
+      type: [
+        {
+          claimId: { type: String, required: true },
+          category: { type: String },
+          statement: { type: String },
+          projectTitle: { type: String, default: '' },
+          sourceExcerpt: { type: String, default: '' },
+          verificationStatus: { type: String, default: 'UNEXAMINED' },
+          evidenceReferences: {
+            type: [{ questionId: String, answerId: String }],
+            default: [],
+          },
+        },
+      ],
+      default: [],
+    },
+    demonstratedStrengths: {
+      type: [
+        {
+          id: { type: String, default: () => generateDomainId('str') },
+          title: { type: String, required: true },
+          description: { type: String, required: true },
+          evidenceReferences: {
+            type: [{ questionId: String, answerId: String }],
+            default: [],
+          },
+        },
+      ],
+      default: [],
+    },
+    // Supports both Phase 8 objects and legacy string arrays
     preparationGaps: {
-      type: [String],
+      type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
     recommendedFollowUps: {
       type: [String],
       default: [],
+    },
+    alternativeApproachesAcknowledged: {
+      type: [
+        {
+          id: { type: String, default: () => generateDomainId('alt') },
+          topic: { type: String, default: '' },
+          description: { type: String, required: true },
+          questionId: { type: String, default: null },
+          answerId: { type: String, default: null },
+        },
+      ],
+      default: [],
+    },
+    unresolvedContradictions: {
+      type: [
+        {
+          id: { type: String, default: () => generateDomainId('ctr') },
+          claimId: { type: String, default: null },
+          contradictionSummary: { type: String, required: true },
+          evidenceReferences: {
+            type: [{ questionId: String, answerId: String }],
+            default: [],
+          },
+        },
+      ],
+      default: [],
+    },
+    studyRecommendations: {
+      type: [
+        {
+          id: { type: String, default: () => generateDomainId('rec') },
+          priority: { type: String, enum: ['HIGH', 'MEDIUM', 'LOW'], default: 'MEDIUM' },
+          topic: { type: String, required: true },
+          recommendation: { type: String, required: true },
+          targetAreas: { type: [String], default: [] },
+        },
+      ],
+      default: [],
+    },
+    dimensionScores: {
+      type: [
+        {
+          dimension: { type: String, required: true },
+          demonstratedLevel: { type: String, default: 'UNAVAILABLE' },
+          rationale: { type: String, default: '' },
+          evaluatedAnswersCount: { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
+    limitations: {
+      type: [String],
+      default: [],
+    },
+    evaluationCoverage: {
+      questionsEvaluated: { type: Number, default: 0 },
+      evaluationsFailedOrUnavailable: { type: Number, default: 0 },
+      unexaminedTopicsCount: { type: Number, default: 0 },
+    },
+    generationStatus: {
+      type: String,
+      enum: ['completed', 'partial', 'failed'],
+      default: 'completed',
     },
   },
   { _id: false }
@@ -683,6 +812,14 @@ crossExaminationSessionSchema.methods.addFollowUpQuestion = function ({
   this.questions.sort((a, b) => a.order - b.order);
 
   return followUpQuestion;
+};
+
+/**
+ * Attaches or updates the session's preparation report.
+ */
+crossExaminationSessionSchema.methods.attachReport = function (reportData) {
+  this.report = reportData;
+  return this.report;
 };
 
 const CrossExaminationSession = mongoose.model(

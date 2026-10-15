@@ -16,11 +16,13 @@ import {
   evaluateCandidateAnswer,
   generateFollowUpProbe,
 } from '../services/answerAnalysis.service.js';
+import { generatePreparationReport } from '../services/reportGeneration.service.js';
 import {
   SESSION_STATUSES,
   PROVENANCE_TYPES,
   CONFIDENCE_LEVELS,
   PROBING_LIMITS,
+  REPORT_SCHEMA_VERSION,
   validateProjectProfileContract,
   hashSourceText,
 } from '../contracts/crossExamination.contracts.js';
@@ -67,6 +69,21 @@ export const sanitizeQuestionForCandidate = (question, isCompleted = false) => {
 };
 
 /**
+ * Sanitizes a preparation report object for candidate-facing responses.
+ * Strips internal IDs and any non-public metadata.
+ *
+ * @param {object} report
+ * @returns {object|null}
+ */
+export const sanitizeReportForCandidate = (report) => {
+  if (!report) return null;
+  const rObj = typeof report.toObject === 'function' ? report.toObject() : { ...report };
+  delete rObj._id;
+  delete rObj.__v;
+  return rObj;
+};
+
+/**
  * Sanitizes an entire session document for candidate-facing response.
  *
  * @param {object} session
@@ -105,7 +122,7 @@ export const sanitizeSessionForCandidate = (session) => {
     currentQuestion: activeQuestion ? sanitizeQuestionForCandidate(activeQuestion, isCompleted) : null,
     questions: sanitizedQuestions,
     answersCount: answeredCount,
-    report: isCompleted ? sObj.report : null,
+    report: isCompleted && sObj.report ? sanitizeReportForCandidate(sObj.report) : null,
   };
 };
 
@@ -120,6 +137,7 @@ export const createCrossExaminationController = ({
   generateQuestionsFn = generateCrossExaminationQuestions,
   evaluateAnswerFn = evaluateCandidateAnswer,
   generateFollowUpFn = generateFollowUpProbe,
+  generateReportFn = generatePreparationReport,
   parsePdfFn = defaultParsePdf,
   verifyExcerptFn = verifySourceExcerpt,
 } = {}) => {
@@ -731,17 +749,25 @@ export const createCrossExaminationController = ({
         }
       });
 
-      // Initialize placeholder report structure if not present
-      if (!session.report) {
-        session.report = {
-          completedAt: new Date(),
-          summary: 'Session completed. Ready for answer analysis.',
-          verifiedClaimsCount: 0,
-          unverifiedClaimsCount: 0,
-          contradictionsCount: 0,
-          preparationGaps: [],
-          recommendedFollowUps: [],
-        };
+      // Generate evidence-linked preparation report upon completion
+      try {
+        const reportResult = await generateReportFn({ session });
+        if (reportResult && reportResult.success && reportResult.report) {
+          session.report = reportResult.report;
+        }
+      } catch (repErr) {
+        console.warn(`[crossExamination] Report generation warning on complete: ${repErr.message}`);
+        if (!session.report) {
+          session.report = {
+            completedAt: new Date(),
+            summary: 'Session completed. Preparation report generation pending.',
+            verifiedClaimsCount: 0,
+            unverifiedClaimsCount: 0,
+            contradictionsCount: 0,
+            preparationGaps: [],
+            recommendedFollowUps: [],
+          };
+        }
       }
 
       await session.save();
@@ -758,6 +784,123 @@ export const createCrossExaminationController = ({
     }
   };
 
+  /**
+   * POST /api/cross-examination/sessions/:sessionId/report
+   * Generates or regenerates an evidence-linked preparation report.
+   */
+  const generateReport = async (req, res) => {
+    try {
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const { sessionId } = req.params;
+      const regenerate = Boolean(req.query?.regenerate === 'true' || req.body?.regenerate);
+
+      if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        return res.status(404).json({ message: 'Cross-examination session not found' });
+      }
+
+      const session = await SessionModel.findOne({ _id: sessionId, userId });
+      if (!session) {
+        return res.status(404).json({ message: 'Cross-examination session not found' });
+      }
+
+      if (session.status !== SESSION_STATUSES.COMPLETED) {
+        return res.status(400).json({
+          message: 'Cannot generate preparation report for an incomplete session',
+        });
+      }
+
+      // Idempotency: return existing report if already generated and regenerate not requested
+      if (
+        !regenerate &&
+        session.report &&
+        session.report.version === REPORT_SCHEMA_VERSION &&
+        session.report.claimVerificationMatrix &&
+        session.report.claimVerificationMatrix.length > 0
+      ) {
+        return res.status(200).json({
+          message: 'Preparation report retrieved successfully',
+          report: sanitizeReportForCandidate(session.report),
+        });
+      }
+
+      // Generate report using service
+      const reportResult = await generateReportFn({ session });
+      if (!reportResult || !reportResult.success || !reportResult.report) {
+        return res.status(500).json({
+          message: 'Failed to generate preparation report',
+        });
+      }
+
+      session.report = reportResult.report;
+      await session.save();
+
+      return res.status(200).json({
+        message: 'Preparation report generated successfully',
+        report: sanitizeReportForCandidate(session.report),
+      });
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Internal server error generating report',
+        error: err.message,
+      });
+    }
+  };
+
+  /**
+   * GET /api/cross-examination/sessions/:sessionId/report
+   * Retrieves an evidence-linked preparation report for an authorized session.
+   */
+  const getReport = async (req, res) => {
+    try {
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const { sessionId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+        return res.status(404).json({ message: 'Cross-examination session not found' });
+      }
+
+      const session = await SessionModel.findOne({ _id: sessionId, userId });
+      if (!session) {
+        return res.status(404).json({ message: 'Cross-examination session not found' });
+      }
+
+      if (session.status !== SESSION_STATUSES.COMPLETED) {
+        return res.status(400).json({
+          message: 'Cannot retrieve preparation report for an incomplete session',
+        });
+      }
+
+      // If report already generated with full matrix, return it
+      if (session.report && session.report.claimVerificationMatrix && session.report.claimVerificationMatrix.length > 0) {
+        return res.status(200).json({
+          report: sanitizeReportForCandidate(session.report),
+        });
+      }
+
+      // Otherwise generate on-the-fly and persist
+      const reportResult = await generateReportFn({ session });
+      if (reportResult && reportResult.success && reportResult.report) {
+        session.report = reportResult.report;
+        await session.save();
+      }
+
+      return res.status(200).json({
+        report: sanitizeReportForCandidate(session.report),
+      });
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Internal server error retrieving report',
+        error: err.message,
+      });
+    }
+  };
+
   return {
     createSession,
     getSession,
@@ -765,6 +908,8 @@ export const createCrossExaminationController = ({
     submitAnswer,
     advanceQuestion,
     completeSession,
+    generateReport,
+    getReport,
   };
 };
 
@@ -776,3 +921,5 @@ export const listSessions = defaultController.listSessions;
 export const submitAnswer = defaultController.submitAnswer;
 export const advanceQuestion = defaultController.advanceQuestion;
 export const completeSession = defaultController.completeSession;
+export const generateReport = defaultController.generateReport;
+export const getReport = defaultController.getReport;
