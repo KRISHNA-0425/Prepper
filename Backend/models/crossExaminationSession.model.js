@@ -356,13 +356,20 @@ const crossExaminationSessionSchema = new mongoose.Schema(
       type: reportSchema,
       default: null,
     },
+    idempotencyKey: {
+      type: String,
+      sparse: true,
+      index: true,
+      trim: true,
+    },
   },
   { timestamps: true }
 );
 
-// Compound indexes for user querying and status filtering
+// Compound indexes for user querying, idempotency, and status filtering
 crossExaminationSessionSchema.index({ userId: 1, createdAt: -1 });
 crossExaminationSessionSchema.index({ userId: 1, status: 1 });
+crossExaminationSessionSchema.index({ userId: 1, idempotencyKey: 1 }, { sparse: true });
 
 /**
  * Validates whether the session can legally transition to target status.

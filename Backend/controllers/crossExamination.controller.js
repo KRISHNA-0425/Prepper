@@ -5,16 +5,39 @@
  * privacy masking of internal evaluation metadata, and safe failure handling.
  */
 
+import fs from 'fs';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mongoose from 'mongoose';
 import CrossExaminationSession from '../models/crossExaminationSession.model.js';
-import { extractResumeClaims } from '../services/resumeIntelligence.service.js';
+import { extractResumeClaims, verifySourceExcerpt } from '../services/resumeIntelligence.service.js';
 import { analyzeProjectClaims } from '../services/projectClaimAnalysis.service.js';
 import { generateCrossExaminationQuestions, ENGINE_LIMITS } from '../services/questionEngine.service.js';
 import {
   SESSION_STATUSES,
+  PROVENANCE_TYPES,
+  CONFIDENCE_LEVELS,
   validateProjectProfileContract,
   hashSourceText,
 } from '../contracts/crossExamination.contracts.js';
+
+/**
+ * Extracts plain text from an uploaded PDF file path using pdfjs-dist.
+ * @param {string} filePath
+ * @returns {Promise<string>}
+ */
+export const defaultParsePdf = async (filePath) => {
+  const fileBuffer = await fs.promises.readFile(filePath);
+  const uint8Array = new Uint8Array(fileBuffer);
+  const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+  let resumeText = '';
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item) => item.str).join(' ');
+    resumeText += pageText + '\n';
+  }
+  return resumeText.replace(/\s+/g, ' ').trim();
+};
 
 /**
  * Sanitizes a question object for candidate-facing payloads.
@@ -90,6 +113,8 @@ export const createCrossExaminationController = ({
   extractClaimsFn = extractResumeClaims,
   analyzeBlueprintFn = analyzeProjectClaims,
   generateQuestionsFn = generateCrossExaminationQuestions,
+  parsePdfFn = defaultParsePdf,
+  verifyExcerptFn = verifySourceExcerpt,
 } = {}) => {
   /**
    * POST /api/cross-examination/sessions
@@ -97,18 +122,55 @@ export const createCrossExaminationController = ({
    */
   const createSession = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
+      // Check for Idempotency-Key
+      const idempotencyKey = req.headers?.['idempotency-key'] || req.body?.idempotencyKey;
+      if (idempotencyKey && typeof idempotencyKey === 'string' && idempotencyKey.trim()) {
+        const cleanKey = idempotencyKey.trim();
+        const existingSession = await SessionModel.findOne({
+          userId,
+          idempotencyKey: cleanKey,
+        });
+        if (existingSession) {
+          return res.status(200).json({
+            message: 'Existing session retrieved for idempotency key',
+            session: sanitizeSessionForCandidate(existingSession),
+            isIdempotentReplay: true,
+          });
+        }
+      }
+
       const {
-        resumeText,
+        resumeText: rawResumeText,
         crossExaminationProfile,
         targetRole: rawRole,
         targetDomain: rawDomain,
         questionCount: rawCount,
       } = req.body || {};
+
+      let resumeText = rawResumeText;
+
+      // Handle resume file upload if present
+      if (req.file) {
+        try {
+          resumeText = await parsePdfFn(req.file.path);
+        } catch (pdfErr) {
+          return res.status(400).json({
+            message: 'Failed to parse uploaded PDF resume file. Ensure the file is a valid PDF.',
+            error: pdfErr.message,
+          });
+        } finally {
+          if (req.file?.path && fs.existsSync(req.file.path)) {
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (_) {}
+          }
+        }
+      }
 
       // 1. Validate role and domain
       const targetRole = typeof rawRole === 'string' ? rawRole.trim().slice(0, 120) : '';
@@ -172,8 +234,29 @@ export const createCrossExaminationController = ({
           }
         }
 
-        resumeExcerpt = typeof profile.resumeExcerpt === 'string' ? profile.resumeExcerpt.slice(0, 3000) : '';
-        resumeHash = profile.resumeHash || '';
+        // Provenance boundary verification: guard against forged provenance in client-supplied profile
+        const sourceForVerification = resumeText || profile.resumeExcerpt || '';
+        for (const prj of profile.projects) {
+          for (const clm of prj.claims || []) {
+            if (clm.provenanceType === PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT) {
+              if (!sourceForVerification) {
+                // Cannot prove explicit source statement without source text; demote
+                clm.provenanceType = PROVENANCE_TYPES.AI_INFERRED_CATEGORY;
+                clm.confidence = CONFIDENCE_LEVELS.UNCERTAIN;
+              } else {
+                const verification = verifyExcerptFn(sourceForVerification, clm.sourceExcerpt || '');
+                if (!verification.isVerified) {
+                  // Forged or ungrounded excerpt detected; demote claim
+                  clm.provenanceType = PROVENANCE_TYPES.AI_INFERRED_CATEGORY;
+                  clm.confidence = CONFIDENCE_LEVELS.UNCERTAIN;
+                }
+              }
+            }
+          }
+        }
+
+        resumeExcerpt = typeof profile.resumeExcerpt === 'string' ? profile.resumeExcerpt.slice(0, 3000) : (resumeText ? resumeText.slice(0, 3000) : '');
+        resumeHash = profile.resumeHash || (resumeText ? hashSourceText(resumeText) : '');
       }
 
       const effectiveRole = targetRole || (profile.role || 'Software Engineer');
@@ -211,6 +294,7 @@ export const createCrossExaminationController = ({
       // 7. Persist session with explicit ownership
       const sessionInstance = new SessionModel({
         userId,
+        idempotencyKey: idempotencyKey && typeof idempotencyKey === 'string' ? idempotencyKey.trim() : undefined,
         sessionTitle: `${effectiveRole} Cross-Examination`,
         targetRole: effectiveRole,
         targetDomain,
@@ -259,7 +343,10 @@ export const createCrossExaminationController = ({
    */
   const getSession = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { sessionId } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(sessionId)) {
@@ -289,7 +376,10 @@ export const createCrossExaminationController = ({
    */
   const listSessions = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
 
       const sessions = await SessionModel.find({ userId })
@@ -327,7 +417,10 @@ export const createCrossExaminationController = ({
    */
   const submitAnswer = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { sessionId } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(sessionId)) {
@@ -407,6 +500,9 @@ export const createCrossExaminationController = ({
       let nextQuestion = null;
       if (autoAdvance === true) {
         nextQuestion = session.advanceQuestion();
+        if (!nextQuestion) {
+          session.status = SESSION_STATUSES.ACTIVE;
+        }
       } else {
         // Transition session to ACTIVE awaiting next advance
         if (session.status === SESSION_STATUSES.AWAITING_ANSWER) {
@@ -448,7 +544,10 @@ export const createCrossExaminationController = ({
    */
   const advanceQuestion = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { sessionId } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(sessionId)) {
@@ -526,7 +625,10 @@ export const createCrossExaminationController = ({
    */
   const completeSession = async (req, res) => {
     try {
-      const userId = req.userId;
+      const userId = req.userId || req.user?._id || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { sessionId } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(sessionId)) {
