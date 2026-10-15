@@ -13,9 +13,14 @@ import { extractResumeClaims, verifySourceExcerpt } from '../services/resumeInte
 import { analyzeProjectClaims } from '../services/projectClaimAnalysis.service.js';
 import { generateCrossExaminationQuestions, ENGINE_LIMITS } from '../services/questionEngine.service.js';
 import {
+  evaluateCandidateAnswer,
+  generateFollowUpProbe,
+} from '../services/answerAnalysis.service.js';
+import {
   SESSION_STATUSES,
   PROVENANCE_TYPES,
   CONFIDENCE_LEVELS,
+  PROBING_LIMITS,
   validateProjectProfileContract,
   hashSourceText,
 } from '../contracts/crossExamination.contracts.js';
@@ -113,6 +118,8 @@ export const createCrossExaminationController = ({
   extractClaimsFn = extractResumeClaims,
   analyzeBlueprintFn = analyzeProjectClaims,
   generateQuestionsFn = generateCrossExaminationQuestions,
+  evaluateAnswerFn = evaluateCandidateAnswer,
+  generateFollowUpFn = generateFollowUpProbe,
   parsePdfFn = defaultParsePdf,
   verifyExcerptFn = verifySourceExcerpt,
 } = {}) => {
@@ -508,6 +515,57 @@ export const createCrossExaminationController = ({
         rawTranscript: trimmedTranscript,
         timeTaken: typeof timeTaken === 'number' && timeTaken >= 0 ? timeTaken : 0,
       });
+
+      // Phase 7: Evidence-grounded answer evaluation
+      let evaluation = null;
+      try {
+        const project =
+          session.projects?.find((p) => p.projectId === activeQuestion.targetProjectId) || {};
+        const claim =
+          project.claims?.find((c) => activeQuestion.targetClaimIds?.includes(c.claimId)) || {};
+
+        const evalResult = await evaluateAnswerFn({
+          question: activeQuestion,
+          answer: recordedAnswer,
+          projectContext: project,
+          claimContext: claim,
+        });
+
+        if (evalResult && evalResult.success && evalResult.evaluation) {
+          evaluation = evalResult.evaluation;
+          if (typeof session.attachAnswerEvaluation === 'function') {
+            session.attachAnswerEvaluation(questionId, evaluation);
+          }
+        }
+      } catch (evalErr) {
+        // Safe degradation: evaluation failure does not abort answer submission
+        console.warn(`[crossExamination] Answer evaluation error for question ${questionId}:`, evalErr.message);
+      }
+
+      // Phase 7: Adaptive targeted follow-up probing
+      if (
+        evaluation &&
+        evaluation.followUpEligible &&
+        typeof session.addFollowUpQuestion === 'function' &&
+        (activeQuestion.depth || 0) < PROBING_LIMITS.MAX_FOLLOW_UP_DEPTH &&
+        session.questions.length < PROBING_LIMITS.MAX_TOTAL_SESSION_QUESTIONS
+      ) {
+        try {
+          const followUpResult = await generateFollowUpFn({
+            parentQuestion: activeQuestion,
+            answer: recordedAnswer,
+            evaluation,
+            projectContext:
+              session.projects?.find((p) => p.projectId === activeQuestion.targetProjectId) || {},
+          });
+
+          if (followUpResult && followUpResult.success && followUpResult.followUpQuestion) {
+            session.addFollowUpQuestion(followUpResult.followUpQuestion);
+          }
+        } catch (followUpErr) {
+          console.warn(`[crossExamination] Follow-up generation error for question ${questionId}:`, followUpErr.message);
+        }
+      }
 
       // Handle optional autoAdvance
       let nextQuestion = null;
