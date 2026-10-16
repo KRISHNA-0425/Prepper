@@ -446,6 +446,22 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.ok(cardContent.includes('Replay'), 'QuestionCard must show replay option');
         });
 
+        it('should declare isCompleted and derived session state before any effects referencing it (prevent TDZ ReferenceError)', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const sessionContent = fs.readFileSync(path.resolve('src/pages/CrossExaminationSession.jsx'), 'utf8');
+
+            const isCompletedDeclarationIndex = sessionContent.indexOf("const isCompleted = session?.status === 'completed';");
+            const speakEffectIndex = sessionContent.indexOf('speakQuestion(activeQuestion.questionText');
+
+            assert.ok(isCompletedDeclarationIndex > 0, 'isCompleted must be declared as a const');
+            assert.ok(speakEffectIndex > 0, 'speech effect must exist');
+            assert.ok(
+                isCompletedDeclarationIndex < speakEffectIndex,
+                'isCompleted declaration must precede the speech effect to prevent ReferenceError: Cannot access isCompleted before initialization'
+            );
+        });
+
         it('should verify Step2Interview.jsx has audible question speech, deduping, and replay control', async () => {
             const fs = await import('node:fs');
             const path = await import('node:path');

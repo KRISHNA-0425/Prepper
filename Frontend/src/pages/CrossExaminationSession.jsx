@@ -47,6 +47,16 @@ function CrossExaminationSession() {
   // Overall session elapsed time in seconds
   const [sessionElapsedSeconds, setSessionElapsedSeconds] = useState(0);
 
+  // Derived session and question state (declared before hooks/effects to prevent TDZ reference errors)
+  const isCompleted = session?.status === 'completed';
+  const isCurrentAnswered = Boolean(
+    activeQuestion &&
+    Array.isArray(session?.questions) &&
+    session.questions.find((q) => q.questionId === activeQuestion.questionId)?.status === 'answered'
+  );
+  const activeQuestionId = activeQuestion?.questionId;
+  const activeQuestionTimeLimit = activeQuestion?.timeLimit;
+
   // Audible AI Question Speech Synthesis
   const {
     isSpeaking: isAISpeaking,
@@ -121,8 +131,6 @@ function CrossExaminationSession() {
   }, [activeQuestion, isCompleted, isLoading, speakQuestion, cancelSpeech]);
 
   // Synchronize timer when active question changes
-  const activeQuestionId = activeQuestion?.questionId;
-  const activeQuestionTimeLimit = activeQuestion?.timeLimit;
   useEffect(() => {
     if (activeQuestionId) {
       const duration = activeQuestionTimeLimit || DEFAULT_QUESTION_DURATION;
@@ -130,13 +138,6 @@ function CrossExaminationSession() {
       setTotalQuestionTime(duration);
     }
   }, [activeQuestionId, activeQuestionTimeLimit]);
-
-  // Determine if active question is already answered and waiting for manual advance
-  const isCurrentAnswered = Boolean(
-    activeQuestion &&
-    Array.isArray(session?.questions) &&
-    session.questions.find((q) => q.questionId === activeQuestion.questionId)?.status === 'answered'
-  );
 
   // Active countdown timer effect: continuous updates, cleans up on unmount or question change
   useEffect(() => {
@@ -151,7 +152,6 @@ function CrossExaminationSession() {
   }, [timeLeft, isSubmitting, isAdvancing, isCompleting, activeQuestion, isCurrentAnswered]);
 
   // Session elapsed timer effect: tracks overall interview session elapsed time continuously
-  const isCompleted = session?.status === 'completed';
   useEffect(() => {
     if (isCompleted || isLoading) return;
 
