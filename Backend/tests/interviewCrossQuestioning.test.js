@@ -121,6 +121,29 @@ describe('Interview Cross-Questioning & Enhancements Suite', () => {
             assert.strictEqual(sanitize('true'), true);
         });
 
+        it('should strictly force enableCrossQuestioning to false when no resumeText is provided', () => {
+            const sanitizeCrossQuestioning = ({ enableCrossQuestioning, resumeText }) => {
+                let enabled = Boolean(enableCrossQuestioning);
+                const hasValidResume = Boolean(resumeText && typeof resumeText === 'string' && resumeText.trim().length > 0);
+                if (!hasValidResume) {
+                    enabled = false;
+                }
+                return enabled;
+            };
+
+            // Client attempts to bypass frontend and submits enableCrossQuestioning: true with empty resume
+            assert.strictEqual(sanitizeCrossQuestioning({ enableCrossQuestioning: true, resumeText: '' }), false);
+            assert.strictEqual(sanitizeCrossQuestioning({ enableCrossQuestioning: true, resumeText: '   ' }), false);
+            assert.strictEqual(sanitizeCrossQuestioning({ enableCrossQuestioning: true, resumeText: undefined }), false);
+            assert.strictEqual(sanitizeCrossQuestioning({ enableCrossQuestioning: true, resumeText: null }), false);
+
+            // Valid resumeText allows enableCrossQuestioning: true
+            assert.strictEqual(sanitizeCrossQuestioning({
+                enableCrossQuestioning: true,
+                resumeText: 'Senior Backend Engineer with 5 years experience in Node.js and distributed systems.'
+            }), true);
+        });
+
         it('should verify follow-up eligibility rules (quality, depth, session limits)', () => {
             const checkEligibility = ({ depth, existingFollowUpsCount, answerLength, score }) => {
                 return (

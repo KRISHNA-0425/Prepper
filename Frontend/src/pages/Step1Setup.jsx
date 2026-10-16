@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HiCheckCircle, HiMicrophone, HiChartBar, HiBriefcase, HiTrendingUp, HiArrowRight, HiSparkles, HiCode, HiCollection, HiX } from 'react-icons/hi'
 import { FaFileArrowUp } from "react-icons/fa6";
@@ -26,6 +26,16 @@ function Step1Setup({ onStart }) {
     const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
     const userEditedFieldsRef = useRef({ role: false, experience: false });
     const uploadedFileRef = useRef(null);
+
+    // Derived validation: cross-questioning is strictly enabled only when a valid resume has been parsed
+    const hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0);
+
+    // Automatically disable and reset cross-questioning if the resume is removed or invalidated
+    useEffect(() => {
+        if (!hasValidResume && enableCrossQuestioning) {
+            setEnableCrossQuestioning(false);
+        }
+    }, [hasValidResume, enableCrossQuestioning]);
 
     const navigate = useNavigate();
 
@@ -104,7 +114,17 @@ function Step1Setup({ onStart }) {
         setLoading(true);
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/generateQuestions',
-                { role, experience, mode, skills, projects, resumeText, enableCrossQuestioning: Boolean(enableCrossQuestioning), crossQuestioningType: crossQuestioningType || "Technical" }, { withCredentials: true }
+                {
+                    role,
+                    experience,
+                    mode,
+                    skills,
+                    projects,
+                    resumeText: hasValidResume ? resumeText : '',
+                    enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning),
+                    crossQuestioningType: crossQuestioningType || "Technical"
+                },
+                { withCredentials: true }
             )
             console.log(result.data)
 
@@ -233,15 +253,16 @@ function Step1Setup({ onStart }) {
                                 </motion.div>
 
                                 {/* Feature D: Optional Cross-Questioning Option */}
-                                <motion.div layout className='p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-yellow-400/60 transition-colors space-y-2.5'>
-                                    <label htmlFor="enableCrossQuestioning" className='flex items-start gap-3 cursor-pointer select-none'>
+                                <motion.div layout className={`p-3.5 border-2 rounded-xl transition-colors space-y-2.5 ${!hasValidResume ? 'bg-slate-50/60 border-slate-100 opacity-80' : 'bg-slate-50 border-slate-100 hover:border-yellow-400/60'}`}>
+                                    <label htmlFor="enableCrossQuestioning" className={`flex items-start gap-3 select-none ${hasValidResume ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                         <input
                                             type="checkbox"
                                             id="enableCrossQuestioning"
                                             name="enableCrossQuestioning"
                                             checked={enableCrossQuestioning}
+                                            disabled={!hasValidResume}
                                             onChange={(e) => setEnableCrossQuestioning(e.target.checked)}
-                                            className='mt-0.5 w-4 h-4 text-yellow-500 rounded border-slate-300 focus:ring-yellow-400 cursor-pointer accent-yellow-500'
+                                            className={`mt-0.5 w-4 h-4 rounded border-slate-300 focus:ring-yellow-400 accent-yellow-500 ${hasValidResume ? 'cursor-pointer text-yellow-500' : 'cursor-not-allowed opacity-60 text-slate-400'}`}
                                         />
                                         <div className='flex-1'>
                                             <span className='text-xs font-black text-slate-800 block'>
@@ -250,6 +271,11 @@ function Step1Setup({ onStart }) {
                                             <span className='text-[10px] text-slate-500 leading-tight block mt-0.5'>
                                                 Allows the AI to ask relevant follow-up questions based on your answers to test depth and clarity.
                                             </span>
+                                            {!hasValidResume && (
+                                                <span className='text-[11px] font-semibold text-amber-600 block mt-1.5'>
+                                                    Upload your resume to enable cross-questioning.
+                                                </span>
+                                            )}
                                         </div>
                                     </label>
 
@@ -318,7 +344,7 @@ function Step1Setup({ onStart }) {
                                         >
                                             <motion.button
                                                 whileHover={{ rotate: 90 }}
-                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null); uploadedFileRef.current = null; }}
+                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null); uploadedFileRef.current = null; setResumeText(''); setSkills([]); setProjects([]); setEnableCrossQuestioning(false); }}
                                                 className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
                                             >
                                                 <HiX />

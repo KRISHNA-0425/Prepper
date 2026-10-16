@@ -104,19 +104,6 @@ function Home() {
                         </motion.button>
 
                         <motion.button
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => {
-                                if (!userData) return setShowAuth(true);
-                                navigate('/cross-examination');
-                            }}
-                            className='group w-full sm:w-auto bg-white/70 hover:bg-white text-slate-900 border-2 border-slate-900/30 px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2.5 shadow-sm transition-all'
-                        >
-                            <RiShieldFlashLine className='text-yellow-600 text-xl group-hover:rotate-6 transition-transform' />
-                            Cross-Examination
-                        </motion.button>
-
-                        <motion.button
                             whileHover={{ scale: 1.03, backgroundColor: "rgba(255, 255, 255, 0.6)" }}
                             whileTap={{ scale: 0.97 }}
                             onClick={() => {

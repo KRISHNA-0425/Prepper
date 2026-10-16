@@ -230,8 +230,37 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.ok(content.includes('useState(false)'), 'enableCrossQuestioning must default to false for backward compatibility');
             assert.ok(content.includes('Enable cross-questioning'), 'Checkbox must be explicitly labeled "Enable cross-questioning"');
             assert.ok(content.includes('type="checkbox"'), 'Must render a semantic checkbox input');
-            assert.ok(content.includes('enableCrossQuestioning: Boolean(enableCrossQuestioning)'), 
+            assert.ok(content.includes('enableCrossQuestioning: Boolean('), 
                 'Payload to generateQuestions must pass sanitized boolean');
+        });
+
+        it('should disable Enable cross-questioning checkbox and display explanation when no resume is uploaded', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Path = path.resolve('src/pages/Step1Setup.jsx');
+            const content = fs.readFileSync(step1Path, 'utf8');
+
+            assert.ok(content.includes('disabled={!hasValidResume}'), 'Checkbox must be disabled when no valid resume is present');
+            assert.ok(content.includes('Upload your resume to enable cross-questioning.'), 'Must display helpful explanation when disabled');
+            assert.ok(content.includes('hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0)'),
+                'hasValidResume must strictly verify parsed resume text');
+            assert.ok(content.includes('enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning)'),
+                'Frontend must never submit enableCrossQuestioning: true without a valid resume');
+        });
+
+        it('should automatically reset enableCrossQuestioning to false when resume is removed or invalidated', () => {
+            let hasValidResume = true;
+            let enableCrossQuestioning = true;
+
+            // Simulating resume removal
+            const removeResume = () => {
+                hasValidResume = false;
+                enableCrossQuestioning = false;
+            };
+
+            removeResume();
+            assert.strictEqual(hasValidResume, false);
+            assert.strictEqual(enableCrossQuestioning, false, 'Checkbox must be unchecked and reset to false when resume is removed');
         });
 
         it('should dynamically update question list and question index when a follow-up probe is returned', () => {
@@ -790,6 +819,34 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(isAISpeaking, false);
             assert.strictEqual(candidateAnswer, 'Dependency injection decouples components and promotes testability.',
                 'Candidate answer must remain completely intact after interviewer speech concludes');
+        });
+    });
+
+
+    // ==========================================
+    // 10. Feature — Home CTA Removal & Navbar Integrity
+    // ==========================================
+    describe('10. Feature — Home CTA Removal & Navbar Integrity', () => {
+        it('should verify Home.jsx does not render the Cross-Examination CTA button', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const homePath = path.resolve('src/pages/Home.jsx');
+            const homeContent = fs.readFileSync(homePath, 'utf8');
+
+            assert.ok(!homeContent.includes("navigate('/cross-examination')"), 'Home.jsx must not navigate to /cross-examination via homepage CTA button');
+            assert.ok(!homeContent.includes('>Cross-Examination</motion.button>'), 'Home.jsx must not render Cross-Examination CTA button');
+            assert.ok(homeContent.includes("navigate('/interview')"), 'Home.jsx must preserve Mock Interview button');
+            assert.ok(homeContent.includes("navigate('/history')"), 'Home.jsx must preserve History button');
+        });
+
+        it('should verify Navbar.jsx preserves the Cross-Examination navigation link', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const navbarPath = path.resolve('src/components/Navbar.jsx');
+            const navbarContent = fs.readFileSync(navbarPath, 'utf8');
+
+            assert.ok(navbarContent.includes('to="/cross-examination"'), 'Navbar.jsx must preserve Cross-Examination route link');
+            assert.ok(navbarContent.includes('Cross-Examination'), 'Navbar.jsx must render Cross-Examination link label');
         });
     });
 

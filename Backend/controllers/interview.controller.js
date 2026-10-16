@@ -75,6 +75,12 @@ export const generateQuestions = async (req, res) => {
         const validCrossTypes = ["Technical", "Behavioral"];
         const safeCrossQuestioningType = validCrossTypes.includes(crossQuestioningType) ? crossQuestioningType : "Technical";
 
+        // Server-side guard: cross-questioning strictly requires a valid non-empty resume
+        const hasValidResume = Boolean(resumeText && typeof resumeText === 'string' && resumeText.trim().length > 0);
+        if (!hasValidResume) {
+            enableCrossQuestioning = false;
+        }
+
         if (!role || !experience || !mode) {
             return res.status(400).json({ message: "Please enter all the data" });
         }
