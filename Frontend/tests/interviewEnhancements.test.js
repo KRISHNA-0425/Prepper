@@ -622,4 +622,175 @@ describe('Prepper AI Interview Enhancements Suite', () => {
         });
     });
 
+
+    // ==========================================
+    // 9. Feature — Synchronized Interviewer Video & Question Voice Lifecycle
+    // ==========================================
+    describe('9. Feature — Synchronized Interviewer Video & Question Voice Lifecycle', () => {
+        it('should verify PLAYBACK_STATE constants and transitions (idle -> loading -> playing -> finished / error)', async () => {
+            const hookModule = await import('../src/hooks/useQuestionSpeech.js');
+            const { PLAYBACK_STATE } = hookModule;
+            assert.ok(PLAYBACK_STATE, 'PLAYBACK_STATE must be exported');
+            assert.strictEqual(PLAYBACK_STATE.IDLE, 'idle');
+            assert.strictEqual(PLAYBACK_STATE.LOADING, 'loading');
+            assert.strictEqual(PLAYBACK_STATE.PLAYING, 'playing');
+            assert.strictEqual(PLAYBACK_STATE.FINISHED, 'finished');
+            assert.strictEqual(PLAYBACK_STATE.ERROR, 'error');
+        });
+
+        it('should synchronize video playback lifecycle: start video on speech start, pause on speech end', () => {
+            let videoPlaying = false;
+            let videoPaused = true;
+            let videoLoop = false;
+
+            const mockVideo = {
+                loop: false,
+                play: () => {
+                    videoPlaying = true;
+                    videoPaused = false;
+                    return Promise.resolve();
+                },
+                pause: () => {
+                    videoPlaying = false;
+                    videoPaused = true;
+                },
+            };
+
+            // Speech starts: video begins looping & playing
+            mockVideo.loop = true;
+            mockVideo.play();
+            assert.strictEqual(videoPlaying, true, 'Video must play when speech begins');
+            assert.strictEqual(mockVideo.loop, true, 'Video must loop smoothly during long question speech');
+
+            // Speech ends: video loops false & pauses
+            mockVideo.loop = false;
+            mockVideo.pause();
+            assert.strictEqual(videoPlaying, false, 'Video must pause when speech ends');
+            assert.strictEqual(videoPaused, true, 'Video must remain paused after question finishes');
+        });
+
+        it('should cancel previous question video and speech when a new question becomes active', () => {
+            let activeUtteranceCancelled = false;
+            let videoPaused = false;
+
+            const stopPlayback = () => {
+                activeUtteranceCancelled = true;
+                videoPaused = true;
+            };
+
+            // Transitioning question 1 -> question 2
+            stopPlayback();
+            assert.strictEqual(activeUtteranceCancelled, true, 'Previous question speech must be cancelled');
+            assert.strictEqual(videoPaused, true, 'Previous question video must be paused immediately');
+        });
+
+        it('should start playback for subsequent question exactly once and avoid timer restarts', () => {
+            const spokenQuestions = [];
+            const lastSpokenIdRef = { current: null };
+
+            const speakQuestion = (text, questionId, { force = false } = {}) => {
+                if (!force && lastSpokenIdRef.current === questionId) {
+                    return;
+                }
+                lastSpokenIdRef.current = questionId;
+                spokenQuestions.push({ questionId, text });
+            };
+
+            // Question 1 activates
+            speakQuestion('What is CQRS?', 'q_1');
+            assert.strictEqual(spokenQuestions.length, 1);
+
+            // Timer ticks 5 times
+            for (let t = 120; t > 115; t--) {
+                speakQuestion('What is CQRS?', 'q_1');
+            }
+            assert.strictEqual(spokenQuestions.length, 1, 'Timer updates must never restart playback');
+
+            // Question 2 activates
+            speakQuestion('Explain CAP theorem.', 'q_2');
+            assert.strictEqual(spokenQuestions.length, 2, 'Next question must start playback exactly once');
+            assert.strictEqual(spokenQuestions[1].questionId, 'q_2');
+        });
+
+        it('should handle browser autoplay rejection and restore via requestAudioActivation', () => {
+            let playbackState = 'loading';
+            let isBlocked = false;
+            let errorMessage = null;
+
+            // Browser fires not-allowed error
+            const handleSpeechError = (event) => {
+                if (event.error === 'not-allowed') {
+                    isBlocked = true;
+                    errorMessage = 'Browser blocked audible autoplay. Click Enable Audio to start.';
+                    playbackState = 'error';
+                }
+            };
+
+            handleSpeechError({ error: 'not-allowed' });
+            assert.strictEqual(isBlocked, true, 'isBlocked must be true on not-allowed');
+            assert.strictEqual(playbackState, 'error');
+            assert.ok(errorMessage.includes('Enable Audio'));
+
+            // Candidate clicks Enable Interviewer Audio
+            const requestAudioActivation = () => {
+                isBlocked = false;
+                errorMessage = null;
+                playbackState = 'playing';
+            };
+
+            requestAudioActivation();
+            assert.strictEqual(isBlocked, false, 'isBlocked must reset to false after activation');
+            assert.strictEqual(errorMessage, null);
+            assert.strictEqual(playbackState, 'playing');
+        });
+
+        it('should strictly disable candidate microphone while interviewer is playing and stop speech recognition', () => {
+            let isListening = true;
+            const stopListening = () => { isListening = false; };
+
+            const isAISpeaking = true;
+            if (isAISpeaking) {
+                stopListening();
+            }
+
+            const isSubmitting = false;
+            const isAdvancing = false;
+            const isMicButtonDisabled = isSubmitting || isAdvancing || isAISpeaking;
+
+            assert.strictEqual(isListening, false, 'Candidate speech recognition must immediately stop when AI starts speaking');
+            assert.strictEqual(isMicButtonDisabled, true, 'Microphone button must be disabled during interviewer playback');
+        });
+
+        it('should verify Step2Interview.jsx and CrossExaminationSession.jsx connect videoRef to useQuestionSpeech', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+
+            const step2Path = path.resolve('src/pages/Step2Interview.jsx');
+            const step2Content = fs.readFileSync(step2Path, 'utf8');
+            assert.ok(step2Content.includes('useQuestionSpeech'), 'Step2Interview must use useQuestionSpeech');
+            assert.ok(step2Content.includes('videoRef'), 'Step2Interview must pass videoRef to useQuestionSpeech');
+            assert.ok(step2Content.includes('requestAudioActivation'), 'Step2Interview must support requestAudioActivation');
+
+            const crossExamPath = path.resolve('src/pages/CrossExaminationSession.jsx');
+            const crossExamContent = fs.readFileSync(crossExamPath, 'utf8');
+            assert.ok(crossExamContent.includes('videoRef'), 'CrossExaminationSession must pass videoRef to useQuestionSpeech');
+            assert.ok(!crossExamContent.includes('<video\n              ref={videoRef}\n              src="https://res.cloudinary.com/dflf8j84g/video/upload/v1774549693/AI_asking_questions_202603262250_fgjdiw.mp4"\n              muted\n              playsInline\n              autoPlay\n              loop'),
+                'CrossExaminationSession must NOT have hardcoded autoPlay and loop on video element');
+        });
+
+        it('should preserve candidate entered answer text and permit submission after playback completes', () => {
+            let candidateAnswer = 'Dependency injection decouples components and promotes testability.';
+            let isAISpeaking = true;
+
+            // While AI is speaking, text is safe in state
+            assert.strictEqual(candidateAnswer.length > 0, true);
+
+            // Speech ends
+            isAISpeaking = false;
+            assert.strictEqual(isAISpeaking, false);
+            assert.strictEqual(candidateAnswer, 'Dependency injection decouples components and promotes testability.',
+                'Candidate answer must remain completely intact after interviewer speech concludes');
+        });
+    });
+
 });

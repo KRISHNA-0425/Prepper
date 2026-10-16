@@ -57,31 +57,19 @@ function CrossExaminationSession() {
   const activeQuestionId = activeQuestion?.questionId;
   const activeQuestionTimeLimit = activeQuestion?.timeLimit;
 
-  // Audible AI Question Speech Synthesis
+  // Audible AI Question Speech Synthesis (Synchronized video and voice)
   const {
     isSpeaking: isAISpeaking,
     isBlocked: isAudioBlocked,
     isSupported: _isAudioSupported,
+    hasActivated,
+    playbackState: _playbackState,
     speakQuestion,
     replayQuestion,
     cancelSpeech,
     requestAudioActivation,
   } = useQuestionSpeech({
-    onStart: () => {
-      if (videoRef.current) {
-        videoRef.current.play().catch(() => {});
-      }
-    },
-    onEnd: () => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-      }
-    },
-    onError: () => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-      }
-    },
+    videoRef,
   });
 
   // Fetch Session Data from Server
@@ -325,9 +313,7 @@ function CrossExaminationSession() {
               src="https://res.cloudinary.com/dflf8j84g/video/upload/v1774549693/AI_asking_questions_202603262250_fgjdiw.mp4"
               muted
               playsInline
-              autoPlay
-              loop
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover transition-opacity duration-500 ${isAISpeaking ? 'opacity-100' : 'opacity-70'}`}
             />
             {/* Candidate Turn / AI Speaking Badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
@@ -337,12 +323,14 @@ function CrossExaminationSession() {
               </span>
             </div>
 
-            {/* Browser Autoplay Blocked Recovery Action */}
-            {isAudioBlocked && (
+            {/* Browser Autoplay Blocked or Initial Audio Activation Action */}
+            {(isAudioBlocked || (!hasActivated && !isCompleted && !isLoading)) && (
               <button
                 type="button"
+                id="enableAudioButton"
                 onClick={() => requestAudioActivation(activeQuestion?.questionText, activeQuestion?.questionId)}
-                className="absolute bottom-3 right-3 px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 transition-all z-20"
+                className="absolute bottom-3 right-3 px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 transition-all z-20 cursor-pointer"
+                title="Browser blocked audible autoplay. Click to enable interviewer voice."
               >
                 <HiSpeakerWave className="text-xs" /> Enable Audio
               </button>

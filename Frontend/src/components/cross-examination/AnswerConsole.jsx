@@ -188,11 +188,11 @@ function AnswerConsole({
               type="button"
               id="voiceInputButton"
               onClick={toggleListening}
-              disabled={isSubmitting || isAdvancing}
+              disabled={isSubmitting || isAdvancing || isAISpeaking}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               aria-label={isListening ? 'Stop voice dictation' : 'Start voice dictation'}
-              title={isListening ? 'Stop Listening' : 'Voice Input'}
+              title={isAISpeaking ? 'Microphone disabled while interviewer is speaking' : isListening ? 'Stop Listening' : 'Voice Input'}
               className={`h-14 px-5 flex items-center justify-center gap-2 rounded-2xl shadow-lg shrink-0 transition-all font-bold text-xs uppercase tracking-wider ${
                 isListening
                   ? 'bg-red-500 text-white animate-pulse shadow-red-500/30'

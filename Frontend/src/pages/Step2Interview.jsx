@@ -1,19 +1,18 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Timer from '../components/Timer';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { HiMicrophone, HiCheckBadge, HiArrowRight, HiSpeakerWave } from "react-icons/hi2";
 import { RiTimeLine, RiQuestionAnswerLine } from "react-icons/ri";
 import toast from 'react-hot-toast';
 import { backendServerUrl } from '../App';
 import axios from 'axios';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import useQuestionSpeech from '../hooks/useQuestionSpeech';
 import { DEFAULT_QUESTION_DURATION, formatTimeMMSS } from '../utils/interviewTimer';
 
 function Step2Interview({ interviewData, onFinish }) {
-    const femaleVoiceRef = useRef(null);
-    const lastSpokenIndexRef = useRef(-1);
-    const [isAudioBlocked, setIsAudioBlocked] = useState(false);
     const videoRef = useRef(null);
+    const lastSpokenIndexRef = useRef(-1);
 
     const { interviewId, questions: initialQuestions = [], userName, mode } = interviewData;
 
@@ -21,9 +20,21 @@ function Step2Interview({ interviewData, onFinish }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answer, setAnswer] = useState('');
     const [, setFeedback] = useState('');
-    const [isAIPlaying, setIsAIPlaying] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
+
+    // Synchronized question speech and video controller
+    const {
+        isSpeaking: isAIPlaying,
+        isBlocked: isAudioBlocked,
+        hasActivated,
+        speakQuestion,
+        replayQuestion: triggerReplayQuestion,
+        cancelSpeech,
+        requestAudioActivation,
+    } = useQuestionSpeech({
+        videoRef,
+    });
 
     // Configurable duration per question with fallback to centralized DEFAULT_QUESTION_DURATION (120s)
     const initialDuration = initialQuestions[0]?.timeLimit || DEFAULT_QUESTION_DURATION;
@@ -50,41 +61,6 @@ function Step2Interview({ interviewData, onFinish }) {
         currentAnswer: answer,
     });
 
-    // 1. Voice Initialization
-    useEffect(() => {
-        const loadVoice = () => {
-            if (typeof window === 'undefined' || !window.speechSynthesis) return;
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length === 0) return;
-            const targetVoice = voices.find(v =>
-                v.name.toLowerCase().includes('google us english') ||
-                v.name.toLowerCase().includes('zira') ||
-                v.name.toLowerCase().includes('samantha') ||
-                (v.name.toLowerCase().includes('female') && v.lang.includes('en'))
-            ) || voices.find(v => v.lang.includes('en'));
-            femaleVoiceRef.current = targetVoice;
-        };
-        loadVoice();
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-            window.speechSynthesis.onvoiceschanged = loadVoice;
-        }
-        return () => {
-            if (typeof window !== 'undefined' && window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-        };
-    }, []);
-
-    // 2. Universal Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            stopListening();
-            if (typeof window !== 'undefined' && window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-        };
-    }, [stopListening]);
-
     // Ensure candidate microphone does not transcribe interviewer audio while AI is speaking
     useEffect(() => {
         if (isAIPlaying) {
@@ -92,71 +68,33 @@ function Step2Interview({ interviewData, onFinish }) {
         }
     }, [isAIPlaying, stopListening]);
 
-    // 3. Speak Logic (Promise-based for awaiting speech)
-    const speak = (text) => {
-        return new Promise((resolve) => {
-            if (typeof window === 'undefined' || !window.speechSynthesis || !text) { resolve(); return; }
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
-            utterance.rate = 0.95;
+    // Universal Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            stopListening();
+            cancelSpeech();
+        };
+    }, [stopListening, cancelSpeech]);
 
-            utterance.onstart = () => {
-                setIsAIPlaying(true);
-                setIsAudioBlocked(false);
-                if (videoRef.current) videoRef.current.play().catch(() => { });
-            };
-            utterance.onend = () => {
-                setIsAIPlaying(false);
-                if (videoRef.current) {
-                    videoRef.current.pause();
-                    videoRef.current.currentTime = 0;
-                }
-                resolve();
-            };
-            utterance.onerror = (event) => {
-                setIsAIPlaying(false);
-                if (event && event.error === 'not-allowed') {
-                    setIsAudioBlocked(true);
-                }
-                resolve();
-            };
-            try {
-                window.speechSynthesis.speak(utterance);
-            } catch {
-                setIsAIPlaying(false);
-                setIsAudioBlocked(true);
-                resolve();
-            }
-        });
-    };
-
+    // Replay active question audio
     const replayQuestion = () => {
         if (currentQuestion && currentQuestion.question) {
-            speak(currentQuestion.question);
+            triggerReplayQuestion(currentQuestion.question, currentQuestion._id || `step2-q-${currentIndex}`);
         }
     };
 
-    // 4. Sequence Workflow (Triggers on Index Change, deduped against rerenders/timer updates)
+    // Sequence Workflow: Automatically starts question speech and synchronized video on index change
     useEffect(() => {
-        let isMounted = true;
-        if (currentQuestion && lastSpokenIndexRef.current !== currentIndex) {
+        if (currentQuestion && lastSpokenIndexRef.current !== currentIndex && !isFinished) {
             lastSpokenIndexRef.current = currentIndex;
-            const runSequence = async () => {
-                if (currentIndex === 0) {
-                    await speak(`Hello ${userName || 'Candidate'}. I am your AI interviewer. Let's begin.`);
-                }
-                if (!isMounted) return;
-                await speak(currentQuestion.question);
-            };
-            runSequence();
+            const qPrompt = currentIndex === 0
+                ? `Hello ${userName || 'Candidate'}. I am your AI interviewer. Let's begin. Question 1: ${currentQuestion.question}`
+                : currentQuestion.question;
+            speakQuestion(qPrompt, currentQuestion._id || `step2-q-${currentIndex}`);
         }
-        return () => {
-            isMounted = false;
-        };
-    }, [currentIndex, currentQuestion, userName]);
+    }, [currentIndex, currentQuestion, userName, isFinished, speakQuestion]);
 
-    // 5. Question Countdown Timer Logic (NO auto-submit on expiration)
+    // Question Countdown Timer Logic (NO auto-submit on expiration)
     useEffect(() => {
         if (isAIPlaying || isSubmitting || isFinished) return;
         if (timeLeft <= 0) return; // Expired, pause at 0, candidate still decides when to submit
@@ -168,7 +106,7 @@ function Step2Interview({ interviewData, onFinish }) {
         return () => clearInterval(timer);
     }, [timeLeft, isAIPlaying, isSubmitting, isFinished]);
 
-    // 6. Overall Session Elapsed Time Timer
+    // Overall Session Elapsed Time Timer
     useEffect(() => {
         if (isFinished) return;
 
@@ -179,9 +117,10 @@ function Step2Interview({ interviewData, onFinish }) {
         return () => clearInterval(interval);
     }, [isFinished]);
 
-    // 7. Finish and Submit Handlers
+    // Finish and Submit Handlers
     const finishInterview = async () => {
         stopListening();
+        cancelSpeech();
         setIsSubmitting(true);
         setIsFinished(true);
         const loadToast = toast.loading("Generating comprehensive assessment report...");
@@ -206,8 +145,9 @@ function Step2Interview({ interviewData, onFinish }) {
     };
 
     const handleSubmit = async () => {
-        if (isSubmitting) return;
+        if (isSubmitting || isAIPlaying) return;
         stopListening();
+        cancelSpeech();
         setIsSubmitting(true);
         const loadToast = toast.loading("Evaluating your response...");
 
@@ -222,12 +162,7 @@ function Step2Interview({ interviewData, onFinish }) {
             }, { withCredentials: true });
 
             toast.success("Answer Recorded", { id: loadToast });
-            setFeedback(result.data.feedback);
-
-            // Await AI speaking the feedback
-            if (result.data.feedback) {
-                await speak(result.data.feedback);
-            }
+            setFeedback(result.data.feedback || '');
 
             // If adaptive cross-questioning inserted a follow-up, adopt updated questions list
             let nextQuestions = questionsList;
@@ -276,7 +211,8 @@ function Step2Interview({ interviewData, onFinish }) {
                         <video
                             ref={videoRef}
                             src='https://res.cloudinary.com/dflf8j84g/video/upload/v1774549693/AI_asking_questions_202603262250_fgjdiw.mp4'
-                            muted playsInline
+                            muted
+                            playsInline
                             className={`w-full h-full object-cover transition-opacity duration-500 ${isAIPlaying ? 'opacity-100' : 'opacity-60'}`}
                         />
                         <div className='absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10'>
@@ -285,6 +221,19 @@ function Step2Interview({ interviewData, onFinish }) {
                                 {isAIPlaying ? 'AI Speaking' : 'Candidate Turn'}
                             </span>
                         </div>
+
+                        {/* Autoplay blocked recovery button */}
+                        {(isAudioBlocked || (!hasActivated && currentIndex === 0)) && (
+                            <button
+                                type="button"
+                                id="enableAudioButton"
+                                onClick={() => requestAudioActivation(currentQuestion?.question, currentQuestion?._id || `step2-q-${currentIndex}`)}
+                                className="absolute bottom-3 right-3 px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 transition-all z-20 cursor-pointer"
+                                title="Browser blocked audio. Click to enable interviewer voice."
+                            >
+                                <HiSpeakerWave className="text-xs" /> Enable Audio
+                            </button>
+                        )}
                     </motion.div>
 
                     {/* Timer & Session Status Panel */}
@@ -348,7 +297,7 @@ function Step2Interview({ interviewData, onFinish }) {
                                 {isAudioBlocked ? (
                                     <button
                                         type="button"
-                                        onClick={replayQuestion}
+                                        onClick={() => requestAudioActivation(currentQuestion?.question, currentQuestion?._id || `step2-q-${currentIndex}`)}
                                         className='inline-flex items-center gap-1 px-2.5 py-0.5 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm transition-all'
                                     >
                                         <HiSpeakerWave className='text-xs' /> Enable Audio
@@ -424,7 +373,7 @@ function Step2Interview({ interviewData, onFinish }) {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 aria-label={isListening ? "Stop voice input" : "Start voice input"}
-                                title={isListening ? "Stop voice recording" : "Click to speak your answer"}
+                                title={isAIPlaying ? "Microphone disabled while AI is speaking" : isListening ? "Stop voice recording" : "Click to speak your answer"}
                                 className={`w-14 h-14 flex items-center justify-center rounded-2xl shadow-lg shrink-0 transition-all ${
                                     isListening 
                                         ? 'bg-red-500 text-white animate-pulse shadow-red-500/30' 
