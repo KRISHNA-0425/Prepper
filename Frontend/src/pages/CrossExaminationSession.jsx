@@ -7,11 +7,12 @@ import {
   HiOutlineStop,
   HiOutlineXMark,
 } from 'react-icons/hi2';
-import { HiCheckBadge } from 'react-icons/hi2';
+import { HiCheckBadge, HiSpeakerWave } from 'react-icons/hi2';
 import { RiLoader4Line, RiTimeLine } from 'react-icons/ri';
 import Timer from '../components/Timer';
 import QuestionCard from '../components/cross-examination/QuestionCard';
 import AnswerConsole from '../components/cross-examination/AnswerConsole';
+import useQuestionSpeech from '../hooks/useQuestionSpeech';
 import PreparationReport from '../components/cross-examination/PreparationReport';
 import { DEFAULT_QUESTION_DURATION, formatTimeMMSS } from '../utils/interviewTimer';
 import {
@@ -45,6 +46,33 @@ function CrossExaminationSession() {
 
   // Overall session elapsed time in seconds
   const [sessionElapsedSeconds, setSessionElapsedSeconds] = useState(0);
+
+  // Audible AI Question Speech Synthesis
+  const {
+    isSpeaking: isAISpeaking,
+    isBlocked: isAudioBlocked,
+    isSupported: _isAudioSupported,
+    speakQuestion,
+    replayQuestion,
+    cancelSpeech,
+    requestAudioActivation,
+  } = useQuestionSpeech({
+    onStart: () => {
+      if (videoRef.current) {
+        videoRef.current.play().catch(() => {});
+      }
+    },
+    onEnd: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    },
+    onError: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    },
+  });
 
   // Fetch Session Data from Server
   const fetchSession = useCallback(async () => {
@@ -81,6 +109,16 @@ function CrossExaminationSession() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  // Automatically speak active question aloud (deduped, cancelled on question change/completion)
+  useEffect(() => {
+    if (activeQuestion && activeQuestion.questionText && !isCompleted && !isLoading) {
+      speakQuestion(activeQuestion.questionText, activeQuestion.questionId);
+    }
+    return () => {
+      cancelSpeech();
+    };
+  }, [activeQuestion, isCompleted, isLoading, speakQuestion, cancelSpeech]);
 
   // Synchronize timer when active question changes
   const activeQuestionId = activeQuestion?.questionId;
@@ -126,6 +164,7 @@ function CrossExaminationSession() {
 
   // Handle Answer Submission
   const handleSubmitAnswer = async ({ questionId, rawTranscript, autoAdvance }) => {
+    cancelSpeech();
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -162,6 +201,7 @@ function CrossExaminationSession() {
 
   // Handle Manual Advance
   const handleAdvance = async () => {
+    cancelSpeech();
     if (isAdvancing) return;
 
     setIsAdvancing(true);
@@ -189,6 +229,7 @@ function CrossExaminationSession() {
 
   // Complete Session Logic
   const handleFinalizeSession = async () => {
+    cancelSpeech();
     setIsCompleting(true);
     const toastId = toast.loading('Finalizing cross-examination...');
 
@@ -288,13 +329,24 @@ function CrossExaminationSession() {
               loop
               className="w-full h-full object-cover"
             />
-            {/* Candidate Turn Badge */}
+            {/* Candidate Turn / AI Speaking Badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
-              <div className="w-2 h-2 rounded-full bg-yellow-400" />
+              <div className={`w-2 h-2 rounded-full ${isAISpeaking ? 'bg-emerald-400 animate-ping' : 'bg-yellow-400'}`} />
               <span className="text-[9px] font-bold text-white uppercase tracking-wider">
-                CANDIDATE TURN
+                {isAISpeaking ? 'AI SPEAKING' : 'CANDIDATE TURN'}
               </span>
             </div>
+
+            {/* Browser Autoplay Blocked Recovery Action */}
+            {isAudioBlocked && (
+              <button
+                type="button"
+                onClick={() => requestAudioActivation(activeQuestion?.questionText, activeQuestion?.questionId)}
+                className="absolute bottom-3 right-3 px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 transition-all z-20"
+              >
+                <HiSpeakerWave className="text-xs" /> Enable Audio
+              </button>
+            )}
           </motion.div>
 
           {/* B & C. Session Elapsed Timer & Circular Countdown Card */}
@@ -359,6 +411,10 @@ function CrossExaminationSession() {
             totalQuestions={totalQuestions}
             timeLeft={timeLeft}
             totalTime={totalQuestionTime}
+            isSpeaking={isAISpeaking}
+            onReplay={() => replayQuestion(activeQuestion?.questionText, activeQuestion?.questionId)}
+            isAudioBlocked={isAudioBlocked}
+            onEnableAudio={() => requestAudioActivation(activeQuestion?.questionText, activeQuestion?.questionId)}
           />
 
           {/* C, D, E. Answer Editor, Guidance & Action Bar */}
@@ -372,6 +428,7 @@ function CrossExaminationSession() {
               isAdvancing={isAdvancing}
               timeLeft={timeLeft}
               isLastQuestion={isLastQuestion}
+              isAISpeaking={isAISpeaking}
             />
           )}
         </div>

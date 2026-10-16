@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Timer from '../components/Timer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiMicrophone, HiCheckBadge, HiArrowRight } from "react-icons/hi2";
+import { HiMicrophone, HiCheckBadge, HiArrowRight, HiSpeakerWave } from "react-icons/hi2";
 import { RiTimeLine, RiQuestionAnswerLine } from "react-icons/ri";
 import toast from 'react-hot-toast';
 import { backendServerUrl } from '../App';
@@ -11,6 +11,8 @@ import { DEFAULT_QUESTION_DURATION, formatTimeMMSS } from '../utils/interviewTim
 
 function Step2Interview({ interviewData, onFinish }) {
     const femaleVoiceRef = useRef(null);
+    const lastSpokenIndexRef = useRef(-1);
+    const [isAudioBlocked, setIsAudioBlocked] = useState(false);
     const videoRef = useRef(null);
 
     const { interviewId, questions: initialQuestions = [], userName, mode } = interviewData;
@@ -83,10 +85,17 @@ function Step2Interview({ interviewData, onFinish }) {
         };
     }, [stopListening]);
 
+    // Ensure candidate microphone does not transcribe interviewer audio while AI is speaking
+    useEffect(() => {
+        if (isAIPlaying) {
+            stopListening();
+        }
+    }, [isAIPlaying, stopListening]);
+
     // 3. Speak Logic (Promise-based for awaiting speech)
     const speak = (text) => {
         return new Promise((resolve) => {
-            if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return; }
+            if (typeof window === 'undefined' || !window.speechSynthesis || !text) { resolve(); return; }
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
@@ -94,6 +103,7 @@ function Step2Interview({ interviewData, onFinish }) {
 
             utterance.onstart = () => {
                 setIsAIPlaying(true);
+                setIsAudioBlocked(false);
                 if (videoRef.current) videoRef.current.play().catch(() => { });
             };
             utterance.onend = () => {
@@ -104,18 +114,34 @@ function Step2Interview({ interviewData, onFinish }) {
                 }
                 resolve();
             };
-            utterance.onerror = () => {
+            utterance.onerror = (event) => {
                 setIsAIPlaying(false);
+                if (event && event.error === 'not-allowed') {
+                    setIsAudioBlocked(true);
+                }
                 resolve();
             };
-            window.speechSynthesis.speak(utterance);
+            try {
+                window.speechSynthesis.speak(utterance);
+            } catch {
+                setIsAIPlaying(false);
+                setIsAudioBlocked(true);
+                resolve();
+            }
         });
     };
 
-    // 4. Sequence Workflow (Triggers on Index Change)
+    const replayQuestion = () => {
+        if (currentQuestion && currentQuestion.question) {
+            speak(currentQuestion.question);
+        }
+    };
+
+    // 4. Sequence Workflow (Triggers on Index Change, deduped against rerenders/timer updates)
     useEffect(() => {
         let isMounted = true;
-        if (femaleVoiceRef.current && currentQuestion) {
+        if (currentQuestion && lastSpokenIndexRef.current !== currentIndex) {
+            lastSpokenIndexRef.current = currentIndex;
             const runSequence = async () => {
                 if (currentIndex === 0) {
                     await speak(`Hello ${userName || 'Candidate'}. I am your AI interviewer. Let's begin.`);
@@ -314,9 +340,37 @@ function Step2Interview({ interviewData, onFinish }) {
 
                     {/* Active Question Display */}
                     <div className='mb-4 shrink-0'>
-                        <p className='text-slate-400 font-bold text-[9px] uppercase tracking-widest mb-1'>
-                            Question {currentIndex + 1}
-                        </p>
+                        <div className='flex items-center justify-between mb-1'>
+                            <p className='text-slate-400 font-bold text-[9px] uppercase tracking-widest'>
+                                Question {currentIndex + 1}
+                            </p>
+                            <div className='flex items-center gap-2'>
+                                {isAudioBlocked ? (
+                                    <button
+                                        type="button"
+                                        onClick={replayQuestion}
+                                        className='inline-flex items-center gap-1 px-2.5 py-0.5 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm transition-all'
+                                    >
+                                        <HiSpeakerWave className='text-xs' /> Enable Audio
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        id="replayQuestionVoiceButton"
+                                        onClick={replayQuestion}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all border ${
+                                            isAIPlaying
+                                                ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 animate-pulse'
+                                                : 'bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-600 border-slate-200'
+                                        }`}
+                                        title={isAIPlaying ? "AI Interviewer is speaking..." : "Replay question audio"}
+                                    >
+                                        <HiSpeakerWave className={`text-xs ${isAIPlaying ? 'animate-bounce' : ''}`} />
+                                        <span>{isAIPlaying ? 'Speaking...' : 'Replay'}</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                         <div className='text-base md:text-lg font-bold text-slate-800 leading-snug border-l-4 border-yellow-400 pl-4 py-0.5'>
                             {currentQuestion?.question}
                         </div>

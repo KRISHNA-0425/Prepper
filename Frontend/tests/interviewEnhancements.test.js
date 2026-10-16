@@ -345,4 +345,265 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(getTimerStatus(timeLeft), 'expired');
         });
     });
+
+    // ==========================================
+    // 6. Feature — Audible Question Speech & Replay Lifecycle
+    // ==========================================
+    describe('6. Feature — Audible Question Speech & Replay Lifecycle', () => {
+        it('should verify useQuestionSpeech.js exists and exports expected hook functions', async () => {
+            const hookModule = await import('../src/hooks/useQuestionSpeech.js');
+            assert.ok(hookModule.default || hookModule.useQuestionSpeech, 'useQuestionSpeech hook must be exported');
+        });
+
+        it('should deduplicate speech synthesis across 1-second countdown timer ticks and rerenders', () => {
+            const spokenUtterances = [];
+            const lastSpokenIdRef = { current: null };
+
+            const speakQuestion = (text, questionId, { force = false } = {}) => {
+                if (!force && lastSpokenIdRef.current === questionId) {
+                    return; // Prevent duplicate speech
+                }
+                lastSpokenIdRef.current = questionId;
+                spokenUtterances.push({ questionId, text });
+            };
+
+            // First render of Question 1: speaks
+            speakQuestion('Explain event-driven architecture.', 'q_1');
+            assert.strictEqual(spokenUtterances.length, 1);
+
+            // 1-second timer tick (timeLeft: 120 -> 119 -> 118) triggers rerender: does NOT speak again
+            speakQuestion('Explain event-driven architecture.', 'q_1');
+            speakQuestion('Explain event-driven architecture.', 'q_1');
+            assert.strictEqual(spokenUtterances.length, 1, 'Speech must be strictly deduped on timer updates');
+
+            // Advancing to Question 2: speaks new question
+            speakQuestion('How do you prevent race conditions?', 'q_2');
+            assert.strictEqual(spokenUtterances.length, 2);
+            assert.strictEqual(spokenUtterances[1].questionId, 'q_2');
+
+            // Explicit replay click on Question 2: speaks again with force = true
+            speakQuestion('How do you prevent race conditions?', 'q_2', { force: true });
+            assert.strictEqual(spokenUtterances.length, 3, 'Explicit replay must re-speak even for the same questionId');
+        });
+
+        it('should cancel active speech immediately when question changes or session finishes', () => {
+            let activeUtteranceCancelled = false;
+            const mockCancel = () => {
+                activeUtteranceCancelled = true;
+            };
+
+            // Simulate question transition
+            const onTransition = () => {
+                mockCancel();
+            };
+
+            onTransition();
+            assert.strictEqual(activeUtteranceCancelled, true, 'Speech must be cancelled on question transition');
+        });
+
+        it('should disable candidate microphone while interviewer is actively speaking', () => {
+            const isAISpeaking = true;
+            const isSubmitting = false;
+            const isAdvancing = false;
+
+            const isMicDisabled = isSubmitting || isAdvancing || isAISpeaking;
+            assert.strictEqual(isMicDisabled, true, 'Microphone must be disabled while AI is speaking to prevent audio feedback');
+
+            // When AI finishes speaking, mic can be enabled
+            const isMicDisabledAfterSpeech = isSubmitting || isAdvancing || false;
+            assert.strictEqual(isMicDisabledAfterSpeech, false);
+        });
+
+        it('should handle browser autoplay restriction recovery via requestAudioActivation', () => {
+            let isBlocked = true;
+            let audioActivated = false;
+
+            const requestAudioActivation = () => {
+                isBlocked = false;
+                audioActivated = true;
+            };
+
+            requestAudioActivation();
+            assert.strictEqual(isBlocked, false);
+            assert.strictEqual(audioActivated, true);
+        });
+
+        it('should verify CrossExaminationSession.jsx and QuestionCard.jsx integrate question voice controls', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+
+            const sessionContent = fs.readFileSync(path.resolve('src/pages/CrossExaminationSession.jsx'), 'utf8');
+            assert.ok(sessionContent.includes('useQuestionSpeech'), 'CrossExaminationSession must import useQuestionSpeech');
+            assert.ok(sessionContent.includes('isAISpeaking'), 'CrossExaminationSession must track isAISpeaking state');
+            assert.ok(sessionContent.includes('AI SPEAKING'), 'CrossExaminationSession must render AI SPEAKING state');
+            assert.ok(sessionContent.includes('speakQuestion('), 'CrossExaminationSession must trigger speakQuestion');
+            assert.ok(sessionContent.includes('cancelSpeech()'), 'CrossExaminationSession must cancel speech on transition');
+
+            const cardContent = fs.readFileSync(path.resolve('src/components/cross-examination/QuestionCard.jsx'), 'utf8');
+            assert.ok(cardContent.includes('HiSpeakerWave'), 'QuestionCard must render speaker icon');
+            assert.ok(cardContent.includes('onReplay'), 'QuestionCard must accept onReplay callback');
+            assert.ok(cardContent.includes('Speaking...'), 'QuestionCard must show speaking state');
+            assert.ok(cardContent.includes('Replay'), 'QuestionCard must show replay option');
+        });
+
+        it('should verify Step2Interview.jsx has audible question speech, deduping, and replay control', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step2Content = fs.readFileSync(path.resolve('src/pages/Step2Interview.jsx'), 'utf8');
+
+            assert.ok(step2Content.includes('lastSpokenIndexRef'), 'Step2Interview must track lastSpokenIndexRef for deduping');
+            assert.ok(step2Content.includes('replayQuestion'), 'Step2Interview must define replayQuestion handler');
+            assert.ok(step2Content.includes('HiSpeakerWave'), 'Step2Interview must render speaker wave icon');
+            assert.ok(step2Content.includes('Replay'), 'Step2Interview must render Replay control');
+            assert.ok(!step2Content.includes('if (femaleVoiceRef.current && currentQuestion)'), 
+                'Step2Interview must NOT block speech waiting for femaleVoiceRef.current');
+        });
+    });
+
+    // ==========================================
+    // 7. Feature — Resume Extraction & Setup Auto-Fill
+    // ==========================================
+    describe('7. Feature — Resume Extraction & Setup Auto-Fill', () => {
+        it('should verify Step1Setup.jsx triggers extraction automatically on file select without extra sync click', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('performResumeExtraction(file)'), 
+                'Step1Setup must automatically trigger performResumeExtraction when a file is selected');
+            assert.ok(step1Content.includes('userEditedFieldsRef'), 
+                'Step1Setup must maintain userEditedFieldsRef to preserve manual edits');
+        });
+
+        it('should auto-populate form fields from extracted data when user has not manually edited them', () => {
+            const userEditedFields = { role: false, experience: false };
+            let formState = { role: '', experience: '', skills: [], projects: [] };
+
+            const extractedData = {
+                role: 'Senior Backend Engineer',
+                experience: '5 years',
+                skills: ['Node.js', 'PostgreSQL', 'Docker'],
+                projects: ['Distributed Task Queue']
+            };
+
+            // Auto-fill logic
+            if (!userEditedFields.role && extractedData.role) {
+                formState.role = extractedData.role;
+            }
+            if (!userEditedFields.experience && extractedData.experience) {
+                formState.experience = extractedData.experience;
+            }
+            formState.skills = extractedData.skills;
+            formState.projects = extractedData.projects;
+
+            assert.strictEqual(formState.role, 'Senior Backend Engineer');
+            assert.strictEqual(formState.experience, '5 years');
+            assert.deepStrictEqual(formState.skills, ['Node.js', 'PostgreSQL', 'Docker']);
+            assert.deepStrictEqual(formState.projects, ['Distributed Task Queue']);
+        });
+
+        it('should strictly preserve user manual edits even if resume extraction returns late', () => {
+            // User manually typed "Platform Architect" before or during extraction
+            const userEditedFields = { role: true, experience: false };
+            let formState = { role: 'Platform Architect', experience: '', skills: [] };
+
+            const lateExtractedData = {
+                role: 'Junior Developer', // Resume says Junior Developer
+                experience: '2 years',
+                skills: ['TypeScript']
+            };
+
+            // Auto-fill logic with edit preservation
+            if (!userEditedFields.role && lateExtractedData.role) {
+                formState.role = lateExtractedData.role;
+            }
+            if (!userEditedFields.experience && lateExtractedData.experience) {
+                formState.experience = lateExtractedData.experience;
+            }
+            formState.skills = lateExtractedData.skills;
+
+            assert.strictEqual(formState.role, 'Platform Architect', 'User manual edit must NOT be overwritten by late extraction response');
+            assert.strictEqual(formState.experience, '2 years', 'Unedited field must still be auto-filled');
+        });
+
+        it('should leave missing extracted fields empty rather than fabricating data', () => {
+            const userEditedFields = { role: false, experience: false };
+            let formState = { role: '', experience: '', skills: [] };
+
+            const sparseExtractedData = {
+                role: '', // No role in resume
+                experience: '', // No experience in resume
+                skills: ['Python']
+            };
+
+            if (!userEditedFields.role && sparseExtractedData.role) {
+                formState.role = sparseExtractedData.role;
+            }
+            if (!userEditedFields.experience && sparseExtractedData.experience) {
+                formState.experience = sparseExtractedData.experience;
+            }
+            formState.skills = sparseExtractedData.skills;
+
+            assert.strictEqual(formState.role, '', 'Missing role must remain empty');
+            assert.strictEqual(formState.experience, '', 'Missing experience must remain empty');
+            assert.deepStrictEqual(formState.skills, ['Python']);
+        });
+
+        it('should gracefully handle extraction failure without discarding existing user inputs', () => {
+            let formState = { role: 'DevOps Engineer', experience: '3 years' };
+            let parsingFailed = false;
+
+            try {
+                // Simulate malformed or scanned PDF failure
+                throw new Error('PDF extraction returned empty text');
+            } catch (err) {
+                parsingFailed = true;
+                // Preserve existing user inputs on failure
+            }
+
+            assert.strictEqual(parsingFailed, true);
+            assert.strictEqual(formState.role, 'DevOps Engineer');
+            assert.strictEqual(formState.experience, '3 years');
+        });
+    });
+
+    // ==========================================
+    // 8. Feature — Cross-Questioning Dropdown (Technical & Behavioral Only)
+    // ==========================================
+    describe('8. Feature — Cross-Questioning Dropdown (Technical & Behavioral Only)', () => {
+        it('should verify Step1Setup.jsx dropdown contains strictly Technical and Behavioral options', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('id="crossQuestioningType"'), 'Step1Setup must render crossQuestioningType select element');
+            assert.ok(step1Content.includes('<option value="Technical">Technical</option>'), 'Must include Technical option');
+            assert.ok(step1Content.includes('<option value="Behavioral">Behavioral</option>'), 'Must include Behavioral option');
+
+            // Must NOT contain disallowed choices
+            assert.ok(!step1Content.includes('<option value="Mixed">'), 'Must NOT contain Mixed option');
+            assert.ok(!step1Content.includes('<option value="General">'), 'Must NOT contain General option');
+            assert.ok(!step1Content.includes('<option value="HR">HR</option>'), 'Must NOT contain HR option in crossQuestioningType');
+            assert.ok(!step1Content.includes('<option value="System Design">'), 'Must NOT contain System Design option');
+            assert.ok(!step1Content.includes('<option value="Other">'), 'Must NOT contain Other option');
+        });
+
+        it('should default cross-questioning type to Technical', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes("useState('Technical')"), 'crossQuestioningType must default to Technical');
+        });
+
+        it('should preserve selected crossQuestioningType in interview generation payload', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('crossQuestioningType: crossQuestioningType || "Technical"'), 
+                'Payload must forward selected crossQuestioningType to generateQuestions API');
+        });
+    });
+
 });

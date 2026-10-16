@@ -1,12 +1,16 @@
 import React from 'react';
+import { HiSpeakerWave } from 'react-icons/hi2';
 import { formatTimeMMSS } from '../../utils/interviewTimer';
 
 function QuestionCard({
   question,
   currentNumber = 1,
-  
   timeLeft = 120,
   totalTime = 120,
+  isSpeaking = false,
+  onReplay = null,
+  isAudioBlocked = false,
+  onEnableAudio = null,
 }) {
   if (!question) {
     return null;
@@ -27,9 +31,43 @@ function QuestionCard({
   return (
     <div className="shrink-0 mb-4 text-left">
       <div className="flex items-center justify-between mb-1.5">
-        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-          QUESTION {currentNumber || safeQuestion.order}
-        </p>
+        <div className="flex items-center gap-2.5">
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+            QUESTION {currentNumber || safeQuestion.order}
+          </p>
+
+          {/* Audible Question Voice Replay / Status Control */}
+          {onReplay && (
+            <div className="flex items-center gap-1.5">
+              {isAudioBlocked ? (
+                <button
+                  type="button"
+                  id="enableAudioButton"
+                  onClick={onEnableAudio || onReplay}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-400 hover:bg-yellow-300 text-slate-900 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm transition-all"
+                  title="Browser blocked autoplay. Click to enable interviewer voice."
+                >
+                  <HiSpeakerWave className="text-xs" /> Enable Audio
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="replayQuestionVoiceButton"
+                  onClick={onReplay}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all border ${
+                    isSpeaking
+                      ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 animate-pulse'
+                      : 'bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-600 border-slate-200'
+                  }`}
+                  title={isSpeaking ? "Interviewer is reading the question" : "Replay question audio"}
+                >
+                  <HiSpeakerWave className={`text-xs ${isSpeaking ? 'animate-bounce' : ''}`} />
+                  <span>{isSpeaking ? 'Speaking...' : 'Replay'}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Accessible countdown timer display */}
         <div

@@ -66,12 +66,14 @@ export const resumeAnalyse = async (req, res) => {
 
 export const generateQuestions = async (req, res) => {
     try {
-        let { role, experience, mode, resumeText, projects, skills, enableCrossQuestioning } = req.body;
+        let { role, experience, mode, resumeText, projects, skills, enableCrossQuestioning, crossQuestioningType } = req.body;
 
         role = role?.trim();
         experience = experience?.trim();
         mode = mode?.trim();
         enableCrossQuestioning = Boolean(enableCrossQuestioning);
+        const validCrossTypes = ["Technical", "Behavioral"];
+        const safeCrossQuestioningType = validCrossTypes.includes(crossQuestioningType) ? crossQuestioningType : "Technical";
 
         if (!role || !experience || !mode) {
             return res.status(400).json({ message: "Please enter all the data" });
@@ -175,7 +177,8 @@ export const generateQuestions = async (req, res) => {
             userName: user.name,
             questions: interview.questions,
             mode,
-            enableCrossQuestioning: interview.enableCrossQuestioning
+            enableCrossQuestioning: interview.enableCrossQuestioning,
+            crossQuestioningType: interview.crossQuestioningType
         });
 
     } catch (error) {
@@ -322,16 +325,17 @@ Answer: ${answer}
 
             if (isEligibleForProbe) {
                 try {
-                    const probeMessages = [
-                        {
-                            role: "system",
-                            content: `You are an expert interviewer.
-Based on the candidate's answer, decide whether a targeted follow-up question is warranted to probe deeper into technical specifics, architectural trade-offs, or unclear details.
+                    const crossType = interview.crossQuestioningType || 'Technical';
+                    const isBehavioral = crossType === 'Behavioral';
+                    const probeSystemPrompt = isBehavioral
+                        ? `You are an expert interviewer specializing in behavioral probing.
+Based on the candidate's answer, decide whether a targeted behavioral follow-up question is warranted.
+Probe into concrete situations, the candidate's individual ownership, decisions, collaboration, conflicts, actions taken, outcomes, and lessons learned.
 Rules:
 - If warranted, return JSON:
 {
   "warranted": true,
-  "followUpQuestion": "A single direct follow-up question (15-25 words)",
+  "followUpQuestion": "A single direct behavioral follow-up question (15-25 words)",
   "difficulty": "medium"
 }
 - If the answer was sufficient or not suitable for probing, return JSON:
@@ -339,6 +343,25 @@ Rules:
   "warranted": false
 }
 Return ONLY valid JSON.`
+                        : `You are an expert interviewer specializing in technical and architectural probing.
+Based on the candidate's answer, decide whether a targeted technical follow-up question is warranted to probe deeper into technical specifics, architectural trade-offs, debugging decisions, edge cases, performance, and evidence for technical claims.
+Rules:
+- If warranted, return JSON:
+{
+  "warranted": true,
+  "followUpQuestion": "A single direct technical follow-up question (15-25 words)",
+  "difficulty": "medium"
+}
+- If the answer was sufficient or not suitable for probing, return JSON:
+{
+  "warranted": false
+}
+Return ONLY valid JSON.`;
+
+                    const probeMessages = [
+                        {
+                            role: "system",
+                            content: probeSystemPrompt
                         },
                         {
                             role: "user",

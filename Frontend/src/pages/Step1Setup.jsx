@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HiCheckCircle, HiMicrophone, HiChartBar, HiBriefcase, HiTrendingUp, HiArrowRight, HiSparkles, HiCode, HiCollection, HiX } from 'react-icons/hi'
 import { FaFileArrowUp } from "react-icons/fa6";
@@ -22,7 +22,10 @@ function Step1Setup({ onStart }) {
     const [resumeText, setResumeText] = useState('')
     const [anaylsisDone, setAnaylsisDone] = useState(false)
     const [anaylzing, setAnaylzing] = useState(false)
-    const [enableCrossQuestioning, setEnableCrossQuestioning] = useState(false)
+    const [enableCrossQuestioning, setEnableCrossQuestioning] = useState(false);
+    const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
+    const userEditedFieldsRef = useRef({ role: false, experience: false });
+    const uploadedFileRef = useRef(null);
 
     const navigate = useNavigate();
 
@@ -39,35 +42,58 @@ function Step1Setup({ onStart }) {
         })
     };
 
-    const handleUploadResume = async (e) => {
-        if (e) e.stopPropagation();
-        if (!resumeFile || anaylzing) return;
+    const performResumeExtraction = async (file) => {
+        if (!file || anaylzing) return;
+        if (uploadedFileRef.current === file && anaylsisDone) return;
 
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            toast.error("Please upload a PDF document");
+            return;
+        }
+
+        setResumeFile(file);
+        uploadedFileRef.current = file;
         setAnaylzing(true);
-        const loadToast = toast.loading("AI is scanning your profile...");
+        const loadToast = toast.loading("Extracting and parsing resume details...");
 
-        const formData = new FormData()
-        formData.append("resume", resumeFile)
+        const formData = new FormData();
+        formData.append("resume", file);
 
         try {
-            const result = await axios.post(backendServerUrl + '/api/interview/resume', formData, { withCredentials: true })
+            const result = await axios.post(backendServerUrl + '/api/interview/resume', formData, { withCredentials: true });
 
-            // Artificial delay for smoother UX transition
-            setRole(result.data.role || '')
-            setExperience(result.data.experience || '')
-            setProjects(result.data.projects || [])
-            setSkills(result.data.skills || [])
-            setResumeText(result.data.resumeText || '')
-            setAnaylsisDone(true)
+            // Auto-populate relevant fields preserving manual user edits
+            if (!userEditedFieldsRef.current.role && result.data.role) {
+                setRole(result.data.role);
+            }
+            if (!userEditedFieldsRef.current.experience && result.data.experience) {
+                setExperience(result.data.experience);
+            }
+            if (Array.isArray(result.data.projects) && result.data.projects.length) {
+                setProjects(result.data.projects);
+            }
+            if (Array.isArray(result.data.skills) && result.data.skills.length) {
+                setSkills(result.data.skills);
+            }
+            if (result.data.resumeText) {
+                setResumeText(result.data.resumeText);
+            }
+            setAnaylsisDone(true);
 
-            toast.success("Profile Sync Complete!", { id: loadToast });
+            toast.success("Resume parsed! Relevant fields populated automatically.", { id: loadToast });
         } catch (error) {
-            console.error('Error in handleUploadResume', error);
-            toast.error("Unable to analyze resume. Please refresh or try again later", { id: loadToast });
+            console.error('Error in resume extraction', error);
+            toast.error("Could not extract text from document. You can still enter details manually.", { id: loadToast });
         } finally {
             setAnaylzing(false);
         }
-    }
+    };
+
+    const handleUploadResume = async (e) => {
+        if (e) e.stopPropagation();
+        if (!resumeFile) return;
+        await performResumeExtraction(resumeFile);
+    };
 
     // const handleSubmit = (e) => {
     //     e.preventDefault();
@@ -78,7 +104,7 @@ function Step1Setup({ onStart }) {
         setLoading(true);
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/generateQuestions',
-                { role, experience, mode, skills, projects, resumeText, enableCrossQuestioning: Boolean(enableCrossQuestioning) }, { withCredentials: true }
+                { role, experience, mode, skills, projects, resumeText, enableCrossQuestioning: Boolean(enableCrossQuestioning), crossQuestioningType: crossQuestioningType || "Technical" }, { withCredentials: true }
             )
             console.log(result.data)
 
@@ -183,7 +209,7 @@ function Step1Setup({ onStart }) {
                                         type="text"
                                         placeholder="e.g. Frontend Engineer"
                                         value={role}
-                                        onChange={(e) => setRole(e.target.value)}
+                                        onChange={(e) => { userEditedFieldsRef.current.role = true; setRole(e.target.value); }}
                                         className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
                                     />
                                 </motion.div>
@@ -191,7 +217,7 @@ function Step1Setup({ onStart }) {
                                 <motion.div className='flex flex-col gap-2'>
                                     <div className='space-y-1'>
                                         <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><HiTrendingUp /> Level</label>
-                                        {/* <select value={experience} onChange={(e) => setExperience(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'><option value="0-1">Freshman</option><option value="2-4">Intermediate</option><option value="5+">Senior</option></select> */}
+                                        {/* <select value={experience} onChange={(e) => { userEditedFieldsRef.current.experience = true; setExperience(e.target.value); }} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'><option value="0-1">Freshman</option><option value="2-4">Intermediate</option><option value="5+">Senior</option></select> */}
                                         <input
                                             type="text"
                                             className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
@@ -207,7 +233,7 @@ function Step1Setup({ onStart }) {
                                 </motion.div>
 
                                 {/* Feature D: Optional Cross-Questioning Option */}
-                                <motion.div layout className='p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-yellow-400/60 transition-colors'>
+                                <motion.div layout className='p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-yellow-400/60 transition-colors space-y-2.5'>
                                     <label htmlFor="enableCrossQuestioning" className='flex items-start gap-3 cursor-pointer select-none'>
                                         <input
                                             type="checkbox"
@@ -226,6 +252,29 @@ function Step1Setup({ onStart }) {
                                             </span>
                                         </div>
                                     </label>
+
+                                    {enableCrossQuestioning && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className='pt-2.5 border-t border-slate-200/80 flex items-center justify-between gap-3'
+                                        >
+                                            <label htmlFor="crossQuestioningType" className='text-[10px] font-black uppercase text-slate-500'>
+                                                Cross-Questioning Type
+                                            </label>
+                                            <select
+                                                id="crossQuestioningType"
+                                                name="crossQuestioningType"
+                                                value={crossQuestioningType}
+                                                onChange={(e) => setCrossQuestioningType(e.target.value)}
+                                                className='bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'
+                                            >
+                                                <option value="Technical">Technical</option>
+                                                <option value="Behavioral">Behavioral</option>
+                                            </select>
+                                        </motion.div>
+                                    )}
                                 </motion.div>
 
                                 <AnimatePresence mode='wait'>
@@ -240,7 +289,12 @@ function Step1Setup({ onStart }) {
                                             onClick={() => document.getElementById("resumeUpload").click()}
                                         >
                                             <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
-                                            <input type="file" accept='application/pdf' id="resumeUpload" className='hidden' onChange={(e) => setResumeFile(e.target.files[0])} />
+                                            <input type="file" accept='application/pdf' id="resumeUpload" className='hidden' onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    performResumeExtraction(file);
+                                                }
+                                            }} />
                                             <p className='text-xs font-bold text-slate-600 truncate'>{resumeFile ? resumeFile.name : "Upload resume (optional)"}</p>
                                             {resumeFile && (
                                                 <motion.button
@@ -264,7 +318,7 @@ function Step1Setup({ onStart }) {
                                         >
                                             <motion.button
                                                 whileHover={{ rotate: 90 }}
-                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null) }}
+                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null); uploadedFileRef.current = null; }}
                                                 className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
                                             >
                                                 <HiX />

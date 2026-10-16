@@ -18,6 +18,7 @@ function AnswerConsole({
   isAdvancing,
   timeLeft = 120,
   isLastQuestion = false,
+  isAISpeaking = false,
 }) {
   const [transcript, setTranscript] = useState('');
   const [autoAdvance] = useState(true);
@@ -51,12 +52,12 @@ function AnswerConsole({
     stopListening();
   }, [activeQuestion?.questionId, syncBaseText, stopListening]);
 
-  // Stop listening when answer is submitted or answered
+  // Stop listening when answer is submitted, answered, or AI is speaking
   useEffect(() => {
-    if (isAnswered || isSubmitting || isAdvancing) {
+    if (isAnswered || isSubmitting || isAdvancing || isAISpeaking) {
       stopListening();
     }
-  }, [isAnswered, isSubmitting, isAdvancing, stopListening]);
+  }, [isAnswered, isSubmitting, isAdvancing, isAISpeaking, stopListening]);
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();

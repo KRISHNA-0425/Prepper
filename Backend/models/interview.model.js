@@ -69,6 +69,11 @@ const interviewSchema = new mongoose.Schema({
     enableCrossQuestioning: {
         type: Boolean,
         default: false
+    },
+    crossQuestioningType: {
+        type: String,
+        enum: ["Technical", "Behavioral"],
+        default: "Technical"
     }
 }, { timestamps: true })
 

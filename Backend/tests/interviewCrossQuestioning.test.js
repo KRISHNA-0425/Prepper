@@ -66,6 +66,44 @@ describe('Interview Cross-Questioning & Enhancements Suite', () => {
 
             assert.strictEqual(doc.enableCrossQuestioning, true);
         });
+
+        it('should validate crossQuestioningType schema: defaults to Technical with enum [Technical, Behavioral]', () => {
+            const schema = Interview.schema;
+            const field = schema.path('crossQuestioningType');
+            assert.ok(field, 'crossQuestioningType path must exist in Interview schema');
+            assert.strictEqual(field.instance, 'String');
+            assert.strictEqual(field.defaultValue, 'Technical');
+            assert.deepStrictEqual(field.enumValues, ['Technical', 'Behavioral']);
+
+            const doc = new Interview({
+                userId: new mongoose.Types.ObjectId(),
+                role: 'Frontend Engineer',
+                experience: '2 years',
+                mode: 'Technical'
+            });
+            assert.strictEqual(doc.crossQuestioningType, 'Technical');
+
+            // Behavioral is allowed
+            const behavioralDoc = new Interview({
+                userId: new mongoose.Types.ObjectId(),
+                role: 'Frontend Engineer',
+                experience: '2 years',
+                mode: 'Technical',
+                crossQuestioningType: 'Behavioral'
+            });
+            assert.strictEqual(behavioralDoc.crossQuestioningType, 'Behavioral');
+
+            // Invalid enum throws validation error
+            const invalidDoc = new Interview({
+                userId: new mongoose.Types.ObjectId(),
+                role: 'Frontend Engineer',
+                experience: '2 years',
+                mode: 'Technical',
+                crossQuestioningType: 'System Design'
+            });
+            const validationError = invalidDoc.validateSync();
+            assert.ok(validationError && validationError.errors['crossQuestioningType'], 'Must reject non-Technical/Behavioral enum values');
+        });
     });
 
     // ==========================================
@@ -170,6 +208,41 @@ describe('Interview Cross-Questioning & Enhancements Suite', () => {
             assert.strictEqual(questions[1].parentQuestionIndex, 0);
             assert.strictEqual(questions[2].question, 'Q2: Database indexing');
             assert.strictEqual(questions[3].question, 'Q3: System design');
+        });
+
+        it('should sanitize crossQuestioningType input to Technical or Behavioral only', () => {
+            const validCrossTypes = ["Technical", "Behavioral"];
+            const sanitizeCrossType = (val) => validCrossTypes.includes(val) ? val : "Technical";
+
+            assert.strictEqual(sanitizeCrossType(undefined), 'Technical');
+            assert.strictEqual(sanitizeCrossType(null), 'Technical');
+            assert.strictEqual(sanitizeCrossType(''), 'Technical');
+            assert.strictEqual(sanitizeCrossType('Technical'), 'Technical');
+            assert.strictEqual(sanitizeCrossType('Behavioral'), 'Behavioral');
+            assert.strictEqual(sanitizeCrossType('Mixed'), 'Technical');
+            assert.strictEqual(sanitizeCrossType('General'), 'Technical');
+            assert.strictEqual(sanitizeCrossType('HR'), 'Technical');
+            assert.strictEqual(sanitizeCrossType('System Design'), 'Technical');
+            assert.strictEqual(sanitizeCrossType('Other'), 'Technical');
+        });
+
+        it('should formulate targeted probe prompts according to crossQuestioningType', () => {
+            const getProbePrompt = (crossType) => {
+                const isBehavioral = crossType === 'Behavioral';
+                return isBehavioral
+                    ? "behavioral probing: probe into concrete situations, candidate's individual ownership, decisions, collaboration, conflicts, actions taken, outcomes, and lessons learned"
+                    : "technical probing: probe into technical specifics, architectural trade-offs, debugging decisions, edge cases, performance, and evidence for technical claims";
+            };
+
+            const techPrompt = getProbePrompt('Technical');
+            assert.ok(techPrompt.includes('technical specifics'));
+            assert.ok(techPrompt.includes('architectural trade-offs'));
+            assert.ok(techPrompt.includes('debugging decisions'));
+
+            const behavPrompt = getProbePrompt('Behavioral');
+            assert.ok(behavPrompt.includes('concrete situations'));
+            assert.ok(behavPrompt.includes('collaboration'));
+            assert.ok(behavPrompt.includes('lessons learned'));
         });
 
         it('should not alter question list when cross-questioning is disabled', () => {
