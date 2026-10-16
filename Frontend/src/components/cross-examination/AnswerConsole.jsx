@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  HiOutlinePaperAirplane,
-  HiOutlineArrowRight,
-  HiOutlineExclamationCircle,
-  HiOutlineCheckCircle,
+  HiCheckCircle,
+  HiExclamationCircle,
 } from 'react-icons/hi';
-import { HiMicrophone } from 'react-icons/hi2';
+import { HiMicrophone, HiArrowRight } from 'react-icons/hi2';
 import { RiLoader4Line } from 'react-icons/ri';
 import { CROSS_EXAM_BOUNDS, validateAnswerInput } from '../../utils/crossExaminationApi';
 import useSpeechRecognition from '../../hooks/useSpeechRecognition';
@@ -19,16 +17,17 @@ function AnswerConsole({
   isSubmitting,
   isAdvancing,
   timeLeft = 120,
+  isLastQuestion = false,
 }) {
   const [transcript, setTranscript] = useState('');
-  const [autoAdvance, setAutoAdvance] = useState(true);
+  const [autoAdvance] = useState(true);
   const [validationError, setValidationError] = useState('');
 
   const isExpired = timeLeft <= 0;
   const charCount = transcript.trim().length;
   const isOverLimit = charCount > CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS;
 
-  // Speech-to-text integration: appends to typed text without overwriting
+  // Speech-to-text integration: appends recognized speech to existing typed text
   const handleTranscriptChange = useCallback((newTranscript) => {
     setTranscript(newTranscript);
     setValidationError('');
@@ -87,26 +86,25 @@ function AnswerConsole({
   };
 
   return (
-    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md text-left">
+    <div className="flex-1 flex flex-col min-h-0 text-left">
       {/* If currently answered and awaiting manual advance */}
       {isAnswered ? (
-        <div className="py-6 flex flex-col items-center justify-center text-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-950/80 border border-emerald-800/40 flex items-center justify-center text-emerald-400 text-2xl">
-            <HiOutlineCheckCircle />
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-slate-50 border border-slate-200 rounded-2xl gap-4">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-600 text-3xl shadow-sm">
+            <HiCheckCircle />
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-slate-100">Answer Accepted</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-md">
-              Your response has been securely recorded on the server. Advance to the next cross-examination inquiry when
-              ready.
+            <h3 className="text-xl font-bold text-slate-900">Answer Accepted</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md">
+              Your response has been securely recorded. Advance to the next cross-examination inquiry when ready.
             </p>
           </div>
 
           <button
             onClick={onAdvanceQuestion}
             disabled={isAdvancing}
-            className="mt-2 px-8 py-3.5 bg-yellow-400 hover:bg-yellow-300 active:scale-[0.98] text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-lg transition-all disabled:opacity-50"
+            className="mt-2 px-8 py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-black text-xs uppercase tracking-widest rounded-xl flex items-center gap-2 shadow-lg transition-all disabled:opacity-50"
           >
             {isAdvancing ? (
               <>
@@ -116,30 +114,17 @@ function AnswerConsole({
             ) : (
               <>
                 Next Question
-                <HiOutlineArrowRight className="text-base" />
+                <HiArrowRight className="text-base text-yellow-400" />
               </>
             )}
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label htmlFor="answerTranscriptArea" className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Your Technical Response
-            </label>
-            <span
-              className={`text-xs font-mono font-medium ${
-                isOverLimit ? 'text-red-400 font-bold' : 'text-slate-500'
-              }`}
-            >
-              {charCount.toLocaleString()} / {CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS.toLocaleString()} chars
-            </span>
-          </div>
-
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 justify-between">
           {/* Textarea container with microphone listening indicator */}
-          <div className="relative">
+          <div className="relative flex-1 min-h-0 flex flex-col mb-3">
             <textarea
-              id="answerTranscriptArea"
+              id="candidateAnswerInput"
               rows={7}
               value={transcript}
               onChange={(e) => {
@@ -149,113 +134,91 @@ function AnswerConsole({
               }}
               onKeyDown={handleKeyDown}
               disabled={isSubmitting}
-              placeholder="Type your explanation here, or click the microphone to dictate your response... (Ctrl + Enter to submit)"
-              className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl p-4 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 font-sans leading-relaxed disabled:opacity-60 resize-none shadow-inner"
+              placeholder="Type your response or click the microphone to speak. You can edit your text anytime before submitting..."
+              aria-label="Candidate answer input"
+              className="w-full flex-1 bg-slate-50 p-5 rounded-2xl border-2 border-slate-100 outline-none focus:border-yellow-400 focus:bg-white transition-all text-slate-800 font-medium placeholder:text-slate-400 resize-none shadow-inner text-sm leading-relaxed"
             />
 
             {/* Active Speech Recognition Banner */}
             {isListening && (
-              <div className="absolute top-3 right-3 flex items-center gap-2 bg-red-500/20 border border-red-500/40 px-3 py-1 rounded-full shadow-sm backdrop-blur-md">
+              <div className="absolute top-3 right-4 flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1 rounded-full shadow-sm backdrop-blur-md">
                 <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">
+                <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">
                   Listening...
                 </span>
               </div>
             )}
-          </div>
 
-          {/* Time Expired Advisory Banner (Answer NOT discarded or auto-submitted) */}
-          {isExpired && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-red-950/30 border border-red-800/40 rounded-xl text-xs text-red-300 flex items-center gap-2"
-            >
-              <HiOutlineExclamationCircle className="text-base text-red-400 shrink-0" />
-              <span>
-                Suggested time has expired for this question. You may review, polish, or finish dictating your response, then submit when ready.
-              </span>
-            </motion.div>
-          )}
-
-          {/* Validation Banner */}
-          <AnimatePresence>
-            {validationError && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="p-3 bg-red-950/50 border border-red-800/50 rounded-xl text-xs text-red-300 flex items-center gap-2"
-              >
-                <HiOutlineExclamationCircle className="text-base text-red-400 shrink-0" />
-                <span>{validationError}</span>
-              </motion.div>
+            {/* Time Expired Advisory Banner */}
+            {isExpired && (
+              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+                <span>Time has expired for this question. You may review and submit your response whenever you are ready.</span>
+              </div>
             )}
-          </AnimatePresence>
 
-          {/* Privacy and Dictation Helper Note */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Voice input appends speech to your typed answer. Private and browser-native.</span>
-            {isListening && (
-              <span className="text-red-400 font-semibold animate-pulse">Speak clearly into your microphone</span>
-            )}
-          </div>
-
-          {/* Footer Controls: Microphone Toggle + Auto-advance + Submit Button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-slate-800/60">
-            <div className="flex items-center gap-3">
-              {/* Visible Microphone Control Button */}
-              <motion.button
-                type="button"
-                id="voiceInputButton"
-                onClick={toggleListening}
-                disabled={isSubmitting || isAdvancing}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                aria-label={isListening ? "Stop voice dictation" : "Start voice dictation"}
-                title={isListening ? "Click to stop microphone" : "Click to dictate your answer"}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all border shadow-sm ${
-                  isListening
-                    ? 'bg-red-500 text-white border-red-400 animate-pulse shadow-red-500/30'
-                    : 'bg-slate-800 hover:bg-slate-700 text-yellow-400 border-slate-700 hover:border-yellow-400/50'
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <HiMicrophone size={16} className={isListening ? 'animate-bounce' : ''} />
-                <span>{isListening ? 'Stop Listening' : 'Voice Input'}</span>
-              </motion.button>
-
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 select-none">
-                <input
-                  type="checkbox"
-                  checked={autoAdvance}
-                  onChange={(e) => setAutoAdvance(e.target.checked)}
-                  className="w-4 h-4 rounded text-yellow-400 bg-slate-950 border-slate-700 focus:ring-yellow-400 focus:ring-offset-slate-900 cursor-pointer"
-                />
-                <span className="hidden sm:inline">Auto-advance</span>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || charCount === 0 || isOverLimit}
-              className={`py-3 px-8 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md ${
-                isSubmitting || charCount === 0 || isOverLimit
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60'
-                  : 'bg-yellow-400 hover:bg-yellow-300 text-slate-950 active:scale-[0.98]'
-              }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <RiLoader4Line className="animate-spin text-base" />
-                  Recording Response...
-                </>
-              ) : (
-                <>
-                  <HiOutlinePaperAirplane className="text-sm" />
-                  Submit Answer
-                </>
+            {/* Validation Banner */}
+            <AnimatePresence>
+              {validationError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2"
+                >
+                  <HiExclamationCircle className="text-base text-red-500 shrink-0" />
+                  <span>{validationError}</span>
+                </motion.div>
               )}
-            </button>
+            </AnimatePresence>
+
+            {/* Footer beneath the editor */}
+            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 px-1">
+              <span>Voice input appends speech to your typed answer. Private and browser-native.</span>
+              <span className={isOverLimit ? 'text-red-500 font-bold' : ''}>
+                {charCount.toLocaleString()} / {CROSS_EXAM_BOUNDS.MAX_ANSWER_CHARS.toLocaleString()} chars
+              </span>
+            </div>
+          </div>
+
+          {/* Bottom action row: Microphone Button + Submit Button */}
+          <div className="flex items-center gap-3 mt-2 shrink-0">
+            {/* Microphone Toggle Button */}
+            <motion.button
+              type="button"
+              id="voiceInputButton"
+              onClick={toggleListening}
+              disabled={isSubmitting || isAdvancing}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              aria-label={isListening ? 'Stop voice dictation' : 'Start voice dictation'}
+              title={isListening ? 'Stop Listening' : 'Voice Input'}
+              className={`h-14 px-5 flex items-center justify-center gap-2 rounded-2xl shadow-lg shrink-0 transition-all font-bold text-xs uppercase tracking-wider ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse shadow-red-500/30'
+                  : 'bg-slate-900 text-yellow-400 hover:bg-slate-800'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <HiMicrophone size={20} className={isListening ? 'animate-bounce' : ''} />
+              <span className="hidden sm:inline font-mono">
+                {isListening ? 'Stop Listening' : 'Voice Input'}
+              </span>
+            </motion.button>
+
+            {/* Submit & Next Button */}
+            <motion.button
+              type="submit"
+              disabled={isSubmitting || isAdvancing}
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2 shadow-xl hover:shadow-yellow-400/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting
+                ? 'Evaluating...'
+                : isLastQuestion
+                ? 'SUBMIT & FINISH'
+                : 'SUBMIT & NEXT'}
+              <HiArrowRight size={16} className="text-yellow-400" />
+            </motion.button>
           </div>
         </form>
       )}
