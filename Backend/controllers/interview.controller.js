@@ -4,6 +4,9 @@ import { askAI } from '../services/openRouter.service.js';
 import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
+import { INTERVIEW_CREDIT_COST, INSUFFICIENT_CREDITS_MESSAGE } from '../services/credit.service.js';
+
+export { INTERVIEW_CREDIT_COST };
 
 export const cleanExtractedResumeText = (rawText) => {
     if (!rawText || typeof rawText !== 'string') return '';
@@ -225,8 +228,8 @@ export const generateQuestions = async (req, res) => {
             return res.status(404).json({ message: "user not found" });
         }
 
-        if (user.credits < 50) {
-            return res.status(400).json({ message: "Free limit reached please purchase more credits" });
+        if (user.credits < INTERVIEW_CREDIT_COST) {
+            return res.status(400).json({ message: INSUFFICIENT_CREDITS_MESSAGE });
         }
 
         const projectText = Array.isArray(projects) && projects.length ? projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean).join(', ') : "None";
@@ -307,7 +310,7 @@ export const generateQuestions = async (req, res) => {
             });
         }
 
-        user.credits -= 50;
+        user.credits -= INTERVIEW_CREDIT_COST;
         await user.save();
 
         const interview = await Interview.create({
