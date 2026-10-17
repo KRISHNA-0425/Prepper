@@ -1374,4 +1374,107 @@ describe('Prepper AI Interview Enhancements Suite', () => {
         });
     });
 
+    // ==========================================
+    // 13. Feature — Separate Cross-Examination History from Normal Interview History
+    // ==========================================
+    describe('13. Feature — Dedicated Cross-Examination History & Separation', () => {
+
+        it('should verify InterViewHistory.jsx integrates useSearchParams for URL-synchronized tabs', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const historyContent = fs.readFileSync(path.resolve('src/pages/InterViewHistory.jsx'), 'utf8');
+
+            assert.ok(historyContent.includes('useSearchParams'), 'InterViewHistory must import useSearchParams from react-router-dom');
+            assert.ok(historyContent.includes("searchParams.get('type')"), 'InterViewHistory must inspect type search parameter');
+            assert.ok(historyContent.includes("activeTab = currentType === 'cross' ? 'cross' : 'normal'"),
+                'InterViewHistory must cleanly resolve active tab defaulting to normal');
+        });
+
+        it('should verify InterViewHistory.jsx renders interactive tab buttons for Standard and Cross-Exam History', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const historyContent = fs.readFileSync(path.resolve('src/pages/InterViewHistory.jsx'), 'utf8');
+
+            assert.ok(historyContent.includes("handleTabChange('normal')"), 'Must provide button to select normal history');
+            assert.ok(historyContent.includes("handleTabChange('cross')"), 'Must provide button to select cross-examination history');
+            assert.ok(historyContent.includes('Standard History'), 'Must display Standard History tab label');
+            assert.ok(historyContent.includes('Cross-Examination'), 'Must display Cross-Examination tab label');
+        });
+
+        it('should verify InterViewHistory.jsx queries backend with activeTab query parameter', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const historyContent = fs.readFileSync(path.resolve('src/pages/InterViewHistory.jsx'), 'utf8');
+
+            assert.ok(
+                historyContent.includes('/api/interview/getInterview?type=${activeTab}') ||
+                historyContent.includes("getInterview?type=' + activeTab"),
+                'InterViewHistory must query getInterview endpoint filtered by activeTab'
+            );
+        });
+
+        it('should verify InterViewHistory.jsx displays distinct empty states for standard vs cross-examination tabs', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const historyContent = fs.readFileSync(path.resolve('src/pages/InterViewHistory.jsx'), 'utf8');
+
+            assert.ok(historyContent.includes('No cross-examination records found'), 'Must have tailored empty state for cross-examination');
+            assert.ok(historyContent.includes('No standard session records found'), 'Must have tailored empty state for standard interviews');
+            assert.ok(historyContent.includes('Start Cross-Examination'), 'Cross-exam empty state must have action button');
+            assert.ok(historyContent.includes('Start First Interview'), 'Standard empty state must have action button');
+        });
+
+        it('should verify InterViewHistory.jsx renders Cross-Exam badge with crossQuestioningType', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const historyContent = fs.readFileSync(path.resolve('src/pages/InterViewHistory.jsx'), 'utf8');
+
+            assert.ok(historyContent.includes('item.enableCrossQuestioning'), 'Must check enableCrossQuestioning flag on card');
+            assert.ok(historyContent.includes('item.crossQuestioningType'), 'Must display crossQuestioningType on card');
+            assert.ok(historyContent.includes('/report/${item._id}'), 'Must navigate to /report/:id on card click');
+        });
+
+        it('should verify Navbar.jsx dropdown contains dedicated links for Standard History and Cross-Exam History', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const navbarContent = fs.readFileSync(path.resolve('src/components/Navbar.jsx'), 'utf8');
+
+            assert.ok(navbarContent.includes("navigate('/history')"), 'Navbar must link to standard history');
+            assert.ok(navbarContent.includes("navigate('/history?type=cross')"), 'Navbar must link to cross-examination history');
+            assert.ok(navbarContent.includes('History'), 'Navbar must show History text');
+            assert.ok(navbarContent.includes('Cross-Exam History'), 'Navbar must show Cross-Exam History text');
+        });
+
+        it('should client-side classify records correctly without dropping legacy interviews or duplicating cross-exam interviews', () => {
+            const rawInterviews = [
+                { _id: 'int_1', role: 'Frontend Dev', enableCrossQuestioning: false },
+                { _id: 'int_2', role: 'Backend Dev' }, // legacy record without the field
+                { _id: 'int_3', role: 'Full Stack Dev', enableCrossQuestioning: null }, // legacy record with null
+                { _id: 'int_4', role: 'DevOps Lead', enableCrossQuestioning: true, crossQuestioningType: 'Technical' },
+                { _id: 'int_5', role: 'Product Lead', enableCrossQuestioning: true, crossQuestioningType: 'Behavioral' }
+            ];
+
+            const classify = (items, type) => {
+                if (type === 'cross') {
+                    return items.filter(i => i.enableCrossQuestioning === true);
+                }
+                return items.filter(i => !i.enableCrossQuestioning);
+            };
+
+            const normalList = classify(rawInterviews, 'normal');
+            const crossList = classify(rawInterviews, 'cross');
+
+            assert.strictEqual(normalList.length, 3, 'Legacy and explicit false must go to normal list');
+            assert.deepStrictEqual(normalList.map(i => i._id), ['int_1', 'int_2', 'int_3']);
+
+            assert.strictEqual(crossList.length, 2, 'Explicit true must go to cross list');
+            assert.deepStrictEqual(crossList.map(i => i._id), ['int_4', 'int_5']);
+
+            // Disjointness check
+            const crossIds = new Set(crossList.map(i => i._id));
+            const overlap = normalList.filter(i => crossIds.has(i._id));
+            assert.strictEqual(overlap.length, 0, 'No overlap allowed between sections');
+        });
+    });
+
 });

@@ -614,10 +614,38 @@ export const finishInterview = async (req, res) => {
 
 export const getMyInterviews = async (req, res) => {
     try {
-        const interviews = await Interview.find({ userId: req.userId })
-            .sort({ createdAt: -1 })
-            .select('role experience mode finalScore status createdAt enableCrossQuestioning'); 
+        const userId = req.userId || req.user?._id || req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
 
+        const { type, limit, page } = req.query;
+
+        let filter = { userId };
+        if (type === 'cross') {
+            filter.enableCrossQuestioning = true;
+        } else if (type === 'all') {
+            // Keep filter strictly scoped to userId without filtering enableCrossQuestioning
+        } else {
+            // Default to 'normal': include false, missing, null, or undefined to preserve all legacy interviews
+            filter.$or = [
+                { enableCrossQuestioning: false },
+                { enableCrossQuestioning: { $exists: false } },
+                { enableCrossQuestioning: null }
+            ];
+        }
+
+        let query = Interview.find(filter)
+            .sort({ createdAt: -1 })
+            .select('role experience mode finalScore status createdAt enableCrossQuestioning crossQuestioningType questions');
+
+        if (limit) {
+            const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+            const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+            query = query.skip((parsedPage - 1) * parsedLimit).limit(parsedLimit);
+        }
+
+        const interviews = await query;
         return res.status(200).json(interviews);
 
     } catch (error) {
@@ -631,6 +659,12 @@ export const getInterviewReport = async (req, res) => {
 
         if (!interview) {
             return res.status(404).json({ message: "Interview not found" });
+        }
+
+        // Strict user ownership check: User cannot access another user's interview report
+        const userId = req.userId || req.user?._id || req.user?.id;
+        if (interview.userId && userId && interview.userId.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Forbidden: You cannot access another user's interview" });
         }
 
         const totalQuestions = interview.questions.length;
@@ -648,12 +682,15 @@ export const getInterviewReport = async (req, res) => {
 
         return res.status(200).json({
             role: interview.role,
+            experience: interview.experience,
+            mode: interview.mode,
             finalScore: interview.finalScore,
             confidence: avgConfidence, 
             communication: avgCommunication,
             correctness: avgCorrectness,
             questions: interview.questions,
-            enableCrossQuestioning: interview.enableCrossQuestioning || false
+            enableCrossQuestioning: interview.enableCrossQuestioning || false,
+            crossQuestioningType: interview.crossQuestioningType || 'Technical'
         });
 
     } catch (error) {

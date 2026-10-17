@@ -148,9 +148,15 @@ function Navbar() {
                                             </div>
                                             <button 
                                                 onClick={() => { navigate('/history'); setIsDropdownOpen(false); }} 
-                                                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all'
+                                                className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
                                             >
                                                 <RiHistoryLine size={18} /> History
+                                            </button>
+                                            <button 
+                                                onClick={() => { navigate('/history?type=cross'); setIsDropdownOpen(false); }} 
+                                                className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
+                                            >
+                                                <RiShieldFlashLine size={18} className="text-yellow-600 shrink-0" /> Cross-Exam History
                                             </button>
                                             <button 
                                                 onClick={handleLogout} 
