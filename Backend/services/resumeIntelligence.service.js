@@ -281,8 +281,12 @@ export const sanitizeAndVerifyClaim = (rawClaim, rawSourceText, warnings = []) =
 /**
  * Helper to parse month names/abbreviations to 0-indexed month (0-11)
  */
-const parseMonthNumber = (str) => {
+export const parseMonthNumber = (str) => {
   if (!str) return 0;
+  const num = parseInt(str, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return num - 1;
+  }
   const m = str.toLowerCase().slice(0, 3);
   const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   const idx = months.indexOf(m);
@@ -386,10 +390,10 @@ export const calculateExperienceFromDates = (text) => {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const dateRangeRegex = /(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.,\s]*)?(\b(?:19|20)\d{2}\b)\s*(?:-|to|\u2013|\u2014)\s*(?:(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.,\s]*)?(\b(?:19|20)\d{2}\b)|(present|current|now)\b)/i;
+  const dateRangeRegex = /(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)\s*(?:-|to|\u2013|\u2014|\/)\s*(?:(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)|(present|current|now)\b)/i;
 
   const isAcademicOrIntern = (str) => {
-    return /\b(intern|internship|trainee|apprentice|university|college|school|bachelor|master|b\.s\.|m\.s\.|b\.tech|phd|coursework|academic project|capstone)\b/i.test(str);
+    return /\b(intern|internship|trainee|apprentice|student|university|college|school|bachelor|master|b\.s\.|m\.s\.|b\.tech|phd|coursework|academic project|capstone|thesis)\b/i.test(str);
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -490,7 +494,20 @@ export const inferTargetRole = ({ resumeText, skills = [], projects = [] }) => {
       .replace(/Ios/g, 'iOS');
   };
 
-  // 1. Check top 15 lines (headline, summary, explicit desired/current title)
+  // 1. Check explicit desired/target role labels first
+  const explicitMatch = resumeText.match(/(?:desired|target|objective|applying for|seeking)\s*(?:role|position)?\s*[:\-]\s*([A-Za-z\s\-\/]+)/i);
+  if (explicitMatch && explicitMatch[1]) {
+    const rawMatch = explicitMatch[1].trim().split(/[\r\n,]/)[0].trim();
+    if (rawMatch.length >= 3 && rawMatch.length <= 50) {
+      for (const kr of knownRoles) {
+        if (new RegExp(`\\b${kr}\\b`, 'i').test(rawMatch)) {
+          return formatRoleTitle(kr);
+        }
+      }
+    }
+  }
+
+  // 2. Check top 15 lines (headline, summary, explicit current title)
   const topLines = lines.slice(0, 15);
   for (const line of topLines) {
     const lower = line.toLowerCase();
@@ -552,9 +569,18 @@ export const extractResumeClaims = async ({
   }
 
   const warnings = [];
+  if (resumeText.length > LIMITS.MAX_RESUME_INPUT_CHARS) {
+    warnings.push(`Resume text exceeded character limit (${resumeText.length} chars). Bounded to first ${LIMITS.MAX_RESUME_INPUT_CHARS} characters for AI analysis.`);
+  }
+
   const resumeHash = hashSourceText(resumeText);
   let attempt = 0;
   let parsedData = null;
+
+  // Check if AI provider configuration is present
+  if (askAIFn === defaultAskAI && (!process.env.OPEN_ROUTER_APIKEY || !process.env.OPEN_ROUTER_URL)) {
+    warnings.push('AI provider environment variables not configured; using deterministic resume intelligence fallback.');
+  }
 
   const messages = [
     { role: 'system', content: buildSystemPrompt() },
@@ -610,20 +636,27 @@ export const extractResumeClaims = async ({
   }
 
   // Post-process projects and claims with excerpt verification
-  let role = typeof parsedData.role === 'string' ? parsedData.role.trim() : '';
+  let rawRole = typeof parsedData.role === 'string'
+    ? parsedData.role.trim()
+    : (typeof parsedData.targetRole === 'string' ? parsedData.targetRole.trim() : (typeof parsedData.jobRole === 'string' ? parsedData.jobRole.trim() : ''));
+
+  let role = rawRole;
   if (/ceo|hired|overridden|ignore all/i.test(role) && !new RegExp(`\\b${role}\\b`, 'i').test(resumeText)) {
     role = '';
   }
   if (!role) {
-    role = inferTargetRole({ resumeText, skills: parsedData.skills, projects: parsedData.projects });
+    role = inferTargetRole({ resumeText, skills: parsedData.skills || parsedData.technicalSkills, projects: parsedData.projects || parsedData.keyProjects });
   }
 
-  let experience = normalizeExperienceString(parsedData.experience);
+  let rawExperience = parsedData.experience ?? parsedData.yearsOfExperience ?? parsedData.totalExperience;
+  let experience = normalizeExperienceString(rawExperience);
   if (!experience) {
     experience = calculateExperienceFromDates(resumeText);
   }
-  const skills = Array.isArray(parsedData.skills)
-    ? parsedData.skills.map((s) => String(s).trim()).filter(Boolean)
+
+  const rawSkills = parsedData.skills ?? parsedData.technicalSkills ?? [];
+  const skills = Array.isArray(rawSkills)
+    ? rawSkills.map((s) => String(s).trim()).filter(Boolean)
     : [];
 
   let totalClaims = 0;
@@ -631,7 +664,7 @@ export const extractResumeClaims = async ({
   let demotedUncertain = 0;
   let inferred = 0;
 
-  const processedProjects = (Array.isArray(parsedData.projects) ? parsedData.projects : [])
+  const processedProjects = (Array.isArray(parsedData.projects) ? parsedData.projects : (Array.isArray(parsedData.keyProjects) ? parsedData.keyProjects : []))
     .slice(0, LIMITS.MAX_PROJECTS)
     .map((rawProj) => {
       const projectId = generateDomainId('prj');

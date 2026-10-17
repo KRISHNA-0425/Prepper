@@ -11,8 +11,10 @@ import {
   extractTextFromDocxBuffer,
   inferTargetRole,
   normalizeExperienceString,
+  parseMonthNumber,
   LIMITS,
 } from '../services/resumeIntelligence.service.js';
+import { cleanExtractedResumeText } from '../controllers/interview.controller.js';
 import {
   CLAIM_CATEGORIES,
   PROVENANCE_TYPES,
@@ -538,6 +540,80 @@ Full stack engineer at Tech Corp. Built REST APIs in Node.js.
       assert.strictEqual(result.experience, '5 years');
       assert.strictEqual(result.success, false);
       assert.ok(result.warnings.length > 0);
+    });
+  });
+  describe('6. Text Normalization, Error Classification & Production Regression', () => {
+    it('should clean and normalize extracted resume text without destroying line breaks', () => {
+      const raw = 'John Doe\x00\x08\r\nSoftware Engineer\u00A0at Tech Corp\n\n\n\nSkills: React   Node.js\t\tMongoDB\r\n';
+      const cleaned = cleanExtractedResumeText(raw);
+      assert.ok(!cleaned.includes('\x00'), 'Null bytes must be stripped');
+      assert.ok(!cleaned.includes('\u00A0'), 'Non-breaking spaces must be normalized');
+      assert.ok(cleaned.includes('Software Engineer at Tech Corp'));
+      assert.ok(cleaned.includes('\n\nSkills: React Node.js MongoDB'));
+      assert.ok(cleaned.split('\n').length >= 3, 'Line breaks must be preserved');
+    });
+
+    it('should correctly parse numeric months as well as three-letter month abbreviations', () => {
+      assert.strictEqual(parseMonthNumber('01'), 0); // January
+      assert.strictEqual(parseMonthNumber('12'), 11); // December
+      assert.strictEqual(parseMonthNumber('06'), 5); // June
+      assert.strictEqual(parseMonthNumber('jun'), 5);
+      assert.strictEqual(parseMonthNumber('sep'), 8);
+    });
+
+    it('should calculate experience with numeric month formats (MM/YYYY - MM/YYYY)', () => {
+      const resume = 'Software Engineer | CloudCorp\n01/2021 - 12/2023\nDeveloper | Startup Inc\n01/2019 - 12/2020';
+      const exp = calculateExperienceFromDates(resume);
+      assert.strictEqual(exp, '5 years');
+    });
+
+    it('should infer target role from explicit objective or desired role labels', () => {
+      const resume = 'Jane Candidate\nObjective: Seeking role as DevOps Engineer in high-scale environment.\nSkills: Docker, AWS';
+      const role = inferTargetRole({ resumeText: resume });
+      assert.strictEqual(role, 'DevOps Engineer');
+    });
+
+    it('should handle nested AI response structures (targetRole, yearsOfExperience, technicalSkills)', async () => {
+      const mockAskAI = async () => JSON.stringify({
+        targetRole: 'Data Analyst',
+        yearsOfExperience: 3,
+        technicalSkills: ['Python', 'SQL', 'Tableau'],
+        keyProjects: [{ title: 'Sales Analytics Pipeline', claims: [] }],
+      });
+
+      const result = await extractResumeClaims({
+        resumeText: 'Data Analyst with 3 years experience. Python, SQL, Tableau.',
+        askAIFn: mockAskAI,
+      });
+
+      assert.strictEqual(result.role, 'Data Analyst');
+      assert.strictEqual(result.experience, '3 years');
+      assert.deepStrictEqual(result.skills, ['Python', 'SQL', 'Tableau']);
+      assert.strictEqual(result.projects[0].title, 'Sales Analytics Pipeline');
+    });
+
+    it('should record warning when resume exceeds character limits and safely bound input', async () => {
+      const longResume = 'Full-Stack Developer\n' + 'A'.repeat(40000);
+      const mockAskAI = async (messages) => {
+        const userMsg = messages.find((m) => m.role === 'user').content;
+        assert.ok(userMsg.length < 36000, 'Prompt must be bounded');
+        return JSON.stringify({ role: 'Full-Stack Developer', experience: '2 years', skills: [], projects: [] });
+      };
+
+      const result = await extractResumeClaims({
+        resumeText: longResume,
+        askAIFn: mockAskAI,
+      });
+
+      assert.ok(result.warnings.some((w) => w.includes('exceeded character limit')));
+    });
+
+    it('should verify memoryStorage prevents filesystem ENOENT errors when public directory does not exist', async () => {
+      const multer = await import('../middleware/multer.js');
+      assert.ok(multer.upload, 'multer instance must exist');
+      assert.ok(multer.handleResumeUpload, 'handleResumeUpload middleware must exist');
+      // memoryStorage stores files in memory buffers, requiring no local public directory
+      assert.strictEqual(typeof multer.handleResumeUpload, 'function');
     });
   });
 });

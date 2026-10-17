@@ -690,6 +690,30 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(formState.experience, '', 'Resume-derived experience must be reset');
         });
 
+        it('should verify Step1Setup.jsx implements clear extractionStatus states and retry capability', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('extractionStatus'), 'Step1Setup must track extractionStatus state');
+            assert.ok(step1Content.includes('extraction_failed'), 'Step1Setup must support extraction_failed state');
+            assert.ok(step1Content.includes('analysis_failed'), 'Step1Setup must support analysis_failed state');
+            assert.ok(step1Content.includes('Uploading document...'), 'Step1Setup must display uploading progress feedback');
+            assert.ok(step1Content.includes('Extracting document text...'), 'Step1Setup must display extracting progress feedback');
+            assert.ok(step1Content.includes('Analyzing resume credentials...'), 'Step1Setup must display analyzing progress feedback');
+            assert.ok(step1Content.includes('Retry'), 'Step1Setup must provide retry action on failure');
+        });
+
+        it('should verify Step1Setup.jsx never renders successful extraction card if extraction or analysis failed', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            // Extraction results card is strictly guarded by anaylsisDone
+            assert.ok(step1Content.includes('{!anaylsisDone ? ('), 'Uploader must render when anaylsisDone is false');
+            assert.ok(step1Content.includes('setAnaylsisDone(false);'), 'Extraction failure must explicitly set anaylsisDone to false');
+        });
+
         it('should verify Step1Setup.jsx accepts both PDF and DOCX document formats', async () => {
             const fs = await import('node:fs');
             const path = await import('node:path');

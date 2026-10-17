@@ -22,6 +22,8 @@ function Step1Setup({ onStart }) {
     const [resumeText, setResumeText] = useState('')
     const [anaylsisDone, setAnaylsisDone] = useState(false)
     const [anaylzing, setAnaylzing] = useState(false)
+    const [extractionStatus, setExtractionStatus] = useState('idle'); // 'idle' | 'file_selected' | 'uploading' | 'extracting' | 'analyzing' | 'completed' | 'partial' | 'extraction_failed' | 'analysis_failed'
+    const [errorMessage, setErrorMessage] = useState('');
     const [enableCrossQuestioning, setEnableCrossQuestioning] = useState(false);
     const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
     const userEditedFieldsRef = useRef({ role: false, experience: false });
@@ -56,11 +58,13 @@ function Step1Setup({ onStart }) {
 
     const performResumeExtraction = async (file) => {
         if (!file) return;
-        if (uploadedFileRef.current === file && anaylsisDone) return;
+        if (uploadedFileRef.current === file && anaylsisDone && (extractionStatus === 'completed' || extractionStatus === 'partial')) return;
 
         const fileName = (file.name || '').toLowerCase();
         const isSupported = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
         if (!isSupported) {
+            setExtractionStatus('extraction_failed');
+            setErrorMessage("Please upload a PDF (.pdf) or Word (.docx) document");
             toast.error("Please upload a PDF or Word (.docx) document");
             return;
         }
@@ -69,13 +73,22 @@ function Step1Setup({ onStart }) {
         setResumeFile(file);
         uploadedFileRef.current = file;
         setAnaylzing(true);
-        const loadToast = toast.loading("Extracting and parsing resume details...");
+        setErrorMessage('');
+        setExtractionStatus('uploading');
+        const loadToast = toast.loading("Uploading and extracting resume...");
+
+        const extractTimer = setTimeout(() => {
+            if (extractionId === activeExtractionIdRef.current) {
+                setExtractionStatus('analyzing');
+            }
+        }, 1200);
 
         const formData = new FormData();
         formData.append("resume", file);
 
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/resume', formData, { withCredentials: true });
+            clearTimeout(extractTimer);
 
             // Discard stale response if another file was uploaded or resume was cleared
             if (extractionId !== activeExtractionIdRef.current || !uploadedFileRef.current) {
@@ -116,7 +129,10 @@ function Step1Setup({ onStart }) {
             if (extractedResumeText) {
                 setResumeText(extractedResumeText);
             }
+
+            const isComplete = result.data?.analysisStatus === 'complete' || (extractedRole && extractedExperience);
             setAnaylsisDone(true);
+            setExtractionStatus(isComplete ? 'completed' : 'partial');
 
             if (extractedRole && extractedExperience) {
                 toast.success("Resume parsed! Target Role and Experience populated automatically.", { id: loadToast });
@@ -126,9 +142,16 @@ function Step1Setup({ onStart }) {
                 toast.success("Resume text extracted! Please enter your target role and experience.", { id: loadToast });
             }
         } catch (error) {
+            clearTimeout(extractTimer);
             console.error('Error in resume extraction', error);
             if (extractionId === activeExtractionIdRef.current) {
-                const errMsg = error.response?.data?.message || "Could not extract text from document. You can still enter details manually.";
+                setAnaylsisDone(false);
+                const errData = error.response?.data;
+                const errMsg = errData?.message || (error.response?.status === 400 ? "Could not extract text from document." : "Failed to analyze resume. Please try again or enter details manually.");
+                const isExtractionFail = error.response?.status === 400 || errData?.isScanned;
+
+                setExtractionStatus(isExtractionFail ? 'extraction_failed' : 'analysis_failed');
+                setErrorMessage(errMsg);
                 toast.error(errMsg, { id: loadToast });
             }
         } finally {
@@ -350,27 +373,83 @@ function Step1Setup({ onStart }) {
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             layout
-                                            className='border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:bg-yellow-50/50 hover:border-yellow-400 transition-all group'
-                                            onClick={() => document.getElementById("resumeUpload").click()}
+                                            className={`border-2 border-dashed rounded-xl p-4 text-center transition-all group ${
+                                                extractionStatus === 'extraction_failed' || extractionStatus === 'analysis_failed'
+                                                    ? 'border-red-300 bg-red-50/40'
+                                                    : anaylzing
+                                                    ? 'border-yellow-400 bg-yellow-50/30'
+                                                    : 'border-slate-200 hover:bg-yellow-50/50 hover:border-yellow-400 cursor-pointer'
+                                            }`}
+                                            onClick={() => {
+                                                if (!anaylzing) document.getElementById("resumeUpload").click();
+                                            }}
                                         >
-                                            <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
                                             <input type="file" accept='.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document' id="resumeUpload" className='hidden' onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) {
                                                     performResumeExtraction(file);
                                                 }
                                             }} />
-                                            <p className='text-xs font-bold text-slate-600 truncate'>{resumeFile ? resumeFile.name : "Upload resume (optional)"}</p>
-                                            {resumeFile && (
-                                                <motion.button
-                                                    whileHover={{ scale: 1.05 }}
-                                                    whileTap={{ scale: 0.95 }}
-                                                    type="button"
-                                                    onClick={handleUploadResume}
-                                                    className='mt-2 px-6 py-1.5 bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-lg'
-                                                >
-                                                    {anaylzing ? "Analyzing..." : "Sync with AI"}
-                                                </motion.button>
+
+                                            {anaylzing ? (
+                                                <div className='py-2 flex flex-col items-center justify-center space-y-2'>
+                                                    <div className='w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin' />
+                                                    <p className='text-xs font-bold text-slate-800'>
+                                                        {extractionStatus === 'uploading' ? 'Uploading document...' : extractionStatus === 'extracting' ? 'Extracting document text...' : 'Analyzing resume credentials...'}
+                                                    </p>
+                                                    <p className='text-[10px] text-slate-500 truncate max-w-[200px]'>{resumeFile ? resumeFile.name : ''}</p>
+                                                </div>
+                                            ) : extractionStatus === 'extraction_failed' || extractionStatus === 'analysis_failed' ? (
+                                                <div className='py-1 space-y-1.5'>
+                                                    <p className='text-xs font-black text-red-600 flex items-center justify-center gap-1.5'>
+                                                        <span>⚠️</span> Extraction Failed
+                                                    </p>
+                                                    <p className='text-[11px] text-red-700 font-medium px-2 leading-tight'>
+                                                        {errorMessage || "Could not extract readable text. You can re-upload or fill details manually."}
+                                                    </p>
+                                                    <div className='flex items-center justify-center gap-2 pt-1'>
+                                                        <motion.button
+                                                            whileHover={{ scale: 1.05 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                document.getElementById("resumeUpload").click();
+                                                            }}
+                                                            className='px-3 py-1 bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-sm'
+                                                        >
+                                                            Choose File
+                                                        </motion.button>
+                                                        {resumeFile && (
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.05 }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                                type="button"
+                                                                onClick={handleUploadResume}
+                                                                className='px-3 py-1 bg-amber-600 rounded-lg text-[10px] font-black text-white uppercase shadow-sm'
+                                                            >
+                                                                Retry
+                                                            </motion.button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
+                                                    <p className='text-xs font-bold text-slate-600 truncate'>{resumeFile ? resumeFile.name : "Upload resume (optional)"}</p>
+                                                    <p className='text-[10px] text-slate-400 mt-0.5'>Supports PDF and Word (.docx) up to 10MB</p>
+                                                    {resumeFile && (
+                                                        <motion.button
+                                                            whileHover={{ scale: 1.05 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                            type="button"
+                                                            onClick={handleUploadResume}
+                                                            className='mt-2 px-6 py-1.5 bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-lg'
+                                                        >
+                                                            Sync with AI
+                                                        </motion.button>
+                                                    )}
+                                                </>
                                             )}
                                         </motion.div>
                                     ) : (
@@ -384,42 +463,51 @@ function Step1Setup({ onStart }) {
                                             <motion.button
                                                 whileHover={{ rotate: 90 }}
                                                 onClick={() => {
-                                                setAnaylsisDone(false);
-                                                setResumeFile(null);
-                                                uploadedFileRef.current = null;
-                                                activeExtractionIdRef.current++;
-                                                setResumeText('');
-                                                setSkills([]);
-                                                setProjects([]);
-                                                setEnableCrossQuestioning(false);
-                                                if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
-                                                    setRole('');
-                                                }
-                                                if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
-                                                    setExperience('');
-                                                }
-                                                resumeDerivedValuesRef.current = { role: '', experience: '' };
-                                            }}
+                                                    setAnaylsisDone(false);
+                                                    setExtractionStatus('idle');
+                                                    setResumeFile(null);
+                                                    uploadedFileRef.current = null;
+                                                    activeExtractionIdRef.current++;
+                                                    setResumeText('');
+                                                    setSkills([]);
+                                                    setProjects([]);
+                                                    setErrorMessage('');
+                                                    setEnableCrossQuestioning(false);
+                                                    if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
+                                                        setRole('');
+                                                    }
+                                                    if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
+                                                        setExperience('');
+                                                    }
+                                                    resumeDerivedValuesRef.current = { role: '', experience: '' };
+                                                }}
                                                 className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
                                             >
                                                 <HiX />
                                             </motion.button>
-                                            <div className='flex items-center gap-2 mb-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'><HiSparkles className='animate-pulse' /> Extraction Complete</div>
+                                            <div className='flex items-center gap-2 mb-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'>
+                                                <HiSparkles className='animate-pulse' />
+                                                {extractionStatus === 'partial' ? 'Partial Extraction — Please Review' : 'Extraction Complete'}
+                                            </div>
                                             <div className='grid grid-cols-2 gap-4'>
                                                 <div>
                                                     <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCode /> Skills</p>
                                                     <div className='flex flex-wrap gap-1'>
-                                                        {skills.map((s, i) => (
+                                                        {skills.length ? skills.map((s, i) => (
                                                             <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{s}</span>
-                                                        ))}
+                                                        )) : (
+                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex  items-center gap-1'><HiCollection /> Projects</p>
                                                     <div className='flex  flex-wrap gap-1'>
-                                                        {projects.map((p, i) => (
+                                                        {projects.length ? projects.map((p, i) => (
                                                             <span key={i} className='bg-white/10 text-[12px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
-                                                        ))}
+                                                        )) : (
+                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

@@ -5,6 +5,17 @@ import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '.
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
 
+export const cleanExtractedResumeText = (rawText) => {
+    if (!rawText || typeof rawText !== 'string') return '';
+    return rawText
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+        .replace(/\r\n|\r/g, '\n')
+        .replace(/[^\S\r\n]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
 export const resumeAnalyse = async (req, res) => {
     try {
         if (!req.file) {
@@ -25,26 +36,60 @@ export const resumeAnalyse = async (req, res) => {
         const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc') || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
         let resumeText = "";
+        let totalTextItems = 0;
+        let isScannedPdf = false;
 
         if (isDocx) {
-            resumeText = extractTextFromDocxBuffer(fileBuffer);
+            try {
+                resumeText = extractTextFromDocxBuffer(fileBuffer);
+            } catch (docxErr) {
+                return res.status(400).json({
+                    message: "The uploaded Word document is corrupted or unreadable. Please check the file and try again."
+                });
+            }
+            if (!resumeText || !resumeText.trim()) {
+                return res.status(400).json({
+                    message: "Could not extract readable text from the Word document. The file may be empty, corrupt, or password-protected."
+                });
+            }
         } else {
-            // PDF extraction with safe runtime options
-            const uint8Array = new Uint8Array(fileBuffer);
-            const loadingTask = pdfjsLib.getDocument({
-                data: uint8Array,
-                useSystemFonts: true,
-                isEvalSupported: false,
-                disableFontFace: true,
-            });
-            const pdf = await loadingTask.promise;
+            // PDF extraction with safe runtime options & error classification
+            try {
+                const uint8Array = new Uint8Array(fileBuffer);
+                const loadingTask = pdfjsLib.getDocument({
+                    data: uint8Array,
+                    useSystemFonts: true,
+                    isEvalSupported: false,
+                    disableFontFace: true,
+                });
+                const pdf = await loadingTask.promise;
 
-            // Extract text from all pages
-            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                const page = await pdf.getPage(pageNum);
-                const content = await page.getTextContent();
-                const pageText = content.items.map(item => item.str).join(' ');
-                resumeText += pageText + '\n';
+                // Extract text from all pages
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const content = await page.getTextContent();
+                    if (content && content.items && content.items.length > 0) {
+                        totalTextItems += content.items.length;
+                        const pageText = content.items.map(item => item.str).join(' ');
+                        resumeText += pageText + '\n';
+                    }
+                }
+
+                if (pdf.numPages > 0 && totalTextItems === 0) {
+                    isScannedPdf = true;
+                }
+            } catch (pdfErr) {
+                if (pdfErr.name === 'PasswordException' || /password/i.test(pdfErr.message)) {
+                    return res.status(400).json({
+                        message: "Password-protected PDFs are not supported. Please upload an unprotected PDF."
+                    });
+                }
+                if (pdfErr.name === 'InvalidPDFException' || /invalid pdf|corrupt|damaged/i.test(pdfErr.message)) {
+                    return res.status(400).json({
+                        message: "The uploaded PDF file is corrupted or unreadable. Please check the file and try again."
+                    });
+                }
+                throw pdfErr;
             }
         }
 
@@ -53,24 +98,37 @@ export const resumeAnalyse = async (req, res) => {
             try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
         }
 
-        resumeText = resumeText.replace(/\s+/g, " ").trim();
-
-        if (!resumeText || resumeText.length < 10) {
+        if (isScannedPdf) {
             return res.status(400).json({
-                message: "Could not extract text from document. The file may be empty or an image scan. Please upload a text-based PDF/DOCX or enter details manually."
+                message: "Scanned PDF detected without readable text. OCR is not supported; please upload a text-based PDF or Word document, or enter details manually.",
+                isScanned: true
+            });
+        }
+
+        resumeText = cleanExtractedResumeText(resumeText);
+
+        if (!resumeText || resumeText.length < 20) {
+            return res.status(400).json({
+                message: "Could not extract sufficient text from document. The file may be empty or an image scan. Please upload a text-based PDF/DOCX or enter details manually.",
+                isScanned: isScannedPdf || totalTextItems === 0
             });
         }
 
         // Source-grounded Resume Intelligence extraction pipeline
         const extraction = await extractResumeClaims({ resumeText });
 
-        // Return legacy backward-compatible fields alongside the cross-examination claims profile
+        // Return structured, validated fields with backward compatibility
         return res.status(200).json({
             role: extraction.role || '',
+            targetRole: extraction.role || '',
             experience: extraction.experience || '',
+            yearsOfExperience: extraction.experience || '',
             projects: Array.isArray(extraction.projects) ? extraction.projects.map((p) => p.title || p) : [],
             skills: extraction.skills || [],
             resumeText,
+            analysisStatus: extraction.success ? 'complete' : 'partial',
+            extractionSuccess: true,
+            warnings: extraction.warnings || [],
             crossExaminationProfile: {
                 projects: extraction.projects,
                 standaloneClaims: extraction.standaloneClaims,
