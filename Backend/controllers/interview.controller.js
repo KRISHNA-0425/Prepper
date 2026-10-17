@@ -1,7 +1,7 @@
 import fs from 'fs';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { askAI } from '../services/openRouter.service.js';
-import { extractResumeClaims, safeParseJson } from '../services/resumeIntelligence.service.js';
+import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
 
@@ -11,39 +11,64 @@ export const resumeAnalyse = async (req, res) => {
             return res.status(400).json({ message: "Please upload your resume" });
         }
 
-        const filePath = req.file.path;
+        // Support both memoryStorage (req.file.buffer) and diskStorage (req.file.path)
+        let fileBuffer = req.file.buffer;
+        if (!fileBuffer && req.file.path) {
+            fileBuffer = await fs.promises.readFile(req.file.path);
+        }
 
-        // converting the data into binary data
-        const fileBuffer = await fs.promises.readFile(filePath);
-        // converting the data in the pdfjs-dist understandable format
-        const uint8Array = new Uint8Array(fileBuffer);
+        if (!fileBuffer || fileBuffer.length === 0) {
+            return res.status(400).json({ message: "Uploaded file is empty" });
+        }
 
-        const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+        const fileName = (req.file.originalname || '').toLowerCase();
+        const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc') || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
         let resumeText = "";
 
-        // Extracting text from all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const content = await page.getTextContent();
-            const pageText = content.items.map(items => items.str).join(' ');
-            resumeText += pageText + '\n';
+        if (isDocx) {
+            resumeText = extractTextFromDocxBuffer(fileBuffer);
+        } else {
+            // PDF extraction with safe runtime options
+            const uint8Array = new Uint8Array(fileBuffer);
+            const loadingTask = pdfjsLib.getDocument({
+                data: uint8Array,
+                useSystemFonts: true,
+                isEvalSupported: false,
+                disableFontFace: true,
+            });
+            const pdf = await loadingTask.promise;
+
+            // Extract text from all pages
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                resumeText += pageText + '\n';
+            }
         }
 
-        resumeText = resumeText.replace(/\s/g, " ").trim();
+        // Cleanup temporary file if diskStorage was used
+        if (req.file.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+        }
+
+        resumeText = resumeText.replace(/\s+/g, " ").trim();
+
+        if (!resumeText || resumeText.length < 10) {
+            return res.status(400).json({
+                message: "Could not extract text from document. The file may be empty or an image scan. Please upload a text-based PDF/DOCX or enter details manually."
+            });
+        }
 
         // Source-grounded Resume Intelligence extraction pipeline
         const extraction = await extractResumeClaims({ resumeText });
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
 
         // Return legacy backward-compatible fields alongside the cross-examination claims profile
         return res.status(200).json({
             role: extraction.role || '',
             experience: extraction.experience || '',
-            projects: extraction.projects.map((p) => p.title),
+            projects: Array.isArray(extraction.projects) ? extraction.projects.map((p) => p.title || p) : [],
             skills: extraction.skills || [],
             resumeText,
             crossExaminationProfile: {
@@ -57,10 +82,14 @@ export const resumeAnalyse = async (req, res) => {
         });
 
     } catch (error) {
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
         }
-        return res.status(500).json({ message: "error in the resumeAnalyse controller", error });
+        console.error("Error in resumeAnalyse:", error.message || error);
+        return res.status(500).json({
+            message: "Failed to process resume document. Please verify the document format or enter details manually.",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 

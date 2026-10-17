@@ -1,3 +1,4 @@
+import zlib from 'zlib';
 /**
  * @file resumeIntelligence.service.js
  * Source-grounded Resume Intelligence Service for Prepper AI.
@@ -321,6 +322,61 @@ export const normalizeExperienceString = (expStr) => {
  * @param {string} text - Raw resume text
  * @returns {string} Formatted years string, e.g. "5 years", "1 year", or "" if indeterminate
  */
+/**
+ * Extracts plain text from a DOCX buffer (Word document PKZip archive).
+ * Extracts word/document.xml and converts XML tags into clean text.
+ * @param {Buffer} buffer
+ * @returns {string}
+ */
+export const extractTextFromDocxBuffer = (buffer) => {
+  if (!buffer || !Buffer.isBuffer(buffer) || buffer.length < 30) return '';
+  let offset = 0;
+  while (offset < buffer.length - 30) {
+    if (buffer.readUInt32LE(offset) === 0x04034b50) {
+      const compressionMethod = buffer.readUInt16LE(offset + 8);
+      const compressedSize = buffer.readUInt32LE(offset + 18);
+      const fileNameLength = buffer.readUInt16LE(offset + 26);
+      const extraFieldLength = buffer.readUInt16LE(offset + 28);
+
+      const fileNameStart = offset + 30;
+      if (fileNameStart + fileNameLength > buffer.length) break;
+      const fileName = buffer.toString('utf8', fileNameStart, fileNameStart + fileNameLength);
+      const fileDataStart = fileNameStart + fileNameLength + extraFieldLength;
+
+      if (fileName === 'word/document.xml') {
+        const compressedData = buffer.subarray(fileDataStart, fileDataStart + compressedSize);
+        let xmlString = '';
+        try {
+          if (compressionMethod === 8) {
+            xmlString = zlib.inflateRawSync(compressedData).toString('utf8');
+          } else if (compressionMethod === 0) {
+            xmlString = compressedData.toString('utf8');
+          }
+        } catch (e) {
+          return '';
+        }
+
+        return xmlString
+          .replace(/<\/w:p>/gi, '\n')
+          .replace(/<w:tab[^>]*\/>/gi, '\t')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/[ \t]+/g, ' ')
+          .trim();
+      }
+
+      offset = fileDataStart + compressedSize;
+    } else {
+      offset++;
+    }
+  }
+  return '';
+};
+
 export const calculateExperienceFromDates = (text) => {
   if (!text || typeof text !== 'string') return '';
 

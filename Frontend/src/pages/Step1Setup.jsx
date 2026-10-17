@@ -26,6 +26,8 @@ function Step1Setup({ onStart }) {
     const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
     const userEditedFieldsRef = useRef({ role: false, experience: false });
     const uploadedFileRef = useRef(null);
+    const activeExtractionIdRef = useRef(0);
+    const resumeDerivedValuesRef = useRef({ role: '', experience: '' });
 
     // Derived validation: cross-questioning is strictly enabled only when a valid resume has been parsed
     const hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0);
@@ -53,14 +55,17 @@ function Step1Setup({ onStart }) {
     };
 
     const performResumeExtraction = async (file) => {
-        if (!file || anaylzing) return;
+        if (!file) return;
         if (uploadedFileRef.current === file && anaylsisDone) return;
 
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            toast.error("Please upload a PDF document");
+        const fileName = (file.name || '').toLowerCase();
+        const isSupported = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
+        if (!isSupported) {
+            toast.error("Please upload a PDF or Word (.docx) document");
             return;
         }
 
+        const extractionId = ++activeExtractionIdRef.current;
         setResumeFile(file);
         uploadedFileRef.current = file;
         setAnaylzing(true);
@@ -72,30 +77,64 @@ function Step1Setup({ onStart }) {
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/resume', formData, { withCredentials: true });
 
+            // Discard stale response if another file was uploaded or resume was cleared
+            if (extractionId !== activeExtractionIdRef.current || !uploadedFileRef.current) {
+                return;
+            }
+
+            // Normalize response fields from backend API
+            const resData = result.data?.data || result.data || {};
+            const extractedRole = String(resData.role || resData.targetRole || resData.jobRole || '').trim();
+            let rawExp = resData.experience ?? resData.yearsOfExperience ?? resData.level ?? '';
+            if (typeof rawExp === 'number') {
+                rawExp = `${rawExp} ${rawExp === 1 ? 'year' : 'years'}`;
+            }
+            const extractedExperience = String(rawExp || '').trim();
+            const extractedSkills = Array.isArray(resData.skills) ? resData.skills : [];
+            const extractedProjects = Array.isArray(resData.projects) ? resData.projects : [];
+            const extractedResumeText = resData.resumeText || '';
+
+            let populatedAny = false;
+
             // Auto-populate relevant fields preserving manual user edits
-            if (!userEditedFieldsRef.current.role && result.data.role) {
-                setRole(result.data.role);
+            if (!userEditedFieldsRef.current.role && extractedRole) {
+                setRole(extractedRole);
+                resumeDerivedValuesRef.current.role = extractedRole;
+                populatedAny = true;
             }
-            if (!userEditedFieldsRef.current.experience && result.data.experience) {
-                setExperience(result.data.experience);
+            if (!userEditedFieldsRef.current.experience && extractedExperience) {
+                setExperience(extractedExperience);
+                resumeDerivedValuesRef.current.experience = extractedExperience;
+                populatedAny = true;
             }
-            if (Array.isArray(result.data.projects) && result.data.projects.length) {
-                setProjects(result.data.projects);
+            if (extractedProjects.length) {
+                setProjects(extractedProjects);
             }
-            if (Array.isArray(result.data.skills) && result.data.skills.length) {
-                setSkills(result.data.skills);
+            if (extractedSkills.length) {
+                setSkills(extractedSkills);
             }
-            if (result.data.resumeText) {
-                setResumeText(result.data.resumeText);
+            if (extractedResumeText) {
+                setResumeText(extractedResumeText);
             }
             setAnaylsisDone(true);
 
-            toast.success("Resume parsed! Relevant fields populated automatically.", { id: loadToast });
+            if (extractedRole && extractedExperience) {
+                toast.success("Resume parsed! Target Role and Experience populated automatically.", { id: loadToast });
+            } else if (populatedAny || extractedSkills.length) {
+                toast.success("Resume parsed! Some fields populated. Please review and fill any remaining fields.", { id: loadToast });
+            } else {
+                toast.success("Resume text extracted! Please enter your target role and experience.", { id: loadToast });
+            }
         } catch (error) {
             console.error('Error in resume extraction', error);
-            toast.error("Could not extract text from document. You can still enter details manually.", { id: loadToast });
+            if (extractionId === activeExtractionIdRef.current) {
+                const errMsg = error.response?.data?.message || "Could not extract text from document. You can still enter details manually.";
+                toast.error(errMsg, { id: loadToast });
+            }
         } finally {
-            setAnaylzing(false);
+            if (extractionId === activeExtractionIdRef.current) {
+                setAnaylzing(false);
+            }
         }
     };
 
@@ -242,7 +281,7 @@ function Step1Setup({ onStart }) {
                                             type="text"
                                             className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
                                             placeholder='Experience e.g.-2 years '
-                                            onChange={(e) => setExperience(e.target.value)}
+                                            onChange={(e) => { userEditedFieldsRef.current.experience = true; setExperience(e.target.value); }}
                                             value={experience}
                                         />
                                     </div>
@@ -315,7 +354,7 @@ function Step1Setup({ onStart }) {
                                             onClick={() => document.getElementById("resumeUpload").click()}
                                         >
                                             <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
-                                            <input type="file" accept='application/pdf' id="resumeUpload" className='hidden' onChange={(e) => {
+                                            <input type="file" accept='.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document' id="resumeUpload" className='hidden' onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) {
                                                     performResumeExtraction(file);
@@ -344,7 +383,23 @@ function Step1Setup({ onStart }) {
                                         >
                                             <motion.button
                                                 whileHover={{ rotate: 90 }}
-                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null); uploadedFileRef.current = null; setResumeText(''); setSkills([]); setProjects([]); setEnableCrossQuestioning(false); }}
+                                                onClick={() => {
+                                                setAnaylsisDone(false);
+                                                setResumeFile(null);
+                                                uploadedFileRef.current = null;
+                                                activeExtractionIdRef.current++;
+                                                setResumeText('');
+                                                setSkills([]);
+                                                setProjects([]);
+                                                setEnableCrossQuestioning(false);
+                                                if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
+                                                    setRole('');
+                                                }
+                                                if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
+                                                    setExperience('');
+                                                }
+                                                resumeDerivedValuesRef.current = { role: '', experience: '' };
+                                            }}
                                                 className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
                                             >
                                                 <HiX />

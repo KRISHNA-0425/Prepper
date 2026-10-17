@@ -8,6 +8,7 @@ import {
   buildUserPrompt,
   extractResumeClaims,
   calculateExperienceFromDates,
+  extractTextFromDocxBuffer,
   inferTargetRole,
   normalizeExperienceString,
   LIMITS,
@@ -490,6 +491,53 @@ Full stack engineer at Tech Corp. Built REST APIs in Node.js.
       assert.strictEqual(normalizeExperienceString('4 years'), '4 years');
       assert.strictEqual(normalizeExperienceString(''), '');
       assert.strictEqual(normalizeExperienceString(null), '');
+    });
+
+    it('should extract text from a valid DOCX buffer', async () => {
+      const zlib = await import('node:zlib');
+      const xml = '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>DevOps Engineer with 4 years experience</w:t></w:r></w:p></w:body></w:document>';
+      const xmlBuffer = Buffer.from(xml, 'utf8');
+      const compressed = zlib.deflateRawSync(xmlBuffer);
+
+      const fileName = 'word/document.xml';
+      const fileNameBuffer = Buffer.from(fileName, 'utf8');
+
+      const header = Buffer.alloc(30);
+      header.writeUInt32LE(0x04034b50, 0);
+      header.writeUInt16LE(20, 4);
+      header.writeUInt16LE(0, 6);
+      header.writeUInt16LE(8, 8);
+      header.writeUInt16LE(0, 10);
+      header.writeUInt16LE(0, 12);
+      header.writeUInt32LE(0, 14);
+      header.writeUInt32LE(compressed.length, 18);
+      header.writeUInt32LE(xmlBuffer.length, 22);
+      header.writeUInt16LE(fileNameBuffer.length, 26);
+      header.writeUInt16LE(0, 28);
+
+      const docxBuffer = Buffer.concat([header, fileNameBuffer, compressed]);
+      const extracted = extractTextFromDocxBuffer(docxBuffer);
+      assert.ok(extracted.includes('DevOps Engineer with 4 years experience'));
+    });
+
+    it('should safely return empty string for empty or corrupted DOCX buffer without crashing', () => {
+      assert.strictEqual(extractTextFromDocxBuffer(null), '');
+      assert.strictEqual(extractTextFromDocxBuffer(Buffer.alloc(0)), '');
+      assert.strictEqual(extractTextFromDocxBuffer(Buffer.from('not a zip file content')), '');
+    });
+
+    it('should fall back to deterministic role and experience extraction when AI provider throws', async () => {
+      const resume = 'Jane Doe\nFull Stack Developer\nEmail: jane@example.com\nExperience:\nSoftware Engineer | Acme Corp (Jan 2021 - Dec 2023)\nJunior Dev | Beta Inc (Jan 2019 - Dec 2020)\nSkills: React, Node.js';
+      const failingAskAI = async () => {
+        throw new Error('OpenRouter 401 Unauthorized / Provider Offline');
+      };
+
+      const result = await extractResumeClaims({ resumeText: resume, askAIFn: failingAskAI });
+      // Resilience: Even when AI provider fails, role and experience are derived deterministically
+      assert.strictEqual(result.role, 'Full Stack Developer');
+      assert.strictEqual(result.experience, '5 years');
+      assert.strictEqual(result.success, false);
+      assert.ok(result.warnings.length > 0);
     });
   });
 });

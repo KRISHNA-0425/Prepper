@@ -610,6 +610,140 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(formState.role, 'DevOps Engineer');
             assert.strictEqual(formState.experience, '3 years');
         });
+
+        it('should normalize backend response shapes supporting top-level or nested data structures and numeric experience values', () => {
+            const normalizeResponse = (rawResponse) => {
+                const resData = rawResponse?.data || rawResponse || {};
+                const role = String(resData.role || resData.targetRole || resData.jobRole || '').trim();
+                let rawExp = resData.experience ?? resData.yearsOfExperience ?? resData.level ?? '';
+                if (typeof rawExp === 'number') {
+                    rawExp = `${rawExp} ${rawExp === 1 ? 'year' : 'years'}`;
+                }
+                const experience = String(rawExp || '').trim();
+                return { role, experience };
+            };
+
+            // Test 1: Standard flat shape
+            assert.deepStrictEqual(
+                normalizeResponse({ role: 'Full-Stack Developer', experience: '4 years' }),
+                { role: 'Full-Stack Developer', experience: '4 years' }
+            );
+
+            // Test 2: Nested data shape with numeric yearsOfExperience
+            assert.deepStrictEqual(
+                normalizeResponse({ data: { targetRole: 'DevOps Engineer', yearsOfExperience: 5 } }),
+                { role: 'DevOps Engineer', experience: '5 years' }
+            );
+
+            // Test 3: Single year numeric normalization
+            assert.deepStrictEqual(
+                normalizeResponse({ data: { jobRole: 'Frontend Developer', experience: 1 } }),
+                { role: 'Frontend Developer', experience: '1 year' }
+            );
+        });
+
+        it('should prevent stale responses from older uploads from overwriting the form when a newer resume is uploaded', () => {
+            let activeExtractionId = 0;
+            let currentForm = { role: '', experience: '' };
+
+            // User selects Resume A
+            const idA = ++activeExtractionId; // idA = 1
+            // User quickly selects Resume B before Resume A finishes
+            const idB = ++activeExtractionId; // idB = 2
+
+            // Resume A completes late with data
+            const completeA = () => {
+                if (idA !== activeExtractionId) return; // Discard stale response
+                currentForm.role = 'Old Role from Resume A';
+            };
+            completeA();
+            assert.strictEqual(currentForm.role, '', 'Stale response A must be discarded');
+
+            // Resume B completes
+            const completeB = () => {
+                if (idB !== activeExtractionId) return;
+                currentForm.role = 'Target Role from Resume B';
+                currentForm.experience = '3 years';
+            };
+            completeB();
+            assert.strictEqual(currentForm.role, 'Target Role from Resume B');
+            assert.strictEqual(currentForm.experience, '3 years');
+        });
+
+        it('should reset resume-derived values when resume is removed without clearing user manual edits', () => {
+            const userEditedFields = { role: true, experience: false };
+            let formState = { role: 'Lead Architect (Manual Edit)', experience: '5 years' };
+            const resumeDerivedValues = { role: 'Software Engineer', experience: '5 years' };
+
+            // When resume is removed:
+            const onRemoveResume = () => {
+                if (!userEditedFields.role && formState.role === resumeDerivedValues.role) {
+                    formState.role = '';
+                }
+                if (!userEditedFields.experience && formState.experience === resumeDerivedValues.experience) {
+                    formState.experience = '';
+                }
+            };
+            onRemoveResume();
+
+            assert.strictEqual(formState.role, 'Lead Architect (Manual Edit)', 'User manual edit must NOT be cleared');
+            assert.strictEqual(formState.experience, '', 'Resume-derived experience must be reset');
+        });
+
+        it('should verify Step1Setup.jsx accepts both PDF and DOCX document formats', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(content.includes('.docx'), 'Step1Setup must declare .docx support in file input/handling');
+            assert.ok(content.includes('.pdf'), 'Step1Setup must declare .pdf support in file input/handling');
+        });
+
+        it('should verify interview generation payload contains valid role, experience, mode and safe cross-questioning flag', () => {
+            const buildPayload = ({ role, experience, mode, skills, projects, resumeText, hasValidResume, enableCrossQuestioning }) => {
+                return {
+                    role: role.trim(),
+                    experience: experience.trim(),
+                    mode,
+                    skills,
+                    projects,
+                    resumeText: hasValidResume ? resumeText : '',
+                    enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning)
+                };
+            };
+
+            // Standard mock interview without resume
+            const withoutResume = buildPayload({
+                role: 'Frontend Engineer',
+                experience: '2 years',
+                mode: 'Technical',
+                skills: [],
+                projects: [],
+                resumeText: '',
+                hasValidResume: false,
+                enableCrossQuestioning: true // even if somehow true, must be sanitized
+            });
+            assert.strictEqual(withoutResume.role, 'Frontend Engineer');
+            assert.strictEqual(withoutResume.experience, '2 years');
+            assert.strictEqual(withoutResume.enableCrossQuestioning, false);
+            assert.strictEqual(withoutResume.resumeText, '');
+
+            // Mock interview with valid accepted resume
+            const withResume = buildPayload({
+                role: 'Backend Engineer',
+                experience: '4 years',
+                mode: 'Technical',
+                skills: ['Node.js'],
+                projects: ['Task API'],
+                resumeText: 'Senior Backend Engineer with 4 years...',
+                hasValidResume: true,
+                enableCrossQuestioning: true
+            });
+            assert.strictEqual(withResume.role, 'Backend Engineer');
+            assert.strictEqual(withResume.experience, '4 years');
+            assert.strictEqual(withResume.enableCrossQuestioning, true);
+            assert.ok(withResume.resumeText.length > 0);
+        });
     });
 
     // ==========================================
