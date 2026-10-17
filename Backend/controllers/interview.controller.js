@@ -207,6 +207,9 @@ export const generateQuestions = async (req, res) => {
         const validCrossTypes = ["Technical", "Behavioral"];
         const safeCrossQuestioningType = validCrossTypes.includes(crossQuestioningType) ? crossQuestioningType : "Technical";
 
+        // Normalize mode to valid enum: ["HR", "Technical"]
+        const safeMode = (mode === "HR" || mode === "HR/Behavioral" || mode === "Behavioral") ? "HR" : "Technical";
+
         // Server-side guard: cross-questioning strictly requires a valid non-empty resume
         const hasValidResume = Boolean(resumeText && typeof resumeText === 'string' && resumeText.trim().length > 0);
         if (!hasValidResume) {
@@ -233,7 +236,7 @@ export const generateQuestions = async (req, res) => {
         const userPrompt = `
             Role:${role}
             Experience:${experience}
-            InterviewMode:${mode}
+            InterviewMode:${safeMode}
             Projects:${projectText}
             Skills:${skillText}
             resume:${safeResume}
@@ -276,13 +279,27 @@ export const generateQuestions = async (req, res) => {
             }
         ];
 
-        const aiResponse = await askAI(messages);
+        let aiResponse;
+        try {
+            aiResponse = await askAI(messages, { max_tokens: 800 });
+        } catch (aiErr) {
+            console.error("[generateQuestions] AI provider error:", aiErr.message || aiErr);
+            const status = (aiErr.status === 402 || aiErr.status === 429) ? 503 : 500;
+            const message = aiErr.status === 402
+                ? "AI generation quota exceeded. Please check API credits or try again later."
+                : (aiErr.message || "Failed to generate interview questions from AI provider");
+            return res.status(status).json({ message });
+        }
 
         if (!aiResponse || !aiResponse.trim()) {
             return res.status(500).json({ message: "AI didn't gave the answer" });
         }
 
-        const questionArray = aiResponse.split("\n").map(q => q.trim()).filter(q => q.length > 0).slice(0, 5);
+        const rawLines = aiResponse.split("\n").map(q => q.trim()).filter(q => q.length > 0);
+        const questionArray = rawLines
+            .map(q => q.replace(/^\d+[\.\)]\s*|^[-*]\s*/, '').trim())
+            .filter(q => q.length > 10 && !q.toLowerCase().startsWith('here are') && !q.toLowerCase().startsWith('sure,'))
+            .slice(0, 5);
 
         if (!questionArray.length) {
             return res.status(500).json({
@@ -297,13 +314,14 @@ export const generateQuestions = async (req, res) => {
             userId: user._id,
             role,
             experience,
-            mode,
+            mode: safeMode,
             resumeText: safeResume,
             enableCrossQuestioning,
+            crossQuestioningType: safeCrossQuestioningType,
             questions: questionArray.map((q, idx) => ({
                 question: q,
-                difficulty: ["easy", "easy", "medium", "medium", "hard"][idx],
-                timeLimit: [60, 60, 90, 90, 120][idx],
+                difficulty: ["easy", "easy", "medium", "medium", "hard"][idx] || "medium",
+                timeLimit: [60, 60, 90, 90, 120][idx] || 60,
                 isFollowUp: false,
                 depth: 0,
             }))
@@ -314,12 +332,13 @@ export const generateQuestions = async (req, res) => {
             creditsLeft: user.credits,
             userName: user.name,
             questions: interview.questions,
-            mode,
+            mode: safeMode,
             enableCrossQuestioning: interview.enableCrossQuestioning,
             crossQuestioningType: interview.crossQuestioningType
         });
 
     } catch (error) {
+        console.error("[generateQuestions] Unexpected error:", error.message || error);
         return res.status(500).json({ message: "internal Server error in the generateQuestion controller" });
     }
 };

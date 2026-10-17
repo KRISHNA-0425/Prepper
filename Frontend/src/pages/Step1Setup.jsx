@@ -200,6 +200,8 @@ function Step1Setup({ onStart }) {
 
         } catch (error) {
             console.log("error in handleStart", error);
+            const errMsg = error.response?.data?.message || "Failed to start interview. Please try again.";
+            toast.error(errMsg);
             setLoading(false);
         }
     }
