@@ -378,7 +378,7 @@ export const generateCrossExaminationQuestions = async ({
   while (attempt <= maxRetries && !parsedQuestions) {
     attempt++;
     try {
-      const response = await askAIFn(messages);
+      const response = await askAIFn(messages, { max_tokens: 3000 });
 
       if (typeof response === 'object' && response !== null && response.message) {
         throw new Error(response.message);

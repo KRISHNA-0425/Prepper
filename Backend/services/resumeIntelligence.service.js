@@ -1219,7 +1219,7 @@ export const extractResumeClaims = async ({
   while (attempt <= maxRetries && !parsedData) {
     attempt++;
     try {
-      const response = await askAIFn(messages);
+      const response = await askAIFn(messages, { max_tokens: 3000 });
 
       // Handle cases where askAI returned an error object instead of a string
       if (typeof response === 'object' && response !== null && response.message) {

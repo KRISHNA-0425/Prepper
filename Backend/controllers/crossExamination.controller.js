@@ -25,6 +25,9 @@ import {
   REPORT_SCHEMA_VERSION,
   validateProjectProfileContract,
   hashSourceText,
+  generateDomainId,
+  CLAIM_CATEGORIES,
+  VERIFICATION_STATUSES,
 } from '../contracts/crossExamination.contracts.js';
 
 /**
@@ -317,12 +320,78 @@ export const createCrossExaminationController = ({
 
         // Execute resume extraction pipeline
         const extraction = await extractClaimsFn({ resumeText });
+
+        let rawProjects = Array.isArray(extraction.projects) && extraction.projects.length > 0
+          ? extraction.projects
+          : (Array.isArray(extraction.detailedProjects) ? extraction.detailedProjects : []);
+
+        // Normalize extracted projects to guarantee valid claims contract
+        let normalizedProjects = rawProjects.map((prj, pIdx) => {
+          const projectId = prj.projectId || generateDomainId('prj');
+          const title = String(prj.title || prj.name || `Project ${pIdx + 1}`).trim();
+          let claims = Array.isArray(prj.claims) ? [...prj.claims] : [];
+
+          if (claims.length === 0) {
+            if (prj.description) {
+              const verified = verifyExcerptFn(resumeText, prj.description.slice(0, 100));
+              claims.push({
+                claimId: generateDomainId('clm'),
+                statement: prj.description.slice(0, 150),
+                category: CLAIM_CATEGORIES.PROJECT_CONTRIBUTION,
+                sourceExcerpt: verified.isVerified ? prj.description.slice(0, 100) : '',
+                provenanceType: verified.isVerified ? PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT : PROVENANCE_TYPES.AI_INFERRED_CATEGORY,
+                confidence: CONFIDENCE_LEVELS.HIGH,
+                verificationStatus: VERIFICATION_STATUSES.UNVERIFIED,
+              });
+            }
+            for (const ach of prj.achievements || []) {
+              if (ach) {
+                const verified = verifyExcerptFn(resumeText, String(ach).slice(0, 100));
+                claims.push({
+                  claimId: generateDomainId('clm'),
+                  statement: String(ach).slice(0, 150),
+                  category: CLAIM_CATEGORIES.PROJECT_CONTRIBUTION,
+                  sourceExcerpt: verified.isVerified ? String(ach).slice(0, 100) : '',
+                  provenanceType: verified.isVerified ? PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT : PROVENANCE_TYPES.AI_INFERRED_CATEGORY,
+                  confidence: CONFIDENCE_LEVELS.HIGH,
+                  verificationStatus: VERIFICATION_STATUSES.UNVERIFIED,
+                });
+              }
+            }
+          }
+
+          return {
+            ...prj,
+            projectId,
+            title,
+            claims,
+          };
+        });
+
+        const rawStandalone = Array.isArray(extraction.standaloneClaims) ? extraction.standaloneClaims : [];
+        const rawAll = Array.isArray(extraction.allClaims) ? extraction.allClaims : [];
+
+        // If no explicit projects were detected, but standalone or all claims exist, group them into a project container
+        if (normalizedProjects.length === 0 && (rawAll.length > 0 || rawStandalone.length > 0)) {
+          const claimsToGroup = rawAll.length > 0 ? rawAll : rawStandalone;
+          normalizedProjects.push({
+            projectId: generateDomainId('prj'),
+            title: 'Professional Experience & Technical Contributions',
+            description: 'Candidate technical achievements and claims',
+            candidateRole: targetRole || extraction.role || 'Software Engineer',
+            claims: claimsToGroup,
+          });
+        }
+
         profile = {
-          projects: extraction.projects || [],
-          standaloneClaims: extraction.standaloneClaims || [],
-          allClaims: extraction.allClaims || [],
+          role: extraction.role,
+          projects: normalizedProjects,
+          standaloneClaims: rawStandalone,
+          allClaims: normalizedProjects.flatMap((p) => p.claims || []).concat(rawStandalone),
           resumeHash: extraction.resumeHash || hashSourceText(resumeText),
-          provenanceStats: extraction.provenanceStats,
+          provenanceStats: extraction.provenanceStats || {
+            totalClaims: normalizedProjects.reduce((acc, p) => acc + (p.claims?.length || 0), 0),
+          },
         };
         resumeExcerpt = resumeText.slice(0, 3000);
         resumeHash = profile.resumeHash;
