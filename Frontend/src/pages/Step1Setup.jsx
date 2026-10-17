@@ -90,8 +90,35 @@ function Step1Setup({ onStart }) {
                 rawExp = rawExp <= 0 ? 'Fresher (0 years)' : `${rawExp} ${rawExp === 1 ? 'year' : 'years'}`;
             }
             const extractedExperience = String(rawExp || '').trim();
-            const extractedSkills = Array.isArray(resData.skills) ? resData.skills : [];
-            const extractedProjects = Array.isArray(resData.projects) ? resData.projects : [];
+            // Normalize skills: support flat array, categorized object, or legacy schema
+            let extractedSkills = [];
+            if (Array.isArray(resData.skills)) {
+                extractedSkills = resData.skills.map(s => String(s).trim()).filter(Boolean);
+            } else if (resData.categorizedSkills && typeof resData.categorizedSkills === 'object') {
+                extractedSkills = Object.values(resData.categorizedSkills)
+                    .flatMap(val => Array.isArray(val) ? val : [val])
+                    .map(s => String(s).trim())
+                    .filter(Boolean);
+            } else if (resData.skills && typeof resData.skills === 'object') {
+                extractedSkills = Object.values(resData.skills)
+                    .flatMap(val => Array.isArray(val) ? val : [val])
+                    .map(s => String(s).trim())
+                    .filter(Boolean);
+            }
+            extractedSkills = Array.from(new Set(extractedSkills));
+
+            // Normalize projects: support string array, detailed object array, or nested keyProjects
+            let extractedProjects = [];
+            const rawProjectsList = resData.projects || resData.detailedProjects || resData.keyProjects || [];
+            if (Array.isArray(rawProjectsList)) {
+                extractedProjects = rawProjectsList.map(p => {
+                    if (typeof p === 'string') return p.trim();
+                    if (p && typeof p === 'object') return String(p.name || p.title || '').trim();
+                    return '';
+                }).filter(Boolean);
+            }
+            extractedProjects = Array.from(new Set(extractedProjects));
+
             const extractedResumeText = resData.resumeText || '';
 
             let populatedAny = false;
@@ -107,12 +134,8 @@ function Step1Setup({ onStart }) {
                 resumeDerivedValuesRef.current.experience = extractedExperience;
                 populatedAny = true;
             }
-            if (extractedProjects.length) {
-                setProjects(extractedProjects);
-            }
-            if (extractedSkills.length) {
-                setSkills(extractedSkills);
-            }
+            setProjects(extractedProjects);
+            setSkills(extractedSkills);
             if (extractedResumeText) {
                 setResumeText(extractedResumeText);
             }
@@ -425,7 +448,9 @@ function Step1Setup({ onStart }) {
                                                     <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex  items-center gap-1'><HiCollection /> Projects</p>
                                                     <div className='flex  flex-wrap gap-1'>
                                                         {projects.length ? projects.map((p, i) => (
-                                                            <span key={i} className='bg-white/10 text-[12px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
+                                                            <span key={i} className='bg-white/10 text-[11px] px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px]' title={typeof p === 'string' ? p : p.name || p.title}>
+                                                                {typeof p === 'string' ? p : (p.name || p.title || 'Project')}
+                                                            </span>
                                                         )) : (
                                                             <span className='text-[9px] text-slate-400 italic'>None listed</span>
                                                         )}

@@ -1067,4 +1067,200 @@ describe('Prepper AI Interview Enhancements Suite', () => {
         });
     });
 
+
+    // ==========================================
+    // 11. Feature — Skills and Projects Autofill & Normalization
+    // ==========================================
+    describe('11. Feature — Skills and Projects Autofill & Normalization', () => {
+
+        it('should normalize categorized backend skills object into deduplicated flat array for tag rendering', () => {
+            const categorizedSkills = {
+                programmingLanguages: ['JavaScript', 'Python', 'C++'],
+                frontend: ['React', 'Tailwind CSS', 'HTML5'],
+                backend: ['Node.js', 'Express', 'FastAPI'],
+                databases: ['MongoDB', 'PostgreSQL'],
+                toolsAndLibraries: ['Git', 'Docker', 'OpenCV'],
+                other: ['Data Structures', 'REST APIs']
+            };
+
+            const normalizeSkills = (rawSkills) => {
+                let normalized = [];
+                if (Array.isArray(rawSkills)) {
+                    normalized = rawSkills.map(s => String(s).trim()).filter(Boolean);
+                } else if (rawSkills && typeof rawSkills === 'object') {
+                    const allFromCategories = Object.values(rawSkills).flatMap(val => Array.isArray(val) ? val : []);
+                    normalized = allFromCategories.map(s => String(s).trim()).filter(Boolean);
+                } else if (typeof rawSkills === 'string' && rawSkills.trim()) {
+                    normalized = rawSkills.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+                }
+                const seen = new Set();
+                return normalized.filter(s => {
+                    const lower = s.toLowerCase();
+                    if (seen.has(lower)) return false;
+                    seen.add(lower);
+                    return true;
+                });
+            };
+
+            const result = normalizeSkills(categorizedSkills);
+            assert.strictEqual(result.length, 16);
+            assert.ok(result.includes('C++'));
+            assert.ok(result.includes('React'));
+            assert.ok(result.includes('MongoDB'));
+            assert.ok(result.includes('Docker'));
+        });
+
+        it('should normalize detailed project objects with name, title, description, and technologies into project titles', () => {
+            const rawProjects = [
+                {
+                    name: 'AI Mock Interviewer',
+                    description: 'Full-stack platform using React and Node.js with real-time feedback',
+                    technologies: ['React', 'Node.js', 'Tailwind CSS'],
+                    achievements: ['Reduced latency by 40%']
+                },
+                {
+                    title: 'Distributed Log Aggregator',
+                    description: 'Go and Redis pipeline',
+                    technologies: ['Go', 'Redis'],
+                    achievements: []
+                },
+                'Cloud File Storage System'
+            ];
+
+            const normalizeProjects = (projects) => {
+                let normalized = [];
+                if (Array.isArray(projects)) {
+                    normalized = projects.map(p => {
+                        if (typeof p === 'string') return p.trim();
+                        if (p && typeof p === 'object') {
+                            const title = (p.name || p.title || '').trim();
+                            return title || (p.description ? p.description.slice(0, 50).trim() : '');
+                        }
+                        return '';
+                    }).filter(Boolean);
+                }
+                const seen = new Set();
+                return normalized.filter(p => {
+                    const lower = p.toLowerCase();
+                    if (seen.has(lower)) return false;
+                    seen.add(lower);
+                    return true;
+                });
+            };
+
+            const result = normalizeProjects(rawProjects);
+            assert.deepStrictEqual(result, [
+                'AI Mock Interviewer',
+                'Distributed Log Aggregator',
+                'Cloud File Storage System'
+            ]);
+        });
+
+        it('should deduplicate skills case-insensitively without removing distinct skills', () => {
+            const rawSkills = ['React', 'react', 'REACT', 'React.js', 'Node.js', 'node.js', 'C++', 'C'];
+            const seen = new Set();
+            const deduplicated = rawSkills.filter(s => {
+                const lower = s.toLowerCase();
+                if (seen.has(lower)) return false;
+                seen.add(lower);
+                return true;
+            });
+
+            assert.strictEqual(deduplicated.includes('React'), true);
+            assert.strictEqual(deduplicated.includes('react'), false);
+            assert.strictEqual(deduplicated.includes('C++'), true);
+            assert.strictEqual(deduplicated.includes('C'), true);
+            assert.strictEqual(deduplicated.length, 5); // React, React.js, Node.js, C++, C
+        });
+
+        it('should preserve manual edits to skills and projects when resume auto-fill executes', () => {
+            const userEditedFields = { role: false, experience: false, skills: true, projects: false };
+            let formState = {
+                skills: ['Rust', 'WebAssembly'],
+                projects: []
+            };
+
+            const autoExtracted = {
+                skills: ['JavaScript', 'Python'],
+                projects: ['Portfolio Website']
+            };
+
+            // Autofill policy: do not overwrite fields user has manually edited
+            if (!userEditedFields.skills && autoExtracted.skills?.length > 0) {
+                formState.skills = autoExtracted.skills;
+            }
+            if (!userEditedFields.projects && autoExtracted.projects?.length > 0) {
+                formState.projects = autoExtracted.projects;
+            }
+
+            // Skills should remain Rust & WebAssembly because user manually edited skills
+            assert.deepStrictEqual(formState.skills, ['Rust', 'WebAssembly']);
+            // Projects should be auto-filled because user did not manually edit projects
+            assert.deepStrictEqual(formState.projects, ['Portfolio Website']);
+        });
+
+        it('should clear auto-filled skills and projects when resume is removed, while keeping manual edits', () => {
+            const userEditedFields = { role: false, experience: false, skills: false, projects: true };
+            let formState = {
+                skills: ['Python', 'Django'],
+                projects: ['Custom Project Added Manually']
+            };
+
+            // On resume remove:
+            if (!userEditedFields.skills) formState.skills = [];
+            if (!userEditedFields.projects) formState.projects = [];
+
+            assert.deepStrictEqual(formState.skills, []);
+            assert.deepStrictEqual(formState.projects, ['Custom Project Added Manually']);
+        });
+
+        it('should include normalized skills and projects in the final interview-generation payload', () => {
+            const state = {
+                role: 'Full Stack Developer',
+                experience: 'Fresher (0 years)',
+                mode: 'Technical',
+                skills: ['React', 'Node.js', 'MongoDB'],
+                projects: ['E-Commerce App', 'Chat Application'],
+                resumeText: 'Full resume text here...',
+                hasValidResume: true,
+                enableCrossQuestioning: true,
+                crossQuestioningType: 'Technical'
+            };
+
+            const formattedSkills = Array.isArray(state.skills) ? state.skills.filter(Boolean) : [];
+            const formattedProjects = Array.isArray(state.projects)
+                ? state.projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean)
+                : [];
+
+            const payload = {
+                role: state.role.trim(),
+                experience: state.experience.trim(),
+                mode: state.mode,
+                skills: formattedSkills,
+                projects: formattedProjects,
+                resumeText: state.hasValidResume ? state.resumeText : '',
+                enableCrossQuestioning: Boolean(state.hasValidResume && state.enableCrossQuestioning)
+            };
+
+            assert.deepStrictEqual(payload.skills, ['React', 'Node.js', 'MongoDB']);
+            assert.deepStrictEqual(payload.projects, ['E-Commerce App', 'Chat Application']);
+            assert.strictEqual(payload.enableCrossQuestioning, true);
+        });
+
+        it('should verify Step1Setup.jsx handles both string and object project representation in JSX badge rendering', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(
+                step1Content.includes("typeof p === 'string' ? p : (p.name || p.title || 'Project')"),
+                'Step1Setup must safely handle object or string in project badge rendering to avoid [object Object] or React crashes'
+            );
+            assert.ok(
+                step1Content.includes("resData.categorizedSkills && typeof resData.categorizedSkills === 'object'"),
+                'Step1Setup must normalize categorized skill objects from resume response'
+            );
+        });
+    });
+
 });

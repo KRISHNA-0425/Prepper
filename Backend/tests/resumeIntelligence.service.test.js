@@ -16,6 +16,8 @@ import {
   normalizeExperienceString,
   parseMonthNumber,
   LIMITS,
+  extractSkillsFromText,
+  extractProjectsFromText,
 } from '../services/resumeIntelligence.service.js';
 import { cleanExtractedResumeText } from '../controllers/interview.controller.js';
 import {
@@ -794,4 +796,250 @@ Projects: Portfolio, Todo App
       assert.strictEqual(result.role, 'Frontend Developer');
     });
   });
+  describe('8. Deterministic Skills and Projects Extraction & Grounding Suite', () => {
+    it('should correctly extract skills from a resume Technical Skills section with subcategories', () => {
+      const resume = `
+Alex Rivera
+alex@example.com
+Technical Skills:
+- Programming Languages: C++, Python, JavaScript, TypeScript
+- Frontend Technologies: React, HTML5, CSS3, Tailwind CSS
+- Backend Frameworks: Django, FastAPI, Node.js, Express
+- Databases: PostgreSQL, MongoDB, Redis
+- Tools & Libraries: OpenCV, MediaPipe, Git, Docker
+- Other: DSA, OOP, Problem Solving
+`;
+      const result = extractSkillsFromText(resume);
+      assert.ok(result.skills.includes('C++'));
+      assert.ok(result.skills.includes('Python'));
+      assert.ok(result.skills.includes('JavaScript'));
+      assert.ok(result.skills.includes('TypeScript'));
+      assert.ok(result.skills.includes('React'));
+      assert.ok(result.skills.includes('Django'));
+      assert.ok(result.skills.includes('PostgreSQL'));
+      assert.ok(result.skills.includes('OpenCV'));
+      assert.ok(result.skills.includes('MediaPipe'));
+      assert.ok(result.skills.includes('DSA'));
+
+      // Check categorized skills structure
+      assert.ok(result.categorizedSkills.programmingLanguages.includes('C++'));
+      assert.ok(result.categorizedSkills.frontend.includes('React'));
+      assert.ok(result.categorizedSkills.backend.includes('Django'));
+      assert.ok(result.categorizedSkills.databases.includes('PostgreSQL'));
+      assert.ok(result.categorizedSkills.toolsAndLibraries.includes('OpenCV'));
+      assert.ok(result.categorizedSkills.other.includes('DSA'));
+    });
+
+    it('should recover skills from project descriptions when the Technical Skills section is absent', () => {
+      const resume = `
+Jordan Smith
+jordan@example.com
+Education:
+B.S. in Computer Science
+Projects:
+Weather Monitoring System
+- Built live dashboard using Vue.js, Python, Flask, and SQLite.
+Cloud Automation Tool
+- Automated AWS infrastructure using Docker and Terraform scripts.
+`;
+      const result = extractSkillsFromText(resume);
+      assert.ok(result.skills.includes('Vue.js'));
+      assert.ok(result.skills.includes('Python'));
+      assert.ok(result.skills.includes('Flask'));
+      assert.ok(result.skills.includes('SQLite'));
+      assert.ok(result.skills.includes('AWS'));
+      assert.ok(result.skills.includes('Docker'));
+      assert.strictEqual(result.skillsByProvenance.fromSkillsSection.length, 0);
+      assert.ok(result.skillsByProvenance.fromProjectsAndExperience.length >= 4);
+    });
+
+    it('should deduplicate and normalize casing without removing distinct skills', () => {
+      const resume = `
+Skills:
+react, React.js, React Native, node, Node.js, java, javascript, c, c++, c#, html, html5, css, css3
+`;
+      const result = extractSkillsFromText(resume);
+      // Normalized canonical forms
+      assert.ok(result.skills.includes('React'));
+      assert.ok(result.skills.includes('React Native'));
+      assert.ok(result.skills.includes('Node.js'));
+      assert.ok(result.skills.includes('Java'));
+      assert.ok(result.skills.includes('JavaScript'));
+      assert.ok(result.skills.includes('C++'));
+      assert.ok(result.skills.includes('C#'));
+      assert.ok(result.skills.includes('HTML5'));
+      assert.ok(result.skills.includes('CSS3'));
+
+      // Distinct skills must be preserved
+      assert.notStrictEqual(result.skills.includes('Java'), false);
+      assert.notStrictEqual(result.skills.includes('JavaScript'), false);
+      assert.notStrictEqual(result.skills.includes('React'), false);
+      assert.notStrictEqual(result.skills.includes('React Native'), false);
+    });
+
+    it('should extract projects with correct titles and descriptions under various project headers', () => {
+      const resume = `
+Rahul Sharma
+Academic & Personal Projects:
+E-Commerce Web Application (React, Redux)
+- Developed responsive shopping cart and checkout UI.
+- Integrated payment gateway and order history tracking.
+Real-Time Chat Application (React, Socket.io)
+- Built live messaging channel with room subscriptions.
+`;
+      const projects = extractProjectsFromText(resume);
+      assert.strictEqual(projects.length, 2);
+      assert.strictEqual(projects[0].name, 'E-Commerce Web Application');
+      assert.ok(projects[0].description.includes('shopping cart'));
+      assert.strictEqual(projects[1].name, 'Real-Time Chat Application');
+      assert.ok(projects[1].description.includes('live messaging channel'));
+    });
+
+    it('should associate technologies to the correct respective projects', () => {
+      const resume = `
+Projects:
+Distributed Task Queue (Go, Redis)
+- Built high-throughput task worker pool.
+Frontend Analytics Dashboard | React, Tailwind CSS
+- Visualized user conversion funnels.
+`;
+      const projects = extractProjectsFromText(resume);
+      assert.strictEqual(projects.length, 2);
+      assert.strictEqual(projects[0].name, 'Distributed Task Queue');
+      assert.ok(projects[0].technologies.includes('Go'));
+      assert.ok(projects[0].technologies.includes('Redis'));
+      assert.strictEqual(projects[0].technologies.includes('React'), false);
+
+      assert.strictEqual(projects[1].name, 'Frontend Analytics Dashboard');
+      assert.ok(projects[1].technologies.includes('React'));
+      assert.ok(projects[1].technologies.includes('Tailwind CSS'));
+      assert.strictEqual(projects[1].technologies.includes('Redis'), false);
+    });
+
+    it('should preserve explicit achievements and metrics in extracted projects', () => {
+      const resume = `
+Key Projects:
+Video Streaming Engine (Python, OpenCV)
+- Optimized video compression latency by 45%.
+- Scaled service to support 50k concurrent viewers with 99.9% uptime.
+`;
+      const projects = extractProjectsFromText(resume);
+      assert.strictEqual(projects.length, 1);
+      assert.ok(projects[0].achievements.length >= 2);
+      assert.ok(projects[0].achievements.some((a) => a.includes('45%')));
+      assert.ok(projects[0].achievements.some((a) => a.includes('50k')));
+    });
+
+    it('should safely return empty skills and empty projects for sparse resume without fabricating data', () => {
+      const sparse = 'John Student. Contact: john@example.com. Seeking junior role.';
+      const skillRes = extractSkillsFromText(sparse);
+      const projRes = extractProjectsFromText(sparse);
+
+      assert.strictEqual(skillRes.skills.length, 0);
+      assert.strictEqual(skillRes.categorizedSkills.programmingLanguages.length, 0);
+      assert.strictEqual(skillRes.categorizedSkills.frontend.length, 0);
+      assert.strictEqual(projRes.length, 0);
+    });
+
+    it('should preserve deterministic skills and projects in extractResumeClaims even if AI fails completely', async () => {
+      const resume = `
+Rahul Sharma
+Skills: React, JavaScript, HTML5, CSS3, Tailwind CSS, Redux, Git
+Projects:
+E-Commerce Web Application (React, Redux)
+- Developed responsive shopping cart UI.
+`;
+      const failingAskAI = async () => {
+        throw new Error('OpenRouter 402 Payment Required');
+      };
+
+      const result = await extractResumeClaims({ resumeText: resume, askAIFn: failingAskAI });
+      assert.strictEqual(result.role, 'Frontend Developer');
+      assert.strictEqual(result.experience, 'Fresher (0 years)');
+      assert.ok(result.skills.includes('React'));
+      assert.ok(result.skills.includes('JavaScript'));
+      assert.ok(result.skills.includes('Tailwind CSS'));
+      assert.ok(result.detailedProjects.length >= 1);
+      assert.strictEqual(result.detailedProjects[0].name, 'E-Commerce Web Application');
+      assert.deepStrictEqual(result.detailedProjects[0].technologies, ['React', 'Redux']);
+    });
+
+    it('should correctly extract numbered projects (Sign Language Recognition System, NutriShield) and calculate Fresher (0 years) for student resume', async () => {
+      const studentResume = `
+Sagun Yadav 
+Email: saguny44@gmail.com | Phone: 6393758118
+Profile Summary 
+Motivated Computer Science Engineering student with strong fundamentals in Data Structures & Algorithms (C++) and hands-on experience in Frontend Development. Skilled in Python, Django, and modern web technologies.
+Education 
+Class X (CBSE) KENDRIYA VIDYALAYA (2021) – 94.6 
+Class XII (CBSE) KENDRIYA VIDYALAYA (2023) – 75.6 
+Pranveer Singh Institute of Technology (PSIT), Kanpur Bachelor of Technology (B.Tech), Computer Science and Engineering 2024 – 2028 (Currently in 3rd Year)
+Projects 
+1. Sign Language Recognition System 
+• Built a real-time sign language recognition system using Python, OpenCV, and MediaPipe. 
+• Implemented static gesture recognition using 3D hand landmark detection.
+• Trained a Random Forest classifier, achieving over 90% accuracy. 
+• Developed a Tkinter-based GUI and integrated live camera input.
+2. NutriShield – AI-Powered Food Allergen Detection System 
+• Developed an AI-driven web application for food allergen detection using OCR and barcode scanning. 
+• Designed a responsive frontend using HTML, CSS, JavaScript, and React.
+• Implemented dynamic UI states, loading indicators, and real-time safety result rendering. 
+• Integrated backend APIs using Fetch API and FormData for asynchronous communication. 
+Technical Skills 
+ Languages: C++, Python, JavaScript 
+ Frontend: HTML, CSS, React (Basic), Tailwind CSS 
+ Backend: Django Framework 
+ Tools & Libraries: OpenCV, MediaPipe, Git, VS Code 
+ Core Skills: DSA, OOPs, Problem Solving, Team Collaboration 
+Certifications 
+ Introduction to Front-End Development — Meta (Coursera) 
+ Python and Django Framework for Beginners — Udemy 
+`;
+
+      const failingAskAI = async () => {
+        throw new Error('OpenRouter 402 Payment Required');
+      };
+
+      const result = await extractResumeClaims({ resumeText: studentResume, askAIFn: failingAskAI });
+      assert.strictEqual(result.role, 'Frontend Developer');
+      assert.strictEqual(result.experience, 'Fresher (0 years)');
+      assert.strictEqual(result.detailedProjects.length, 2);
+      assert.strictEqual(result.detailedProjects[0].name, 'Sign Language Recognition System');
+      assert.ok(result.detailedProjects[0].technologies.includes('Python'));
+      assert.ok(result.detailedProjects[0].technologies.includes('OpenCV'));
+      assert.ok(result.detailedProjects[0].achievements.length >= 1);
+      assert.strictEqual(result.detailedProjects[1].name, 'NutriShield');
+      assert.ok(result.detailedProjects[1].title.includes('NutriShield'));
+      assert.ok(result.detailedProjects[1].technologies.includes('React'));
+      assert.ok(result.detailedProjects[1].technologies.includes('JavaScript'));
+    });
+
+    it('should correctly extract dated employment experience for candidates with professional employment history', async () => {
+      const proResume = `
+Krishna Sinha
+Email: test@example.com
+Full-stack developer with 2 years of experience.
+Education
+Pranveer Singh Institute of Technology 2021 - 2023
+Experience
+Software Developer
+Tech Innovations Inc
+01/2023 - 01/2025
+- Built full-stack microservices with Node.js and React.
+Skills: Node.js, React, MongoDB, Express
+Projects
+WHIZPER | Chat Application
+- Real-time chat application with Socket.io.
+`;
+      const failingAskAI = async () => {
+        throw new Error('OpenRouter 402 Payment Required');
+      };
+
+      const result = await extractResumeClaims({ resumeText: proResume, askAIFn: failingAskAI });
+      assert.strictEqual(result.experience, '2 years');
+      assert.strictEqual(result.detailedProjects.length, 1);
+      assert.strictEqual(result.detailedProjects[0].name, 'WHIZPER');
+    });
+  });
+
 });

@@ -70,8 +70,23 @@ export const resumeAnalyse = async (req, res) => {
                     const content = await page.getTextContent();
                     if (content && content.items && content.items.length > 0) {
                         totalTextItems += content.items.length;
-                        const pageText = content.items.map(item => item.str).join(' ');
-                        resumeText += pageText + '\n';
+                        let pageText = '';
+                        let lastY = null;
+                        for (const item of content.items) {
+                            if (item.str === undefined) continue;
+                            const currentY = item.transform ? item.transform[5] : null;
+                            if (lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4) {
+                                if (!pageText.endsWith('\n')) pageText += '\n';
+                            }
+                            pageText += item.str;
+                            if (item.hasEOL && !pageText.endsWith('\n')) {
+                                pageText += '\n';
+                            } else if (!pageText.endsWith(' ') && !pageText.endsWith('\n')) {
+                                pageText += ' ';
+                            }
+                            lastY = currentY;
+                        }
+                        resumeText += pageText + '\n\n';
                     }
                 }
 
@@ -114,10 +129,31 @@ export const resumeAnalyse = async (req, res) => {
             });
         }
 
+        // Safe extraction diagnostics (without logging sensitive personal data)
+        const diagnostics = {
+            fileType: req.file?.mimetype || (req.file?.originalname?.endsWith('.docx') ? 'docx' : 'pdf'),
+            hasExtractedText: Boolean(resumeText && resumeText.trim().length > 0),
+            extractedCharCount: resumeText?.length || 0,
+            detectedSections: {
+                skills: /(?:technical\s+skills|skills|technologies|core\s+competencies)/i.test(resumeText),
+                projects: /(?:academic\s+&?\s*personal\s+projects|academic\s+projects|personal\s+projects|key\s+projects|projects)/i.test(resumeText),
+                experience: /(?:experience|work\s+experience|employment)/i.test(resumeText),
+                education: /(?:education|academics|university|college|b\.tech|bachelor)/i.test(resumeText),
+            },
+        };
+        console.log('[resumeAnalyse] Safe extraction diagnostics:', JSON.stringify(diagnostics));
+
         // Source-grounded Resume Intelligence extraction pipeline
         const extraction = await extractResumeClaims({ resumeText });
 
-        // Return structured, validated fields with deterministic experience metrics
+        const normalizedProjects = (Array.isArray(extraction.projects) && extraction.projects.length)
+            ? extraction.projects.map((p) => (typeof p === 'string' ? p : (p.name || p.title || ''))).filter(Boolean)
+            : (Array.isArray(extraction.detailedProjects) ? extraction.detailedProjects.map((p) => (typeof p === 'string' ? p : (p.name || p.title || ''))).filter(Boolean) : []);
+
+        diagnostics.structuredSkillsCount = (extraction.skills || []).length;
+        diagnostics.structuredProjectsCount = normalizedProjects.length;
+
+        // Return structured, validated fields with deterministic experience and skill/project metrics
         return res.status(200).json({
             role: extraction.role || '',
             targetRole: extraction.role || '',
@@ -128,14 +164,18 @@ export const resumeAnalyse = async (req, res) => {
             professionalExperienceMonths: extraction.professionalExperienceMonths || 0,
             internshipExperienceMonths: extraction.internshipExperienceMonths || 0,
             relevantExperienceMonths: extraction.relevantExperienceMonths || 0,
-            projects: Array.isArray(extraction.projects) ? extraction.projects.map((p) => p.title || p) : [],
-            skills: extraction.skills || [],
+            projects: normalizedProjects,
+            detailedProjects: extraction.detailedProjects || extraction.projects || [],
+            skills: Array.isArray(extraction.skills) ? extraction.skills : [],
+            categorizedSkills: extraction.categorizedSkills || null,
+            skillsByProvenance: extraction.skillsByProvenance || null,
             resumeText,
             analysisStatus: extraction.success ? 'complete' : 'partial',
             extractionSuccess: true,
             warnings: extraction.warnings || [],
+            diagnostics,
             crossExaminationProfile: {
-                projects: extraction.projects,
+                projects: extraction.detailedProjects || extraction.projects,
                 standaloneClaims: extraction.standaloneClaims,
                 allClaims: extraction.allClaims,
                 resumeHash: extraction.resumeHash,
@@ -186,8 +226,8 @@ export const generateQuestions = async (req, res) => {
             return res.status(400).json({ message: "Free limit reached please purchase more credits" });
         }
 
-        const projectText = Array.isArray(projects) && projects.length ? projects.join(', ') : "None";
-        const skillText = Array.isArray(skills) && skills.length ? skills.join(', ') : "None";
+        const projectText = Array.isArray(projects) && projects.length ? projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean).join(', ') : "None";
+        const skillText = Array.isArray(skills) && skills.length ? skills.map(s => typeof s === 'string' ? s : (s.name || s.title || '')).filter(Boolean).join(', ') : "None";
         const safeResume = resumeText?.trim() || 'None';
 
         const userPrompt = `
