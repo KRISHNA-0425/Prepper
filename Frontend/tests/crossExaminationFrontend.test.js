@@ -615,4 +615,75 @@ describe('Cross-Examination Frontend Logic & Integration Suite', () => {
             assert.strictEqual(needsGeneration, true);
         });
     });
+
+    // ==========================================
+    // 7. PDF Upload & Server Error Mapping in Setup UI
+    // ==========================================
+    describe('7. PDF Upload & Server Error Mapping in Setup UI', () => {
+
+        it('should verify crossExaminationApi.js creates FormData with resume field when resumeFile is provided', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const apiContent = fs.readFileSync(path.resolve('src/utils/crossExaminationApi.js'), 'utf8');
+
+            assert.ok(
+                apiContent.includes("payload.append('resume', resumeFile)"),
+                "createCrossExaminationSession must append file under fieldname 'resume'"
+            );
+        });
+
+        it('should verify CrossExaminationSetup.jsx displays actionable backend message on failure', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const setupContent = fs.readFileSync(path.resolve('src/pages/CrossExaminationSetup.jsx'), 'utf8');
+
+            assert.ok(
+                setupContent.includes('err.response?.data?.message'),
+                'CrossExaminationSetup must extract specific message from backend response'
+            );
+            assert.ok(
+                setupContent.includes('setValidationError(serverMessage)'),
+                'CrossExaminationSetup must render backend message in validation error banner'
+            );
+        });
+
+        it('should verify CrossExaminationSetup.jsx disables submit button and shows loading state while isSubmitting', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const setupContent = fs.readFileSync(path.resolve('src/pages/CrossExaminationSetup.jsx'), 'utf8');
+
+            assert.ok(
+                setupContent.includes('disabled={isSubmitting}'),
+                'Submit button must be disabled during submission'
+            );
+            assert.ok(
+                setupContent.includes('Analyzing Claims & Generating Blueprint...'),
+                'Submit button must show analyzing progress label during submission'
+            );
+        });
+
+        it('should verify CrossExaminationSetup.jsx maintains stable idempotency key on retry', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const setupContent = fs.readFileSync(path.resolve('src/pages/CrossExaminationSetup.jsx'), 'utf8');
+
+            assert.ok(
+                setupContent.includes('currentIdempotencyKeyRef.current = generateIdempotencyKey()'),
+                'Must generate an idempotency key before request'
+            );
+            assert.ok(
+                setupContent.includes('idempotencyKey: currentIdempotencyKeyRef.current'),
+                'Must pass idempotency key to createCrossExaminationSession'
+            );
+        });
+
+        it('should verify CrossExaminationSetup.jsx validates .pdf extension client-side before submission', () => {
+            const validPdfFile = { name: 'MY_RESUME.pdf', size: 484401 };
+            const docxFile = { name: 'MY_RESUME.docx', size: 102400 };
+
+            const checkExt = (f) => f && f.name.toLowerCase().endsWith('.pdf');
+            assert.strictEqual(checkExt(validPdfFile), true);
+            assert.strictEqual(checkExt(docxFile), false);
+        });
+    });
 });

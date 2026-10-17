@@ -32,21 +32,88 @@ import {
  * @param {string} filePath
  * @returns {Promise<string>}
  */
-export const defaultParsePdf = async (filePath) => {
-  const fileBuffer = await fs.promises.readFile(filePath);
+export const defaultParsePdf = async (input) => {
+  let fileBuffer = null;
+  if (Buffer.isBuffer(input) || input instanceof Uint8Array) {
+    fileBuffer = input;
+  } else if (input && typeof input === 'object' && Buffer.isBuffer(input.buffer)) {
+    fileBuffer = input.buffer;
+  } else if (typeof input === 'string') {
+    fileBuffer = await fs.promises.readFile(input);
+  } else if (input?.path && typeof input.path === 'string') {
+    fileBuffer = await fs.promises.readFile(input.path);
+  } else {
+    throw new Error('Invalid file input: expected a valid file buffer or path');
+  }
+
+  if (!fileBuffer || fileBuffer.length === 0) {
+    const emptyErr = new Error('Uploaded PDF file is empty');
+    emptyErr.code = 'EMPTY_PDF';
+    throw emptyErr;
+  }
+
   const uint8Array = new Uint8Array(fileBuffer);
-  const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+  const loadingTask = pdfjsLib.getDocument({
+    data: uint8Array,
+    useSystemFonts: true,
+    isEvalSupported: false,
+    disableFontFace: true,
+  });
+  const pdf = await loadingTask.promise;
+
   let resumeText = '';
+  let totalTextItems = 0;
+
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
-    const pageText = content.items.map((item) => item.str).join(' ');
-    resumeText += pageText + '\n';
+    if (content && content.items && content.items.length > 0) {
+      totalTextItems += content.items.length;
+      let pageText = '';
+      let lastY = null;
+      for (const item of content.items) {
+        if (item.str === undefined) continue;
+        const currentY = item.transform ? item.transform[5] : null;
+        if (lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4) {
+          if (!pageText.endsWith('\n')) pageText += '\n';
+        }
+        pageText += item.str;
+        if (item.hasEOL && !pageText.endsWith('\n')) {
+          pageText += '\n';
+        } else if (!pageText.endsWith(' ') && !pageText.endsWith('\n')) {
+          pageText += ' ';
+        }
+        lastY = currentY;
+      }
+      resumeText += pageText + '\n\n';
+    }
   }
-  return resumeText.replace(/\s+/g, ' ').trim();
+
+  if (pdf.numPages > 0 && totalTextItems === 0) {
+    const scannedErr = new Error('Scanned PDF detected without readable text. OCR is not supported; please upload a text-based PDF or enter details manually.');
+    scannedErr.isScanned = true;
+    throw scannedErr;
+  }
+
+  const cleanedText = resumeText
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+    .replace(/\r\n|\r/g, '\n')
+    .replace(/[^\S\r\n]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  if (!cleanedText || cleanedText.length < 50) {
+    const minTextErr = new Error('Could not extract sufficient readable text from the PDF. The file may be empty, image-only, or password-protected.');
+    minTextErr.code = 'INSUFFICIENT_TEXT';
+    throw minTextErr;
+  }
+
+  return cleanedText;
 };
 
 /**
+
  * Sanitizes a question object for candidate-facing payloads.
  * Strips internal evaluation metadata (expectedEvidence, rationale, followUpGuidance)
  * during active interviews.
@@ -184,14 +251,29 @@ export const createCrossExaminationController = ({
       // Handle resume file upload if present
       if (req.file) {
         try {
-          resumeText = await parsePdfFn(req.file.path);
+          // Support memoryStorage (req.file.buffer) and diskStorage (req.file.path)
+          const fileInput = req.file.path || req.file.buffer || req.file;
+          resumeText = await parsePdfFn(fileInput);
         } catch (pdfErr) {
+          let userMessage = 'Failed to parse uploaded PDF resume file. Ensure the file is a valid PDF.';
+          if (pdfErr.name === 'PasswordException' || /password/i.test(pdfErr.message)) {
+            userMessage = 'Failed to parse uploaded PDF resume file. Password-protected PDFs are not supported.';
+          } else if (pdfErr.name === 'InvalidPDFException' || /invalid pdf|corrupt|damaged/i.test(pdfErr.message)) {
+            userMessage = 'Failed to parse uploaded PDF resume file. The file is corrupted or unreadable.';
+          } else if (pdfErr.isScanned || /scanned/i.test(pdfErr.message)) {
+            userMessage = 'Failed to parse uploaded PDF resume file. Scanned PDFs without readable text are not supported.';
+          } else if (pdfErr.code === 'EMPTY_PDF' || /empty/i.test(pdfErr.message)) {
+            userMessage = 'Failed to parse uploaded PDF resume file. The uploaded PDF is empty.';
+          } else if (pdfErr.code === 'INSUFFICIENT_TEXT' || /sufficient readable text/i.test(pdfErr.message)) {
+            userMessage = 'Failed to parse uploaded PDF resume file. Could not extract sufficient readable text from the PDF.';
+          }
+
           return res.status(400).json({
-            message: 'Failed to parse uploaded PDF resume file. Ensure the file is a valid PDF.',
+            message: userMessage,
             error: pdfErr.message,
           });
         } finally {
-          if (req.file?.path && fs.existsSync(req.file.path)) {
+          if (req.file?.path && typeof req.file.path === 'string' && fs.existsSync(req.file.path)) {
             try {
               fs.unlinkSync(req.file.path);
             } catch (_) {}
