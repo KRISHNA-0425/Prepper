@@ -1,9 +1,20 @@
 import fs from 'fs';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { askAI } from '../services/openRouter.service.js';
-import { extractResumeClaims, safeParseJson } from '../services/resumeIntelligence.service.js';
+import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
+
+export const cleanExtractedResumeText = (rawText) => {
+    if (!rawText || typeof rawText !== 'string') return '';
+    return rawText
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+        .replace(/\r\n|\r/g, '\n')
+        .replace(/[^\S\r\n]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
 
 export const resumeAnalyse = async (req, res) => {
     try {
@@ -11,43 +22,160 @@ export const resumeAnalyse = async (req, res) => {
             return res.status(400).json({ message: "Please upload your resume" });
         }
 
-        const filePath = req.file.path;
-
-        // converting the data into binary data
-        const fileBuffer = await fs.promises.readFile(filePath);
-        // converting the data in the pdfjs-dist understandable format
-        const uint8Array = new Uint8Array(fileBuffer);
-
-        const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
-
-        let resumeText = "";
-
-        // Extracting text from all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const content = await page.getTextContent();
-            const pageText = content.items.map(items => items.str).join(' ');
-            resumeText += pageText + '\n';
+        // Support both memoryStorage (req.file.buffer) and diskStorage (req.file.path)
+        let fileBuffer = req.file.buffer;
+        if (!fileBuffer && req.file.path) {
+            fileBuffer = await fs.promises.readFile(req.file.path);
         }
 
-        resumeText = resumeText.replace(/\s/g, " ").trim();
+        if (!fileBuffer || fileBuffer.length === 0) {
+            return res.status(400).json({ message: "Uploaded file is empty" });
+        }
+
+        const fileName = (req.file.originalname || '').toLowerCase();
+        const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc') || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+        let resumeText = "";
+        let totalTextItems = 0;
+        let isScannedPdf = false;
+
+        if (isDocx) {
+            try {
+                resumeText = extractTextFromDocxBuffer(fileBuffer);
+            } catch (docxErr) {
+                return res.status(400).json({
+                    message: "The uploaded Word document is corrupted or unreadable. Please check the file and try again."
+                });
+            }
+            if (!resumeText || !resumeText.trim()) {
+                return res.status(400).json({
+                    message: "Could not extract readable text from the Word document. The file may be empty, corrupt, or password-protected."
+                });
+            }
+        } else {
+            // PDF extraction with safe runtime options & error classification
+            try {
+                const uint8Array = new Uint8Array(fileBuffer);
+                const loadingTask = pdfjsLib.getDocument({
+                    data: uint8Array,
+                    useSystemFonts: true,
+                    isEvalSupported: false,
+                    disableFontFace: true,
+                });
+                const pdf = await loadingTask.promise;
+
+                // Extract text from all pages
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const content = await page.getTextContent();
+                    if (content && content.items && content.items.length > 0) {
+                        totalTextItems += content.items.length;
+                        let pageText = '';
+                        let lastY = null;
+                        for (const item of content.items) {
+                            if (item.str === undefined) continue;
+                            const currentY = item.transform ? item.transform[5] : null;
+                            if (lastY !== null && currentY !== null && Math.abs(currentY - lastY) > 4) {
+                                if (!pageText.endsWith('\n')) pageText += '\n';
+                            }
+                            pageText += item.str;
+                            if (item.hasEOL && !pageText.endsWith('\n')) {
+                                pageText += '\n';
+                            } else if (!pageText.endsWith(' ') && !pageText.endsWith('\n')) {
+                                pageText += ' ';
+                            }
+                            lastY = currentY;
+                        }
+                        resumeText += pageText + '\n\n';
+                    }
+                }
+
+                if (pdf.numPages > 0 && totalTextItems === 0) {
+                    isScannedPdf = true;
+                }
+            } catch (pdfErr) {
+                if (pdfErr.name === 'PasswordException' || /password/i.test(pdfErr.message)) {
+                    return res.status(400).json({
+                        message: "Password-protected PDFs are not supported. Please upload an unprotected PDF."
+                    });
+                }
+                if (pdfErr.name === 'InvalidPDFException' || /invalid pdf|corrupt|damaged/i.test(pdfErr.message)) {
+                    return res.status(400).json({
+                        message: "The uploaded PDF file is corrupted or unreadable. Please check the file and try again."
+                    });
+                }
+                throw pdfErr;
+            }
+        }
+
+        // Cleanup temporary file if diskStorage was used
+        if (req.file.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+        }
+
+        if (isScannedPdf) {
+            return res.status(400).json({
+                message: "Scanned PDF detected without readable text. OCR is not supported; please upload a text-based PDF or Word document, or enter details manually.",
+                isScanned: true
+            });
+        }
+
+        resumeText = cleanExtractedResumeText(resumeText);
+
+        if (!resumeText || resumeText.length < 20) {
+            return res.status(400).json({
+                message: "Could not extract sufficient text from document. The file may be empty or an image scan. Please upload a text-based PDF/DOCX or enter details manually.",
+                isScanned: isScannedPdf || totalTextItems === 0
+            });
+        }
+
+        // Safe extraction diagnostics (without logging sensitive personal data)
+        const diagnostics = {
+            fileType: req.file?.mimetype || (req.file?.originalname?.endsWith('.docx') ? 'docx' : 'pdf'),
+            hasExtractedText: Boolean(resumeText && resumeText.trim().length > 0),
+            extractedCharCount: resumeText?.length || 0,
+            detectedSections: {
+                skills: /(?:technical\s+skills|skills|technologies|core\s+competencies)/i.test(resumeText),
+                projects: /(?:academic\s+&?\s*personal\s+projects|academic\s+projects|personal\s+projects|key\s+projects|projects)/i.test(resumeText),
+                experience: /(?:experience|work\s+experience|employment)/i.test(resumeText),
+                education: /(?:education|academics|university|college|b\.tech|bachelor)/i.test(resumeText),
+            },
+        };
+        console.log('[resumeAnalyse] Safe extraction diagnostics:', JSON.stringify(diagnostics));
 
         // Source-grounded Resume Intelligence extraction pipeline
         const extraction = await extractResumeClaims({ resumeText });
 
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+        const normalizedProjects = (Array.isArray(extraction.projects) && extraction.projects.length)
+            ? extraction.projects.map((p) => (typeof p === 'string' ? p : (p.name || p.title || ''))).filter(Boolean)
+            : (Array.isArray(extraction.detailedProjects) ? extraction.detailedProjects.map((p) => (typeof p === 'string' ? p : (p.name || p.title || ''))).filter(Boolean) : []);
 
-        // Return legacy backward-compatible fields alongside the cross-examination claims profile
+        diagnostics.structuredSkillsCount = (extraction.skills || []).length;
+        diagnostics.structuredProjectsCount = normalizedProjects.length;
+
+        // Return structured, validated fields with deterministic experience and skill/project metrics
         return res.status(200).json({
             role: extraction.role || '',
+            targetRole: extraction.role || '',
             experience: extraction.experience || '',
-            projects: extraction.projects.map((p) => p.title),
-            skills: extraction.skills || [],
+            yearsOfExperience: extraction.experience || '',
+            experienceLevel: extraction.experienceLevel || null,
+            experienceEvidenceStatus: extraction.experienceEvidenceStatus || 'UNANALYZED',
+            professionalExperienceMonths: extraction.professionalExperienceMonths || 0,
+            internshipExperienceMonths: extraction.internshipExperienceMonths || 0,
+            relevantExperienceMonths: extraction.relevantExperienceMonths || 0,
+            projects: normalizedProjects,
+            detailedProjects: extraction.detailedProjects || extraction.projects || [],
+            skills: Array.isArray(extraction.skills) ? extraction.skills : [],
+            categorizedSkills: extraction.categorizedSkills || null,
+            skillsByProvenance: extraction.skillsByProvenance || null,
             resumeText,
+            analysisStatus: extraction.success ? 'complete' : 'partial',
+            extractionSuccess: true,
+            warnings: extraction.warnings || [],
+            diagnostics,
             crossExaminationProfile: {
-                projects: extraction.projects,
+                projects: extraction.detailedProjects || extraction.projects,
                 standaloneClaims: extraction.standaloneClaims,
                 allClaims: extraction.allClaims,
                 resumeHash: extraction.resumeHash,
@@ -57,10 +185,14 @@ export const resumeAnalyse = async (req, res) => {
         });
 
     } catch (error) {
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
         }
-        return res.status(500).json({ message: "error in the resumeAnalyse controller", error });
+        console.error("Error in resumeAnalyse:", error.message || error);
+        return res.status(500).json({
+            message: "Failed to process resume document. Please verify the document format or enter details manually.",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 
@@ -94,8 +226,8 @@ export const generateQuestions = async (req, res) => {
             return res.status(400).json({ message: "Free limit reached please purchase more credits" });
         }
 
-        const projectText = Array.isArray(projects) && projects.length ? projects.join(', ') : "None";
-        const skillText = Array.isArray(skills) && skills.length ? skills.join(', ') : "None";
+        const projectText = Array.isArray(projects) && projects.length ? projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean).join(', ') : "None";
+        const skillText = Array.isArray(skills) && skills.length ? skills.map(s => typeof s === 'string' ? s : (s.name || s.title || '')).filter(Boolean).join(', ') : "None";
         const safeResume = resumeText?.trim() || 'None';
 
         const userPrompt = `

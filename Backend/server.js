@@ -18,7 +18,10 @@ const port = process.env.PORT || 5000
 // Required on Render so Express trusts HTTPS headers forwarded by Render's reverse proxy
 app.set('trust proxy', 1)
 
-app.use(helmet())
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())

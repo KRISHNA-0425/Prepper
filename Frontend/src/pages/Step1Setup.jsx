@@ -26,6 +26,8 @@ function Step1Setup({ onStart }) {
     const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
     const userEditedFieldsRef = useRef({ role: false, experience: false });
     const uploadedFileRef = useRef(null);
+    const activeExtractionIdRef = useRef(0);
+    const resumeDerivedValuesRef = useRef({ role: '', experience: '' });
 
     // Derived validation: cross-questioning is strictly enabled only when a valid resume has been parsed
     const hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0);
@@ -53,14 +55,17 @@ function Step1Setup({ onStart }) {
     };
 
     const performResumeExtraction = async (file) => {
-        if (!file || anaylzing) return;
+        if (!file) return;
         if (uploadedFileRef.current === file && anaylsisDone) return;
 
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            toast.error("Please upload a PDF document");
+        const fileName = (file.name || '').toLowerCase();
+        const isSupported = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
+        if (!isSupported) {
+            toast.error("Please upload a PDF or Word (.docx) document");
             return;
         }
 
+        const extractionId = ++activeExtractionIdRef.current;
         setResumeFile(file);
         uploadedFileRef.current = file;
         setAnaylzing(true);
@@ -72,30 +77,88 @@ function Step1Setup({ onStart }) {
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/resume', formData, { withCredentials: true });
 
+            // Discard stale response if another file was uploaded or resume was cleared
+            if (extractionId !== activeExtractionIdRef.current || !uploadedFileRef.current) {
+                return;
+            }
+
+            // Normalize response fields from backend API
+            const resData = result.data?.data || result.data || {};
+            const extractedRole = String(resData.role || resData.targetRole || resData.jobRole || '').trim();
+            let rawExp = resData.experience ?? resData.yearsOfExperience ?? resData.experienceLevel ?? resData.level ?? '';
+            if (typeof rawExp === 'number') {
+                rawExp = rawExp <= 0 ? 'Fresher (0 years)' : `${rawExp} ${rawExp === 1 ? 'year' : 'years'}`;
+            }
+            const extractedExperience = String(rawExp || '').trim();
+            // Normalize skills: support flat array, categorized object, or legacy schema
+            let extractedSkills = [];
+            if (Array.isArray(resData.skills)) {
+                extractedSkills = resData.skills.map(s => String(s).trim()).filter(Boolean);
+            } else if (resData.categorizedSkills && typeof resData.categorizedSkills === 'object') {
+                extractedSkills = Object.values(resData.categorizedSkills)
+                    .flatMap(val => Array.isArray(val) ? val : [val])
+                    .map(s => String(s).trim())
+                    .filter(Boolean);
+            } else if (resData.skills && typeof resData.skills === 'object') {
+                extractedSkills = Object.values(resData.skills)
+                    .flatMap(val => Array.isArray(val) ? val : [val])
+                    .map(s => String(s).trim())
+                    .filter(Boolean);
+            }
+            extractedSkills = Array.from(new Set(extractedSkills));
+
+            // Normalize projects: support string array, detailed object array, or nested keyProjects
+            let extractedProjects = [];
+            const rawProjectsList = resData.projects || resData.detailedProjects || resData.keyProjects || [];
+            if (Array.isArray(rawProjectsList)) {
+                extractedProjects = rawProjectsList.map(p => {
+                    if (typeof p === 'string') return p.trim();
+                    if (p && typeof p === 'object') return String(p.name || p.title || '').trim();
+                    return '';
+                }).filter(Boolean);
+            }
+            extractedProjects = Array.from(new Set(extractedProjects));
+
+            const extractedResumeText = resData.resumeText || '';
+
+            let populatedAny = false;
+
             // Auto-populate relevant fields preserving manual user edits
-            if (!userEditedFieldsRef.current.role && result.data.role) {
-                setRole(result.data.role);
+            if (!userEditedFieldsRef.current.role && extractedRole) {
+                setRole(extractedRole);
+                resumeDerivedValuesRef.current.role = extractedRole;
+                populatedAny = true;
             }
-            if (!userEditedFieldsRef.current.experience && result.data.experience) {
-                setExperience(result.data.experience);
+            if (!userEditedFieldsRef.current.experience && extractedExperience) {
+                setExperience(extractedExperience);
+                resumeDerivedValuesRef.current.experience = extractedExperience;
+                populatedAny = true;
             }
-            if (Array.isArray(result.data.projects) && result.data.projects.length) {
-                setProjects(result.data.projects);
-            }
-            if (Array.isArray(result.data.skills) && result.data.skills.length) {
-                setSkills(result.data.skills);
-            }
-            if (result.data.resumeText) {
-                setResumeText(result.data.resumeText);
+            setProjects(extractedProjects);
+            setSkills(extractedSkills);
+            if (extractedResumeText) {
+                setResumeText(extractedResumeText);
             }
             setAnaylsisDone(true);
 
-            toast.success("Resume parsed! Relevant fields populated automatically.", { id: loadToast });
+            if (extractedRole && extractedExperience) {
+                toast.success("Resume parsed! Target Role and Experience populated automatically.", { id: loadToast });
+            } else if (populatedAny || extractedSkills.length) {
+                toast.success("Resume parsed! Some fields populated. Please review and fill any remaining fields.", { id: loadToast });
+            } else {
+                toast.success("Resume text extracted! Please enter your target role and experience.", { id: loadToast });
+            }
         } catch (error) {
             console.error('Error in resume extraction', error);
-            toast.error("Could not extract text from document. You can still enter details manually.", { id: loadToast });
+            if (extractionId === activeExtractionIdRef.current) {
+                setAnaylsisDone(false);
+                const errMsg = error.response?.data?.message || "Could not extract text from document. You can still enter details manually.";
+                toast.error(errMsg, { id: loadToast });
+            }
         } finally {
-            setAnaylzing(false);
+            if (extractionId === activeExtractionIdRef.current) {
+                setAnaylzing(false);
+            }
         }
     };
 
@@ -242,7 +305,7 @@ function Step1Setup({ onStart }) {
                                             type="text"
                                             className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
                                             placeholder='Experience e.g.-2 years '
-                                            onChange={(e) => setExperience(e.target.value)}
+                                            onChange={(e) => { userEditedFieldsRef.current.experience = true; setExperience(e.target.value); }}
                                             value={experience}
                                         />
                                     </div>
@@ -315,7 +378,7 @@ function Step1Setup({ onStart }) {
                                             onClick={() => document.getElementById("resumeUpload").click()}
                                         >
                                             <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
-                                            <input type="file" accept='application/pdf' id="resumeUpload" className='hidden' onChange={(e) => {
+                                            <input type="file" accept='.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document' id="resumeUpload" className='hidden' onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) {
                                                     performResumeExtraction(file);
@@ -327,8 +390,9 @@ function Step1Setup({ onStart }) {
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
                                                     type="button"
+                                                    disabled={anaylzing}
                                                     onClick={handleUploadResume}
-                                                    className='mt-2 px-6 py-1.5 bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-lg'
+                                                    className='mt-2 px-6 py-1.5 bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-lg disabled:opacity-50'
                                                 >
                                                     {anaylzing ? "Analyzing..." : "Sync with AI"}
                                                 </motion.button>
@@ -344,27 +408,52 @@ function Step1Setup({ onStart }) {
                                         >
                                             <motion.button
                                                 whileHover={{ rotate: 90 }}
-                                                onClick={() => { setAnaylsisDone(false); setResumeFile(null); uploadedFileRef.current = null; setResumeText(''); setSkills([]); setProjects([]); setEnableCrossQuestioning(false); }}
+                                                onClick={() => {
+                                                    setAnaylsisDone(false);
+                                                    setResumeFile(null);
+                                                    uploadedFileRef.current = null;
+                                                    activeExtractionIdRef.current++;
+                                                    setResumeText('');
+                                                    setSkills([]);
+                                                    setProjects([]);
+                                                    setEnableCrossQuestioning(false);
+                                                    if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
+                                                        setRole('');
+                                                    }
+                                                    if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
+                                                        setExperience('');
+                                                    }
+                                                    resumeDerivedValuesRef.current = { role: '', experience: '' };
+                                                }}
                                                 className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
                                             >
                                                 <HiX />
                                             </motion.button>
-                                            <div className='flex items-center gap-2 mb-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'><HiSparkles className='animate-pulse' /> Extraction Complete</div>
+                                            <div className='flex items-center gap-2 mb-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'>
+                                                <HiSparkles className='animate-pulse' />
+                                                Extraction Complete
+                                            </div>
                                             <div className='grid grid-cols-2 gap-4'>
                                                 <div>
                                                     <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCode /> Skills</p>
                                                     <div className='flex flex-wrap gap-1'>
-                                                        {skills.map((s, i) => (
+                                                        {skills.length ? skills.map((s, i) => (
                                                             <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{s}</span>
-                                                        ))}
+                                                        )) : (
+                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex  items-center gap-1'><HiCollection /> Projects</p>
                                                     <div className='flex  flex-wrap gap-1'>
-                                                        {projects.map((p, i) => (
-                                                            <span key={i} className='bg-white/10 text-[12px] px-2 py-0.5 rounded-md border border-white/5'>{p}</span>
-                                                        ))}
+                                                        {projects.length ? projects.map((p, i) => (
+                                                            <span key={i} className='bg-white/10 text-[11px] px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px]' title={typeof p === 'string' ? p : p.name || p.title}>
+                                                                {typeof p === 'string' ? p : (p.name || p.title || 'Project')}
+                                                            </span>
+                                                        )) : (
+                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
