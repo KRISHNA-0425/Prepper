@@ -45,22 +45,25 @@ A comprehensive, full-stack web application designed to help users prepare for i
 ```text
 Prepper/
 │
-├── Backend/                 # Express Server & API logic
+├── Backend/                 # Express Server & API logic ([Backend README](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/Backend/README.md))
 │   ├── config/              # Database connection configuration
 │   ├── controllers/         # API business logic (e.g., payment, auth)
 │   ├── middleware/          # Custom middlewares (e.g., auth verification)
 │   ├── models/              # Mongoose database schemas 
 │   ├── routes/              # API endpoints (auth, user, interview, payment)
+│   ├── services/            # OpenRouter AI & Razorpay services
 │   ├── server.js            # Entry point for the backend server
+│   ├── README.md            # Backend documentation
 │   └── package.json
 │
-├── Frontend/                # Vite + React Application
+├── Frontend/                # Vite + React Application ([Frontend README](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/Frontend/README.md))
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
 │   │   ├── pages/           # Route components (Home, Dashboard, Pricing, Interview)
 │   │   ├── redux/           # Redux slices and store configuration
 │   │   ├── App.jsx          # Main application component & routing logic
 │   │   └── main.jsx         # React application mounting
+│   ├── README.md            # Frontend documentation
 │   └── package.json
 │
 └── README.md                # Project documentation
@@ -69,10 +72,11 @@ Prepper/
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v16+ recommended)
+- [Node.js](https://nodejs.org/) (v18+ recommended)
 - [MongoDB](https://www.mongodb.com/) (Local instance or Atlas URI)
 - [Firebase](https://firebase.google.com/) (Project setup for Auth integration)
 - [Razorpay](https://razorpay.com/) (Account for payment gateway keys)
+- [OpenRouter](https://openrouter.ai/) (API key for AI generation)
 
 ### 1. Clone the repository
 
@@ -93,13 +97,16 @@ cd Prepper
    ```
 3. Create a `.env` file in the `Backend` directory:
    ```env
-   PORT=3000
-   MONGO_URI=your_mongodb_connection_string
+   PORT=5000
+   MONGO_URL=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret_key
    SERVER_URL=http://localhost:5173
+   OPEN_ROUTER_URL=https://openrouter.ai/api/v1/chat/completions
+   OPEN_ROUTER_APIKEY=your_openrouter_api_key
+   OPEN_ROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
    RAZORPAY_KEY_ID=your_razorpay_key_id
    RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-   # Include any additional Firebase Admin or AI API keys as required
+   NODE_ENV=development
    ```
 4. Start the backend development server:
    ```bash

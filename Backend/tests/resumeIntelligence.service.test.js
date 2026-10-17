@@ -7,6 +7,9 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
   extractResumeClaims,
+  calculateExperienceFromDates,
+  inferTargetRole,
+  normalizeExperienceString,
   LIMITS,
 } from '../services/resumeIntelligence.service.js';
 import {
@@ -426,6 +429,67 @@ Full stack engineer at Tech Corp. Built REST APIs in Node.js.
       assert.ok(Array.isArray(legacyResponsePayload.skills));
       assert.strictEqual(typeof legacyResponsePayload.resumeText, 'string');
       assert.ok(legacyResponsePayload.crossExaminationProfile);
+    });
+  });
+
+  describe('5. Target Role Inference & Professional Experience Calculation', () => {
+    it('should infer target role from headline or stated title', () => {
+      const resume = 'Jane Doe\nFull Stack Developer\nEmail: jane@example.com\nExperienced engineer.';
+      const role = inferTargetRole({ resumeText: resume });
+      assert.strictEqual(role, 'Full Stack Developer');
+    });
+
+    it('should infer target role from employment history when headline is absent', () => {
+      const resume = 'Alex Rivera\nEmail: alex@example.com\nExperience:\nDevOps Engineer at CloudCorp (2020 - 2024)';
+      const role = inferTargetRole({ resumeText: resume });
+      assert.strictEqual(role, 'DevOps Engineer');
+    });
+
+    it('should infer target role from dominant technical skills when title is absent', () => {
+      const frontendResume = 'Taylor Lee\nSkills: React, Redux, TailwindCSS, Next.js, HTML5, CSS3';
+      assert.strictEqual(inferTargetRole({ resumeText: frontendResume }), 'Frontend Developer');
+
+      const backendResume = 'Jordan Smith\nSkills: Node.js, Express, PostgreSQL, MongoDB, Redis, Docker';
+      assert.strictEqual(inferTargetRole({ resumeText: backendResume }), 'Backend Developer');
+    });
+
+    it('should return empty string for role when resume has no confident technical evidence', () => {
+      const sparseResume = 'John Student\nContact: student@university.edu\nLooking for opportunities.';
+      assert.strictEqual(inferTargetRole({ resumeText: sparseResume }), '');
+    });
+
+    it('should calculate professional experience from employment dates', () => {
+      const resume = 'Software Engineer | Acme Corp\nJan 2021 - Dec 2023\nJunior Developer | Beta Inc\nJan 2019 - Dec 2020';
+      const exp = calculateExperienceFromDates(resume);
+      assert.strictEqual(exp, '5 years');
+    });
+
+    it('should merge overlapping employment periods without double counting', () => {
+      const resume = 'Tech Lead | Alpha Corp\n2018 - 2022\nPart-time Consultant | Beta Labs\n2019 - 2021';
+      const exp = calculateExperienceFromDates(resume);
+      // 2018 to 2022 is 4-5 years, not double-counted with 2019-2021
+      assert.strictEqual(exp, '5 years');
+    });
+
+    it('should strictly exclude student internships and academic coursework from professional experience', () => {
+      const resume = 'Full-Time Engineer | Zeta Corp\nJan 2022 - Dec 2023\nSoftware Engineering Intern | Beta Inc\nJan 2020 - Dec 2021\nAcademic Capstone Project | State University\nJan 2019 - Dec 2019';
+      const exp = calculateExperienceFromDates(resume);
+      // Only Jan 2022 - Dec 2023 is professional full-time
+      assert.strictEqual(exp, '2 years');
+    });
+
+    it('should return empty string when resume does not contain employment dates', () => {
+      const sparse = 'Seeking job. No prior employment dates.';
+      assert.strictEqual(calculateExperienceFromDates(sparse), '');
+    });
+
+    it('should normalize numeric experience values to formatted strings', () => {
+      assert.strictEqual(normalizeExperienceString(5), '5 years');
+      assert.strictEqual(normalizeExperienceString('3'), '3 years');
+      assert.strictEqual(normalizeExperienceString(1), '1 year');
+      assert.strictEqual(normalizeExperienceString('4 years'), '4 years');
+      assert.strictEqual(normalizeExperienceString(''), '');
+      assert.strictEqual(normalizeExperienceString(null), '');
     });
   });
 });

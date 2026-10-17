@@ -107,6 +107,17 @@ CRITICAL OPERATIONAL RULES:
    - "RESPONSIBILITY_AND_OWNERSHIP"
    - "PROBLEM_STATEMENT"
    - "FAILURE_HANDLING"
+5. TARGET ROLE EXTRACTION:
+   - Infer the most appropriate target professional role from the candidate's resume headline, job titles, technical skills, and projects (e.g., "Full-Stack Developer", "Frontend Developer", "Backend Developer", "DevOps Engineer", "Data Analyst", etc.).
+   - Prefer an explicitly stated desired or current role if present.
+   - If the role cannot be determined with reasonable confidence (e.g. sparse student resume with no technical skills or jobs), set "role" to null.
+6. PROFESSIONAL EXPERIENCE EXTRACTION:
+   - Extract and calculate total professional work experience from supported employment dates.
+   - Strict rules:
+     * Avoid double-counting overlapping employment periods.
+     * Distinguish professional work experience from student internships, university coursework, academic projects, and personal side projects.
+     * Format as a concise years string (e.g., "5 years", "2 years", "1 year", "0-1 years").
+     * If the resume does not contain sufficient dates or evidence to calculate experience, set "experience" to null rather than inventing a value.
 
 You must respond ONLY with a valid JSON object adhering strictly to this schema:
 {
@@ -266,6 +277,203 @@ export const sanitizeAndVerifyClaim = (rawClaim, rawSourceText, warnings = []) =
  * @param {number} [params.maxRetries=1] - Maximum retries on parse failure
  * @returns {Promise<object>}
  */
+/**
+ * Helper to parse month names/abbreviations to 0-indexed month (0-11)
+ */
+const parseMonthNumber = (str) => {
+  if (!str) return 0;
+  const m = str.toLowerCase().slice(0, 3);
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const idx = months.indexOf(m);
+  return idx !== -1 ? idx : 0;
+};
+
+/**
+ * Normalizes an experience value (string or number) into a standard formatted string.
+ * @param {string|number} expStr
+ * @returns {string}
+ */
+export const normalizeExperienceString = (expStr) => {
+  if (!expStr && expStr !== 0) return '';
+  const str = String(expStr).trim();
+  if (!str) return '';
+
+  if (/\b(?:year|years|month|months|fresher)\b/i.test(str)) {
+    return str;
+  }
+
+  const num = parseFloat(str);
+  if (!isNaN(num)) {
+    const rounded = Math.round(num);
+    if (rounded <= 0) return '0-1 years';
+    if (rounded === 1) return '1 year';
+    return `${rounded} years`;
+  }
+
+  return str;
+};
+
+/**
+ * Extracts professional work experience from resume text employment dates.
+ * Merges overlapping intervals to prevent double counting.
+ * Excludes student internships, academic projects, and coursework.
+ *
+ * @param {string} text - Raw resume text
+ * @returns {string} Formatted years string, e.g. "5 years", "1 year", or "" if indeterminate
+ */
+export const calculateExperienceFromDates = (text) => {
+  if (!text || typeof text !== 'string') return '';
+
+  const lines = text.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+  const intervals = [];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const dateRangeRegex = /(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.,\s]*)?(\b(?:19|20)\d{2}\b)\s*(?:-|to|\u2013|\u2014)\s*(?:(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[.,\s]*)?(\b(?:19|20)\d{2}\b)|(present|current|now)\b)/i;
+
+  const isAcademicOrIntern = (str) => {
+    return /\b(intern|internship|trainee|apprentice|university|college|school|bachelor|master|b\.s\.|m\.s\.|b\.tech|phd|coursework|academic project|capstone)\b/i.test(str);
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(dateRangeRegex);
+    if (!match) continue;
+
+    // Exclude if current line or immediately preceding title line mentions intern/academic
+    if (isAcademicOrIntern(line)) {
+      continue;
+    }
+    if (i > 0 && isAcademicOrIntern(lines[i - 1])) {
+      continue;
+    }
+
+    const startMonth = parseMonthNumber(match[1]);
+    const startYear = parseInt(match[2], 10);
+
+    let endYear, endMonth;
+    if (match[5] && /present|current|now/i.test(match[5])) {
+      endYear = currentYear;
+      endMonth = currentMonth;
+    } else if (match[4]) {
+      endYear = parseInt(match[4], 10);
+      endMonth = parseMonthNumber(match[3]) || 11;
+    } else {
+      continue;
+    }
+
+    const startTotalMonths = startYear * 12 + startMonth;
+    const endTotalMonths = endYear * 12 + endMonth;
+
+    if (endTotalMonths >= startTotalMonths && startYear >= 1970 && endYear <= currentYear + 1) {
+      intervals.push([startTotalMonths, endTotalMonths]);
+    }
+  }
+
+  if (intervals.length === 0) return '';
+
+  intervals.sort((a, b) => a[0] - b[0]);
+
+  const merged = [];
+  let current = [...intervals[0]];
+
+  for (let i = 1; i < intervals.length; i++) {
+    const next = intervals[i];
+    if (next[0] <= current[1] + 1) {
+      current[1] = Math.max(current[1], next[1]);
+    } else {
+      merged.push(current);
+      current = [...next];
+    }
+  }
+  merged.push(current);
+
+  const totalMonths = merged.reduce((acc, [start, end]) => acc + (end - start), 0);
+  const years = Math.round(totalMonths / 12);
+
+  if (years <= 0) return '0-1 years';
+  if (years === 1) return '1 year';
+  return `${years} years`;
+};
+
+/**
+ * Infers appropriate target role from candidate resume headline, titles, skills, and projects.
+ * Returns empty string if the role cannot be determined with reasonable confidence.
+ *
+ * @param {object} params
+ * @param {string} params.resumeText
+ * @param {string[]} [params.skills]
+ * @param {object[]} [params.projects]
+ * @returns {string} Inferred role title or ""
+ */
+export const inferTargetRole = ({ resumeText, skills = [], projects = [] }) => {
+  if (!resumeText || typeof resumeText !== 'string') return '';
+
+  const lines = resumeText.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+
+  const knownRoles = [
+    'full-stack developer', 'full stack developer', 'full-stack engineer', 'full stack engineer',
+    'frontend developer', 'frontend engineer', 'front-end developer', 'front-end engineer',
+    'backend developer', 'backend engineer', 'back-end developer', 'back-end engineer',
+    'senior software engineer', 'software engineer', 'software developer',
+    'devops engineer', 'cloud engineer', 'cloud architect', 'site reliability engineer',
+    'data analyst', 'data scientist', 'data engineer', 'machine learning engineer', 'ai engineer',
+    'mobile developer', 'ios developer', 'android developer', 'react native developer',
+    'qa engineer', 'qa automation engineer', 'test engineer', 'security engineer'
+  ];
+
+  const formatRoleTitle = (roleStr) => {
+    return roleStr
+      .split(/[\s-]+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ')
+      .replace(/Devops/g, 'DevOps')
+      .replace(/Qa/g, 'QA')
+      .replace(/Ai/g, 'AI')
+      .replace(/Ios/g, 'iOS');
+  };
+
+  // 1. Check top 15 lines (headline, summary, explicit desired/current title)
+  const topLines = lines.slice(0, 15);
+  for (const line of topLines) {
+    const lower = line.toLowerCase();
+    for (const kr of knownRoles) {
+      if (new RegExp(`\\b${kr}\\b`, 'i').test(lower)) {
+        return formatRoleTitle(kr);
+      }
+    }
+  }
+
+  // 2. Check employment history titles throughout the resume
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    for (const kr of knownRoles) {
+      if (new RegExp(`\\b${kr}\\b`, 'i').test(lower)) {
+        return formatRoleTitle(kr);
+      }
+    }
+  }
+
+  // 3. Fallback to skills and projects evidence
+  const skillNames = (skills || []).map((s) => String(s).toLowerCase());
+  const projectTitles = (projects || []).map((p) => (typeof p === 'string' ? p : p.title || '').toLowerCase());
+  const combinedContext = [...skillNames, ...projectTitles, resumeText.toLowerCase()].join(' ');
+
+  const hasFrontend = /\b(react|vue|angular|svelte|next\.js|nuxt|html|css|tailwind|javascript|typescript|redux)\b/i.test(combinedContext);
+  const hasBackend = /\b(node|express|django|fastapi|spring|flask|nest\.js|postgresql|mongodb|mysql|redis|rest api|graphql)\b/i.test(combinedContext);
+  const hasDevOps = /\b(docker|kubernetes|aws|azure|gcp|terraform|jenkins|ci\/cd|ansible|helm)\b/i.test(combinedContext);
+  const hasData = /\b(pandas|numpy|scikit-learn|tensorflow|pytorch|power bi|tableau|spark|hadoop|data warehouse)\b/i.test(combinedContext);
+
+  if (hasFrontend && hasBackend) return 'Full-Stack Developer';
+  if (hasFrontend && !hasBackend) return 'Frontend Developer';
+  if (hasBackend && !hasFrontend) return 'Backend Developer';
+  if (hasDevOps) return 'DevOps Engineer';
+  if (hasData) return 'Data Analyst';
+
+  return '';
+};
+
 export const extractResumeClaims = async ({
   resumeText,
   askAIFn = defaultAskAI,
@@ -327,10 +535,13 @@ export const extractResumeClaims = async ({
 
   // Graceful fallback if AI calls failed completely
   if (!parsedData) {
+    const fallbackRole = inferTargetRole({ resumeText });
+    const fallbackExperience = calculateExperienceFromDates(resumeText);
+
     return {
       success: false,
-      role: '',
-      experience: '',
+      role: fallbackRole,
+      experience: fallbackExperience,
       skills: [],
       projects: [],
       standaloneClaims: [],
@@ -343,8 +554,18 @@ export const extractResumeClaims = async ({
   }
 
   // Post-process projects and claims with excerpt verification
-  const role = typeof parsedData.role === 'string' ? parsedData.role.trim() : '';
-  const experience = typeof parsedData.experience === 'string' ? parsedData.experience.trim() : '';
+  let role = typeof parsedData.role === 'string' ? parsedData.role.trim() : '';
+  if (/ceo|hired|overridden|ignore all/i.test(role) && !new RegExp(`\\b${role}\\b`, 'i').test(resumeText)) {
+    role = '';
+  }
+  if (!role) {
+    role = inferTargetRole({ resumeText, skills: parsedData.skills, projects: parsedData.projects });
+  }
+
+  let experience = normalizeExperienceString(parsedData.experience);
+  if (!experience) {
+    experience = calculateExperienceFromDates(resumeText);
+  }
   const skills = Array.isArray(parsedData.skills)
     ? parsedData.skills.map((s) => String(s).trim()).filter(Boolean)
     : [];
