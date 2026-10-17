@@ -1263,4 +1263,115 @@ describe('Prepper AI Interview Enhancements Suite', () => {
         });
     });
 
+    // ==========================================================
+    // 12. Feature — Layout, Scrolling & Extraction Panel Overflow
+    // ==========================================================
+    describe('12. Feature — Layout, Scrolling & Extraction Panel Overflow Safety', () => {
+
+        it('should verify Step1Setup.jsx uses min-h-screen and responsive overflow-y-auto on outer wrapper without h-screen overflow-hidden trap', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('min-h-screen'), 'Outer wrapper must use min-h-screen to accommodate stacked layout');
+            assert.ok(step1Content.includes('overflow-y-auto'), 'Outer wrapper must allow vertical scrolling when content exceeds height');
+            assert.ok(!step1Content.includes("h-screen w-full flex items-center justify-center bg-[#F5EC5A] p-4 font-poppins overflow-hidden"),
+                'Outer wrapper must not trap mobile viewports with inflexible h-screen and overflow-hidden');
+        });
+
+        it('should verify Step1Setup.jsx card container uses responsive grid-cols-1 md:grid-cols-2 and bounds height strictly on desktop with my-auto', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('grid-cols-1 md:grid-cols-2'), 'Card container must stack on mobile and split into 2 columns on desktop');
+            assert.ok(step1Content.includes('md:h-[90vh] md:max-h-[840px]'), 'Card container must bound height on desktop while remaining fluid on mobile');
+            assert.ok(step1Content.includes('my-auto'), 'Card container must center vertically when space permits');
+        });
+
+        it('should verify Step1Setup.jsx right column allows vertical scrolling with overflow-y-auto and min-h-0', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(
+                step1Content.includes('overflow-y-auto min-h-0 custom-scrollbar'),
+                'Right column must enable overflow-y-auto with min-h-0 and custom-scrollbar so form content never clips'
+            );
+            assert.ok(
+                !step1Content.includes("p-6 md:p-12 flex flex-col justify-center bg-white overflow-hidden"),
+                'Right column must not have overflow-hidden or rigid justify-center that pushes inputs off-screen'
+            );
+        });
+
+        it('should verify left branding column includes min-h-0 and accessible back navigation with keyboard focus', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(step1Content.includes('min-h-0'), 'Left column must include min-h-0 to prevent flex/grid overflow');
+            assert.ok(step1Content.includes('aria-label="Back to home"'), 'Back button must have descriptive aria-label for accessibility');
+            assert.ok(step1Content.includes('focus:ring-2 focus:ring-yellow-400'), 'Back button must have clear focus indicator for keyboard users');
+        });
+
+        it('should verify Extraction Complete panel has bounded max-height, custom scrollbar, and non-overlapping header dismiss button', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(
+                step1Content.includes('max-h-56 sm:max-h-64') || step1Content.includes('max-h-52') || step1Content.includes('max-h-56'),
+                'Extraction panel must enforce a bounded maximum height'
+            );
+            assert.ok(
+                step1Content.includes('aria-label="Dismiss extracted resume data"'),
+                'Dismiss button must have an accessible aria-label'
+            );
+            assert.ok(
+                step1Content.includes('aria-label="Extracted skills and projects"'),
+                'Scrollable extraction content must have an accessible label'
+            );
+        });
+
+        it('should verify project badges avoid rigid truncation (no truncate max-w-[140px]) and allow wrapping and full accessibility', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(
+                !step1Content.includes('truncate max-w-[140px]'),
+                'Step1Setup must not truncate project badges to 140px width'
+            );
+            assert.ok(
+                step1Content.includes('break-words whitespace-normal max-w-full'),
+                'Project badges must wrap onto multiple lines with break-words'
+            );
+            assert.ok(
+                step1Content.includes('title='),
+                'Project badges must provide full title and description in tooltip'
+            );
+        });
+
+        it('should verify Start Interview button is within scrollable form flow with visible keyboard focus indicators', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(
+                step1Content.includes('focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2'),
+                'Start Interview button must have keyboard focus indicator'
+            );
+        });
+
+        it('should verify index.css defines sleek custom-scrollbar styles for clean cross-browser scrolling', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const indexCss = fs.readFileSync(path.resolve('src/index.css'), 'utf8');
+
+            assert.ok(indexCss.includes('.custom-scrollbar'), 'index.css must declare .custom-scrollbar utility class');
+            assert.ok(indexCss.includes('scrollbar-width: thin'), 'custom-scrollbar must declare standard scrollbar-width for modern browsers');
+            assert.ok(indexCss.includes('::-webkit-scrollbar'), 'custom-scrollbar must customize webkit scrollbar for Chrome/Edge/Safari');
+        });
+    });
+
 });
