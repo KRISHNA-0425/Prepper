@@ -1,7 +1,6 @@
 import mongoose from 'mongoose'
 
 const questionSchema = new mongoose.Schema({
-    // Changed from 'questions' to 'question' to match controller logic
     question: { 
         type: String, 
         required: true 
@@ -20,6 +19,18 @@ const questionSchema = new mongoose.Schema({
     confidence: { type: Number, default: 0 },
     communication: { type: Number, default: 0 },
     correctness: { type: Number, default: 0 },
+    isFollowUp: { 
+        type: Boolean, 
+        default: false 
+    },
+    parentQuestionIndex: { 
+        type: Number, 
+        default: null 
+    },
+    depth: { 
+        type: Number, 
+        default: 0 
+    },
 })
 
 const interviewSchema = new mongoose.Schema({
@@ -28,12 +39,10 @@ const interviewSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    // Matches 'role' in your controller
     role: { 
         type: String, 
         required: true 
     },
-    // Fixed spelling: experince -> experience
     experience: { 
         type: String, 
         required: true 
@@ -56,9 +65,18 @@ const interviewSchema = new mongoose.Schema({
         type: String,
         enum: ["Completed", "Incompleted"],
         default: "Incompleted"
+    },
+    enableCrossQuestioning: {
+        type: Boolean,
+        default: false
+    },
+    crossQuestioningType: {
+        type: String,
+        enum: ["Technical", "Behavioral"],
+        default: "Technical"
     }
 }, { timestamps: true })
 
 const Interview = mongoose.model("Interview", interviewSchema);
 
-export default Interview
+export default Interview;

@@ -1,19 +1,42 @@
-# 🚀 PREPPER — Frontend Console
+# 🚀 Prepper AI — Frontend Web Client
 
-Prepper is an interactive, AI-driven mock interview platform designed to help candidates prepare for real-world job interviews. It provides a real-time conversational interface where an AI interviewer speaks questions aloud and listens to verbal answers, culminating in a detailed, visual performance breakdown.
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19.1-blue.svg?style=for-the-badge&logo=react" alt="React 19" />
+  <img src="https://img.shields.io/badge/Vite-7.x-646CFF.svg?style=for-the-badge&logo=vite" alt="Vite" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC.svg?style=for-the-badge&logo=tailwind-css" alt="Tailwind CSS v4" />
+  <img src="https://img.shields.io/badge/Redux_Toolkit-2.x-764ABC.svg?style=for-the-badge&logo=redux" alt="Redux Toolkit" />
+  <img src="https://img.shields.io/badge/Framer_Motion-12.x-0055FF.svg?style=for-the-badge&logo=framer" alt="Framer Motion" />
+  <img src="https://img.shields.io/badge/Razorpay-Web_Checkout-11397b.svg?style=for-the-badge&logo=razorpay" alt="Razorpay" />
+</p>
+
+**Prepper Frontend** is a modern, responsive web application for interactive AI mock interviews. It features real-time conversational voice interactions (Speech-to-Text and Text-to-Speech), synchronized interviewer video avatars, automated resume information extraction, dynamic countdown timers, and rich visual performance analytics.
 
 ---
 
-## 🎨 Design Philosophy & UI Transitions
+## 📑 Table of Contents
 
-Prepper features a distinct **dual-theme transition architecture** built with **Tailwind CSS v4** and **Framer Motion**:
-
-*   **Public Landing & Authentication (`#F5EC5A` & Slate-900)**: High-energy, contrast-rich yellow and slate interfaces featuring fluid, physics-based entrance transitions. Blobs and custom micro-interactions draw visual interest.
-*   **Interview Console & Reports (Slate-950 / Dark Mode)**: When entering setup or starting an interview session, the application seamlessly transitions to a premium, dark command-center aesthetic. This focuses attention, reduces glare during mock speaking sessions, and matches standard IDE/terminal environments.
+- [🎨 Design Philosophy & Dual-Theme Architecture](#-design-philosophy--dual-theme-architecture)
+- [🛠️ Technology Stack](#️-technology-stack)
+- [⚡ Key Features & Interview Workflow](#-key-features--interview-workflow)
+- [📁 Directory Architecture](#-directory-architecture)
+- [🔑 Environment Variables](#-environment-variables)
+- [🧠 State Management (Redux Store)](#-state-management-redux-store)
+- [🎙️ Speech API & Browser Compatibility](#️-speech-api--browser-compatibility)
+- [🚀 Local Installation & Scripts](#-local-installation--scripts)
+- [🌐 Deployment & Production Build](#-deployment--production-build)
 
 ---
 
-## 🛠️ Technology Stack (Tech Cards)
+## 🎨 Design Philosophy & Dual-Theme Architecture
+
+Prepper features a **dual-theme transition architecture** built with **Tailwind CSS v4** and **Framer Motion**:
+
+*   **Public Landing & Authentication (`#F5EC5A` & Slate-900)**: High-energy, contrast-rich yellow and slate interfaces featuring fluid, physics-based entrance transitions. Floating blobs, interactive badges, and micro-interactions draw visual interest.
+*   **Interview Console & Analytics (Slate-950 / Deep Command Center)**: When entering setup or conducting an interview session, the application seamlessly transitions to a focused, dark command-center aesthetic. This minimizes eye strain during vocal practice sessions and mimics modern developer workstations.
+
+---
+
+## 🛠️ Technology Stack
 
 <table width="100%">
   <tr>
@@ -23,15 +46,15 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" alt="React" width="45" height="45" />
         <h4>React 19</h4>
       </div>
-      <p size="2">Component-based UI state architecture utilizing React 19's fast rendering cycles and concurrent rendering features.</p>
+      <p>Component-based UI state architecture utilizing React 19's fast rendering cycles and concurrent capabilities.</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
         <br/>
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/vitejs/vitejs-original.svg" alt="Vite" width="45" height="45" />
-        <h4>Vite Config</h4>
+        <h4>Vite Bundler</h4>
       </div>
-      <p size="2">Ultra-fast modern development environment and bundling pipeline with instantaneous Hot Module Replacement (HMR).</p>
+      <p>Ultra-fast development environment and optimized rollup bundling pipeline with instantaneous Hot Module Replacement (HMR).</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
@@ -39,7 +62,7 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/tailwindcss/tailwindcss-original.svg" alt="TailwindCSS" width="45" height="45" />
         <h4>Tailwind CSS v4</h4>
       </div>
-      <p size="2">High-performance utility-first styling with integrated PostCSS parsing and custom keyframes animations.</p>
+      <p>Next-gen utility-first styling with integrated Vite plugin (<code>@tailwindcss/vite</code>) and zero-config CSS compilation.</p>
     </td>
   </tr>
   <tr>
@@ -49,15 +72,15 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/redux/redux-original.svg" alt="Redux Toolkit" width="45" height="45" />
         <h4>Redux Toolkit</h4>
       </div>
-      <p size="2">Centralized, predictable client-side global state store for keeping track of authenticated user accounts and platform credits.</p>
+      <p>Centralized, predictable client-side global state store for keeping track of authenticated user profiles and credit balances.</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
         <br/>
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/firebase/firebase-original.svg" alt="Firebase" width="45" height="45" />
-        <h4>Firebase OAuth</h4>
+        <h4>Firebase Auth</h4>
       </div>
-      <p size="2">Seamless client-side integration utilizing Firebase Google Auth Provider popups to kickstart user sessions.</p>
+      <p>Client-side Google Auth Provider popup integration initializing federated user sign-in sessions.</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
@@ -65,7 +88,7 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://img.icons8.com/color/48/000000/microphone.png" alt="HTML5 Speech API" width="45" height="45" />
         <h4>Web Speech API</h4>
       </div>
-      <p size="2">Native client-side speech synthesis (Text-to-Speech) and webkitSpeechRecognition (Speech-to-Text) for hands-free mock dialogues.</p>
+      <p>Native client-side speech synthesis (TTS) and <code>webkitSpeechRecognition</code> (STT) for hands-free mock dialogues.</p>
     </td>
   </tr>
   <tr>
@@ -75,7 +98,7 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://img.icons8.com/fluency/48/000000/combo-chart.png" alt="Recharts" width="45" height="45" />
         <h4>Recharts Visuals</h4>
       </div>
-      <p size="2">Responsive SVG charting engine compiling Radar Charts (skills overview) and Bar Charts (question-wise scores).</p>
+      <p>Responsive SVG charting engine compiling Radar Charts (skills overview) and Bar Charts (question-wise scores).</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
@@ -83,106 +106,188 @@ Prepper features a distinct **dual-theme transition architecture** built with **
         <img src="https://img.icons8.com/color/48/ffffff/framer-motion.png" alt="Framer Motion" width="45" height="45" style="background:#0F172A; border-radius:10px; padding:4px;" />
         <h4>Framer Motion</h4>
       </div>
-      <p size="2">Spring physics transitions, staggered lists, and entry/exit card animations that establish tactile responsiveness.</p>
+      <p>Spring physics transitions, staggered lists, modal entrance effects, and tactile card micro-interactions.</p>
     </td>
     <td width="33%" valign="top">
       <div align="center">
         <br/>
         <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/axios/axios-plain.svg" alt="Axios" width="45" height="45" />
-        <h4>Axios client</h4>
+        <h4>Axios Client</h4>
       </div>
-      <p size="2">Configured with credentials support for HTTP cookie persistence during cross-origin api handshakes.</p>
+      <p>Pre-configured HTTP client using <code>withCredentials: true</code> for automatic cookie synchronization across API endpoints.</p>
     </td>
   </tr>
 </table>
 
 ---
 
-## ⚡ Key Functionality & Features
+## ⚡ Key Features & Interview Workflow
 
-### 📂 1. Profile Sync & Resume Parsing
-*   **Drag-and-Drop Resume Scanner**: Users can upload a resume (PDF/DOCX) using a custom multipart/form-data interface.
-*   **AI Auto-Extraction**: The backend analyzes the document, extracting the candidate's core skills, notable projects, targeted role, and experience level, immediately pre-filling the interview wizard.
+### 1. Resume Scanner & Auto-Compilation (`Step1Setup.jsx`)
+- **Drag-and-Drop Uploader**: Accepts PDF resumes via multipart upload.
+- **AI Profile Extraction**: Instantly populates the candidate's core skills, top projects, target job title, and years of experience into editable tags.
+- **Interview Configuration**: Allows selecting **Technical** or **HR** modes and reviewing available platform credits before launching.
 
-### 👥 2. Adaptive Interview Generation
-*   **Custom Adjustments**: Refine skills, add specific projects, toggle between Technical or HR focus, and input years of experience.
-*   **Credit Verification**: Starting an interview utilizes global user state to query and display active credits before calling the AI generation model.
+### 2. Conversational Voice Console (`Step2Interview.jsx`)
+- **Text-to-Speech (TTS)**: The AI interviewer reads the generated questions out loud with speech rate and pitch control.
+- **Lip-Sync Video Avatar**: Synchronizes video playback state with speech events (`onstart`, `onend`), delivering a live face-to-face simulation.
+- **Speech-to-Text (STT)**: Uses browser microphone recognition to transcribe verbal answers directly in real-time.
+- **Circular Progress Timer**: Visually counts down time limits (60s for Easy, 90s for Medium, 120s for Hard), automatically submitting answers if the clock expires.
 
-### 🗣️ 3. Simulated Face-to-Face Voice Console
-*   **Web Speech Synthesis (TTS)**: The AI speaks questions using high-fidelity voices configured inside the browser environment.
-*   **Web Speech Recognition (STT)**: Recognizes speech input automatically, transcribing verbal answers in real-time.
-*   **Animated Persona Sync**: A simulated video element synchronizes play state based on SpeechSynthesis events (`onstart` / `onend`), simulating a live speaker.
-*   **Smart Time Control**: Countdown timer tracks time left for each question, warning the user and automatically submitting response data when the clock reaches zero.
+### 3. Analytics & Feedback Reports (`Step3Report.jsx` & `InterviewReport.jsx`)
+- **Overall Score Radial**: Displays aggregate performance percentage via `react-circular-progressbar`.
+- **Tri-Factor Radar Chart**: Compares **Confidence**, **Communication**, and **Correctness** metrics.
+- **Question-by-Question Breakdown**: Displays question text, candidate's spoken response, AI feedback, and per-question score.
 
-### 📊 4. Deep Metrics Analytics Dashboard
-*   **Composite Scoring**: Single-metric indicator representing performance percentage.
-*   **Radar Overview**: Visual display scoring three crucial factors: **Confidence**, **Communication**, and **Correctness**.
-*   **Performance Progress Bar Chart**: Question-by-question scoring display mapped via Recharts.
-*   **Comprehensive Feedbacks**: Comparative display showing the original question, your spoken answer, AI's ideal answer guidance, and bulleted improvements.
-
-### 📁 5. Session History Archive
-*   **Persisted Log**: Pulls all historic interview sessions conducted under the user profile.
-*   **Quick Navigate**: Instant link-backs to historical report pages.
+### 4. Credits & Monetization (`Pricing.jsx`)
+- Seamless Razorpay checkout modal for purchasing credit bundles (50 credits deducted per interview).
+- Dispatches Redux updates upon verified transaction to update navbar credits instantly.
 
 ---
 
 ## 📁 Directory Architecture
 
-Below is the layout of the frontend application assets:
-
-```bash
+```text
 Frontend/
-├── public/                 # Static public resources
+├── public/                 # Static assets (favicons, interview avatar video)
 ├── src/
-│   ├── assets/             # Media and static graphics
-│   ├── components/         # Reusable presentation components
-│   │   ├── AuthModel.jsx   # Portal modal trigger for authentication
-│   │   ├── CapabilityCard  # Hover-responsive features listing card
-│   │   ├── FeatureCard.jsx # Feature dashboard summary grid card
-│   │   ├── ModeCard.jsx    # Selectable interview focus state card
-│   │   ├── Navbar.jsx      # Navigation bar showing user credits and avatar
-│   │   └── Timer.jsx       # Custom circular progress countdown timer
-│   ├── pages/              # Routed pages
-│   │   ├── Auth.jsx        # Google login template with active blobs
-│   │   ├── Home.jsx        # Landing dashboard page
-│   │   ├── InterViewHistory.jsx # Historical sessions record viewer
-│   │   ├── InterviewPage.jsx    # Wizard router (Setup -> Active -> Final)
-│   │   ├── InterviewReport.jsx  # Permanent report detail retriever
-│   │   ├── Pricing.jsx     # Credit plans list page
-│   │   ├── Step1Setup.jsx  # Drag & Drop resume profile compiler
-│   │   ├── Step2Interview.jsx # Active TTS/STT interviewer console
-│   │   └── Step3Report.jsx  # Local charts and feedback generator
-│   ├── redux/              # Client-side redux global state store
-│   │   ├── store.js        # Redux store orchestrator
-│   │   └── userSlice.js    # User state slice & credentials sync actions
+│   ├── assets/             # Branding graphics, illustrations, and logos
+│   ├── components/         # Reusable UI elements
+│   │   ├── AuthModel.jsx   # Modal overlay for Google sign-in
+│   │   ├── CapabilityCard  # Hover-animated feature cards
+│   │   ├── FeatureCard.jsx # Grid card showing platform capabilities
+│   │   ├── ModeCard.jsx    # Selectable card for HR / Technical mode
+│   │   ├── Navbar.jsx      # Navigation bar showing avatar & live credit badge
+│   │   └── Timer.jsx       # Circular countdown timer component
+│   ├── pages/              # Routed view pages
+│   │   ├── Auth.jsx        # Authentication page with animated background blobs
+│   │   ├── Home.jsx        # Landing page with hero banner & testimonials
+│   │   ├── InterViewHistory.jsx # Historical interview sessions log
+│   │   ├── InterviewPage.jsx    # Wizard router handling Step 1, 2, and 3
+│   │   ├── InterviewReport.jsx  # Permanent report detail viewer (by ID)
+│   │   ├── Pricing.jsx     # Credit tiers & Razorpay checkout integration
+│   │   ├── Step1Setup.jsx  # Resume upload & interview configuration wizard
+│   │   ├── Step2Interview.jsx # Active vocal console with TTS/STT and video avatar
+│   │   └── Step3Report.jsx  # Post-interview scorecards and Recharts breakdown
+│   ├── redux/              # Central Redux Toolkit store
+│   │   ├── store.js        # Redux store config
+│   │   └── userSlice.js    # User state slice (profile, credits, login actions)
 │   ├── utils/
-│   │   └── firebase.js     # Firebase client setup & provider instance
-│   ├── App.css             # Main styling rules
-│   ├── App.jsx             # Main Router element with axios initializer
-│   ├── index.css           # Global CSS variables mapping
-│   └── main.jsx            # DOM entrypoint
-├── index.html              # HTML shell template
-├── package.json            # NPM dependencies configuration
-└── vite.config.js          # Vite config bundling instructions
+│   │   └── firebase.js     # Firebase Client SDK & Google Auth initialization
+│   ├── App.css             # Root styles
+│   ├── App.jsx             # Main Router element & currentUser fetch on boot
+│   ├── index.css           # Tailwind v4 theme configuration
+│   └── main.jsx            # React root DOM mounting
+├── index.html              # Single page application HTML template
+├── package.json            # Project dependencies & scripts
+├── vercel.json             # SPA rewrites config for Vercel deployment
+└── vite.config.js          # Vite config with React & Tailwind plugins
 ```
 
 ---
 
-## 🚀 Running Locally
+## 🔑 Environment Variables
 
-To bootstrap the application locally, run these commands in the terminal:
+Create a `.env` file in the `Frontend/` directory:
 
-1. Install current dependencies:
-   ```bash
-   npm install
-   ```
+```env
+# Backend API Base URL
+VITE_SERVER_URL=http://localhost:5000
 
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
+# Razorpay Checkout Public Key
+VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxx
 
-3. Build the production package:
-   ```bash
-   npm run build
-   ```
+# Firebase Web SDK Configuration
+VITE_FIREBASE_APIKEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+VITE_AUTHDOMAIN=your-app-id.firebaseapp.com
+VITE_PROJECT_ID=your-app-id
+VITE_STORAGE_BUCKET=your-app-id.appspot.com
+VITE_MESSAGE_SENDERID=123456789012
+VITE_APPID=1:123456789012:web:xxxxxxxxxxxxxxxxx
+```
+
+### Environment Variables Reference
+
+| Variable | Description |
+| :--- | :--- |
+| `VITE_SERVER_URL` | Base URL pointing to the running backend Express server (e.g. `http://localhost:5000` or production Render/Heroku URL) |
+| `VITE_RAZORPAY_KEY_ID` | Public test or live Razorpay Key ID for client-side checkout |
+| `VITE_FIREBASE_APIKEY` | Firebase Web API key |
+| `VITE_AUTHDOMAIN` | Firebase authentication domain |
+| `VITE_PROJECT_ID` | Firebase project identifier |
+| `VITE_STORAGE_BUCKET` | Firebase storage bucket |
+| `VITE_MESSAGE_SENDERID` | Firebase Cloud Messaging Sender ID |
+| `VITE_APPID` | Firebase web application identifier |
+
+---
+
+## 🧠 State Management (Redux Store)
+
+The client uses **Redux Toolkit** to synchronize user state:
+
+- **Store**: Configured in `src/redux/store.js`.
+- **Slice (`src/redux/userSlice.js`)**:
+  - `userData`: Stores `{ _id, name, email, credits }` or `null`.
+  - `setUserData(payload)`: Updates the logged-in user profile and balance.
+  - `clearUserData()`: Resets user state to `null` upon logout.
+- **Session Restoration**: When `App.jsx` mounts, an Axios request checks `GET /api/user/currentUser` with cookie credentials. If authenticated, Redux state is automatically restored.
+
+---
+
+## 🎙️ Speech API & Browser Compatibility
+
+The voice console uses standard **Web Speech APIs**:
+- **Speech Synthesis**: `window.speechSynthesis` and `SpeechSynthesisUtterance` for speaking questions.
+- **Speech Recognition**: `window.SpeechRecognition` or `window.webkitSpeechRecognition` for microphone transcription.
+
+### Recommended Browsers:
+- **Google Chrome** (Recommended for optimal STT accuracy)
+- **Microsoft Edge**
+- **Brave / Chromium-based browsers**
+
+> **Note**: Users must grant microphone permissions when prompted by the browser. If speech recognition is unavailable, candidates can still manually review question text and submit responses.
+
+---
+
+## 🚀 Local Installation & Scripts
+
+### 1. Install Dependencies
+```bash
+cd Frontend
+npm install
+```
+
+### 2. Run Development Server
+```bash
+npm run dev
+```
+The application will launch at: `http://localhost:5173`
+
+### 3. Available NPM Scripts
+
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| `dev` | `vite` | Starts local development server with Hot Module Replacement (HMR) |
+| `build` | `vite build` | Compiles and optimizes assets into production bundle (`dist/`) |
+| `preview` | `vite preview` | Serves local production build for pre-deployment testing |
+| `lint` | `eslint .` | Runs ESLint checks on all JavaScript and JSX source files |
+
+---
+
+## 🌐 Deployment & Production Build
+
+### Building for Production
+```bash
+npm run build
+```
+This generates the optimized static build in the `Frontend/dist` folder.
+
+### Vercel Deployment
+The repository includes a `Frontend/vercel.json` file configuring SPA routing rewrites:
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+```
+Ensure all environment variables specified in the [Environment Variables](#-environment-variables) section are added in the Vercel Project Settings under **Environment Variables**.
