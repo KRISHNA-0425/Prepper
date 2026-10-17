@@ -12,6 +12,10 @@ interviewRouter.post("/submitAnswer", isAuth, submitAnswer);
 interviewRouter.post("/finish", isAuth, finishInterview);
 
 interviewRouter.get('/getInterview', isAuth, getMyInterviews);
+interviewRouter.get('/cross-history', isAuth, (req, res) => {
+    req.query.type = 'cross';
+    return getMyInterviews(req, res);
+});
 interviewRouter.get('/report/:id', isAuth, getInterviewReport);
 
 export default interviewRouter;

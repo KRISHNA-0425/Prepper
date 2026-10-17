@@ -42,6 +42,21 @@ export const handleOptionalResumeUpload = (req, res, next) => {
         error: err.message,
       });
     }
+
+    if (req.file) {
+      const ext = (req.file.originalname || '').toLowerCase();
+      if (!ext.endsWith('.pdf')) {
+        return res.status(400).json({
+          message: 'Only PDF resume files (.pdf) are supported',
+        });
+      }
+      if (!req.file.size || req.file.size === 0 || (req.file.buffer && req.file.buffer.length === 0)) {
+        return res.status(400).json({
+          message: 'Uploaded PDF resume file is empty',
+        });
+      }
+    }
+
     next();
   });
 };
