@@ -209,19 +209,20 @@ function Step1Setup({ onStart }) {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className='h-screen w-full flex items-center justify-center bg-[#F5EC5A] p-4 font-poppins overflow-hidden'
+                className='min-h-screen w-full flex items-center justify-center bg-[#F5EC5A] p-3 sm:p-4 md:p-6 lg:p-8 font-poppins overflow-y-auto'
             >
-                <div className='w-full max-w-6xl bg-white rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] grid md:grid-cols-2 overflow-hidden h-[90vh] max-h-[800px]'>
+                <div className='w-full max-w-6xl bg-white rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] grid grid-cols-1 md:grid-cols-2 overflow-hidden my-auto md:h-[90vh] md:max-h-[840px]'>
 
                     {/* --- Left Column: Branding --- */}
                     <motion.div
                         initial={{ x: -50 }}
                         animate={{ x: 0 }}
-                        className='relative bg-slate-900 p-8 md:p-10 flex flex-col justify-center text-white overflow-hidden'
+                        className='relative bg-slate-900 p-6 sm:p-8 md:p-10 flex flex-col justify-center text-white overflow-hidden min-h-0'
                     >
                         <button
                             type="button" 
-                            className='absolute top-8 left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors'
+                            aria-label="Back to home"
+                            className='absolute top-5 left-5 md:top-8 md:left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400'
                             onClick={() => navigate("/")}
                         >
                             <IoArrowBackOutline size={26} className='text-yellow-500' />
@@ -274,10 +275,10 @@ function Step1Setup({ onStart }) {
                     </motion.div>
 
                     {/* --- Right Column: Form --- */}
-                    <motion.div className='p-6 md:p-12 flex flex-col justify-center bg-white overflow-hidden'>
+                    <motion.div className='p-6 md:px-8 md:py-6 lg:p-10 flex flex-col bg-white overflow-y-auto min-h-0 custom-scrollbar'>
                         <motion.div
                             layout
-                            className='max-w-md mx-auto w-full space-y-6'
+                            className='max-w-md mx-auto w-full space-y-5 my-auto py-2'
                         >
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                                 <h2 className='text-2xl font-black text-slate-900 tracking-tighter uppercase'>Interview Setup</h2>
@@ -300,7 +301,6 @@ function Step1Setup({ onStart }) {
                                 <motion.div className='flex flex-col gap-2'>
                                     <div className='space-y-1'>
                                         <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><HiTrendingUp /> Level</label>
-                                        {/* <select value={experience} onChange={(e) => { userEditedFieldsRef.current.experience = true; setExperience(e.target.value); }} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'><option value="0-1">Freshman</option><option value="2-4">Intermediate</option><option value="5+">Senior</option></select> */}
                                         <input
                                             type="text"
                                             className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
@@ -401,59 +401,95 @@ function Step1Setup({ onStart }) {
                                     ) : (
                                         <motion.div
                                             key="results"
-                                            initial={{ opacity: 0, y: 20 }}
+                                            initial={{ opacity: 0, y: 15 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             layout
-                                            className='bg-slate-900 rounded-xl p-4 text-white relative border-l-4 border-yellow-400 shadow-xl'
+                                            className='bg-slate-900 rounded-xl p-3.5 text-white border-l-4 border-yellow-400 shadow-xl flex flex-col max-h-56 sm:max-h-64'
                                         >
-                                            <motion.button
-                                                whileHover={{ rotate: 90 }}
-                                                onClick={() => {
-                                                    setAnaylsisDone(false);
-                                                    setResumeFile(null);
-                                                    uploadedFileRef.current = null;
-                                                    activeExtractionIdRef.current++;
-                                                    setResumeText('');
-                                                    setSkills([]);
-                                                    setProjects([]);
-                                                    setEnableCrossQuestioning(false);
-                                                    if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
-                                                        setRole('');
-                                                    }
-                                                    if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
-                                                        setExperience('');
-                                                    }
-                                                    resumeDerivedValuesRef.current = { role: '', experience: '' };
-                                                }}
-                                                className='absolute top-2 right-2 text-slate-500 hover:text-white transition-colors'
-                                            >
-                                                <HiX />
-                                            </motion.button>
-                                            <div className='flex items-center gap-2 mb-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'>
-                                                <HiSparkles className='animate-pulse' />
-                                                Extraction Complete
-                                            </div>
-                                            <div className='grid grid-cols-2 gap-4'>
-                                                <div>
-                                                    <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex items-center gap-1'><HiCode /> Skills</p>
-                                                    <div className='flex flex-wrap gap-1'>
-                                                        {skills.length ? skills.map((s, i) => (
-                                                            <span key={i} className='bg-white/10 text-[9px] px-2 py-0.5 rounded-md border border-white/5'>{s}</span>
-                                                        )) : (
-                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
-                                                        )}
-                                                    </div>
+                                            {/* Panel Header with Non-overlapping Close Button */}
+                                            <div className='flex items-center justify-between pb-2 mb-2 border-b border-white/10 shrink-0'>
+                                                <div className='flex items-center gap-2 text-yellow-400 text-[10px] font-black uppercase tracking-widest'>
+                                                    <HiSparkles className='animate-pulse' />
+                                                    Extraction Complete
                                                 </div>
-                                                <div>
-                                                    <p className='text-[9px] uppercase font-black text-slate-500 mb-1 flex  items-center gap-1'><HiCollection /> Projects</p>
-                                                    <div className='flex  flex-wrap gap-1'>
-                                                        {projects.length ? projects.map((p, i) => (
-                                                            <span key={i} className='bg-white/10 text-[11px] px-2 py-0.5 rounded-md border border-white/5 truncate max-w-[140px]' title={typeof p === 'string' ? p : p.name || p.title}>
-                                                                {typeof p === 'string' ? p : (p.name || p.title || 'Project')}
-                                                            </span>
-                                                        )) : (
-                                                            <span className='text-[9px] text-slate-400 italic'>None listed</span>
-                                                        )}
+                                                <motion.button
+                                                    whileHover={{ rotate: 90 }}
+                                                    type="button"
+                                                    aria-label="Dismiss extracted resume data"
+                                                    onClick={() => {
+                                                        setAnaylsisDone(false);
+                                                        setResumeFile(null);
+                                                        uploadedFileRef.current = null;
+                                                        activeExtractionIdRef.current++;
+                                                        setResumeText('');
+                                                        setSkills([]);
+                                                        setProjects([]);
+                                                        setEnableCrossQuestioning(false);
+                                                        if (!userEditedFieldsRef.current.role && role === resumeDerivedValuesRef.current.role) {
+                                                            setRole('');
+                                                        }
+                                                        if (!userEditedFieldsRef.current.experience && experience === resumeDerivedValuesRef.current.experience) {
+                                                            setExperience('');
+                                                        }
+                                                        resumeDerivedValuesRef.current = { role: '', experience: '' };
+                                                    }}
+                                                    className='p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-colors'
+                                                >
+                                                    <HiX size={16} />
+                                                </motion.button>
+                                            </div>
+
+                                            {/* Scrollable Content Container for Skills and Projects */}
+                                            <div 
+                                                tabIndex={0}
+                                                aria-label="Extracted skills and projects"
+                                                className='overflow-y-auto pr-1 space-y-3 custom-scrollbar min-h-0 focus:outline-none focus:ring-1 focus:ring-yellow-400/40 rounded'
+                                            >
+                                                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                                    {/* Skills Column */}
+                                                    <div className='min-w-0'>
+                                                        <p className='text-[9px] uppercase font-black text-slate-400 mb-1.5 flex items-center gap-1'>
+                                                            <HiCode className='text-yellow-400' /> Skills {skills.length > 0 && <span className='text-slate-500 font-semibold'>({skills.length})</span>}
+                                                        </p>
+                                                        <div className='flex flex-wrap gap-1'>
+                                                            {skills.length ? skills.map((s, i) => (
+                                                                <span 
+                                                                    key={i} 
+                                                                    className='bg-white/10 text-slate-200 text-[9px] font-medium px-2 py-0.5 rounded-md border border-white/5 break-words max-w-full'
+                                                                >
+                                                                    {s}
+                                                                </span>
+                                                            )) : (
+                                                                <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Projects Column */}
+                                                    <div className='min-w-0'>
+                                                        <p className='text-[9px] uppercase font-black text-slate-400 mb-1.5 flex items-center gap-1'>
+                                                            <HiCollection className='text-yellow-400' /> Projects {projects.length > 0 && <span className='text-slate-500 font-semibold'>({projects.length})</span>}
+                                                        </p>
+                                                        <div className='flex flex-wrap gap-1.5'>
+                                                            {projects.length ? projects.map((p, i) => (
+                                                                <span 
+                                                                    key={i} 
+                                                                    className='bg-white/10 text-slate-200 text-[11px] px-2.5 py-1 rounded-md border border-white/5 break-words whitespace-normal max-w-full inline-block leading-snug' 
+                                                                    title={typeof p === 'string' ? p : (p.description ? `${p.name || p.title || 'Project'}: ${p.description}` : (p.name || p.title || 'Project'))}
+                                                                >
+                                                                    <span className='font-semibold text-slate-100 block'>
+                                                                        {typeof p === 'string' ? p : (p.name || p.title || 'Project')}
+                                                                    </span>
+                                                                    {typeof p === 'object' && p && p.description && (
+                                                                        <span className='block text-[9px] text-slate-400 font-normal mt-0.5 break-words'>
+                                                                            {p.description}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            )) : (
+                                                                <span className='text-[9px] text-slate-400 italic'>None listed</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -468,7 +504,7 @@ function Step1Setup({ onStart }) {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     type="submit"
-                                    className='w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-slate-800 transition-all group disabled:opacity-50'
+                                    className='w-full bg-slate-900 text-white py-3.5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-slate-800 transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2'
                                 >
                                     {loading ? "Starting..." : "Start Interview"}
                                     <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
