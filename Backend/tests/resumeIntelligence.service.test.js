@@ -8,6 +8,9 @@ import {
   buildUserPrompt,
   extractResumeClaims,
   calculateExperienceFromDates,
+  calculateExperienceProfile,
+  EXPERIENCE_EVIDENCE_STATUS,
+  EXPERIENCE_LEVELS,
   extractTextFromDocxBuffer,
   inferTargetRole,
   normalizeExperienceString,
@@ -614,6 +617,181 @@ Full stack engineer at Tech Corp. Built REST APIs in Node.js.
       assert.ok(multer.handleResumeUpload, 'handleResumeUpload middleware must exist');
       // memoryStorage stores files in memory buffers, requiring no local public directory
       assert.strictEqual(typeof multer.handleResumeUpload, 'function');
+    });
+  });
+  describe('7. Comprehensive Deterministic Experience Engine & Policy Suite', () => {
+    it('should assign Fresher (0 years) for student resume with education and projects but no employment', () => {
+      const studentResume = `
+Rahul Sharma
+student@university.edu | (555) 123-4567 | Portfolio: rahul.dev
+Education:
+B.Tech in Computer Science and Engineering (2021 - 2025)
+XYZ Institute of Technology, CGPA: 8.8/10
+Skills:
+React, JavaScript, HTML5, CSS3, Tailwind CSS, Node.js, Git
+Academic & Personal Projects:
+E-Commerce Web Application (React, Redux, Node.js)
+- Developed responsive shopping cart and checkout UI.
+Real-Time Chat Application (Socket.io, Express)
+- Built live messaging channel with room subscriptions.
+      `;
+
+      const profile = calculateExperienceProfile(studentResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.NO_EMPLOYMENT_FOUND);
+      assert.strictEqual(profile.experienceLevel, EXPERIENCE_LEVELS.FRESHER);
+      assert.strictEqual(profile.formattedExperience, 'Fresher (0 years)');
+      assert.strictEqual(profile.professionalExperienceMonths, 0);
+      assert.strictEqual(profile.internshipExperienceMonths, 0);
+
+      // Verify Target Role inference for this student resume
+      const inferredRole = inferTargetRole({ resumeText: studentResume });
+      assert.strictEqual(inferredRole, 'Frontend Developer');
+    });
+
+    it('should identify documented internships and calculate internship duration without counting as full-time', () => {
+      const internshipResume = `
+Priya Patel
+priya@example.com
+Education:
+B.S. in Software Engineering, Class of 2024
+Experience:
+Frontend Engineering Intern | Acme Labs
+Jun 2023 - Aug 2023
+- Built reusable React components.
+Summer Research Intern | University AI Lab
+May 2022 - Jul 2022
+- Assisted in dataset preparation.
+Skills: React, JavaScript, CSS
+      `;
+
+      const profile = calculateExperienceProfile(internshipResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.INTERNSHIP_ONLY);
+      assert.strictEqual(profile.experienceLevel, EXPERIENCE_LEVELS.INTERNSHIP);
+      assert.strictEqual(profile.formattedExperience, 'Internship Experience');
+      assert.strictEqual(profile.professionalExperienceMonths, 0);
+      assert.ok(profile.internshipExperienceMonths >= 4);
+    });
+
+    it('should calculate full-time professional experience deterministically from verified dates', () => {
+      const fullTimeResume = `
+David Miller
+david@example.com
+Experience:
+Senior Software Engineer | CloudTech Corp
+Jan 2021 - Dec 2023
+- Architected microservices in Node.js and AWS.
+Software Developer | Alpha Systems
+Jan 2019 - Dec 2020
+- Built REST APIs and database models.
+      `;
+
+      const profile = calculateExperienceProfile(fullTimeResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.DOCUMENTED_EMPLOYMENT);
+      assert.strictEqual(profile.professionalExperienceMonths, 60);
+      assert.strictEqual(profile.experienceLevel, EXPERIENCE_LEVELS.SENIOR_LEVEL);
+      assert.strictEqual(profile.formattedExperience, '5 years');
+    });
+
+    it('should merge overlapping employment intervals without double-counting periods', () => {
+      const overlappingResume = `
+Sarah Connor
+Tech Lead | Cyberdyne Systems
+2018 - 2022
+Independent Consultant | Part-time Solutions
+2019 - 2021
+      `;
+
+      const profile = calculateExperienceProfile(overlappingResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.DOCUMENTED_EMPLOYMENT);
+      assert.strictEqual(profile.formattedExperience, '5 years');
+    });
+
+    it('should accurately handle Present / Current / Ongoing end dates', () => {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const startYear = currentYear - 2;
+
+      const currentJobResume = `
+Full Stack Developer | Modern Web LLC
+Jan ${startYear} - Present
+Skills: TypeScript, Next.js
+      `;
+
+      const profile = calculateExperienceProfile(currentJobResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.DOCUMENTED_EMPLOYMENT);
+      const expectedMonths = (currentYear - startYear) * 12 + currentMonth;
+      assert.ok(Math.abs(profile.professionalExperienceMonths - expectedMonths) <= 2);
+    });
+
+    it('should reject invalid or inverted date ranges and not compute negative durations', () => {
+      const invalidDatesResume = `
+Engineer | Strange Corp
+2024 - 2018
+Engineer | Future Corp
+2035 - 2040
+Skills: Python
+      `;
+
+      const profile = calculateExperienceProfile(invalidDatesResume);
+      assert.strictEqual(profile.professionalExperienceMonths, 0);
+    });
+
+    it('should not trust explicit summary claims if dated employment contradicts them', async () => {
+      const conflictingResume = `
+John Doe
+Experienced Engineer with 5+ years of experience in distributed systems.
+Employment History:
+Junior Developer | Tech Startup
+Jan 2023 - Dec 2023
+- Built REST endpoints.
+      `;
+
+      const profile = calculateExperienceProfile(conflictingResume);
+      // Valid dated employment shows 12 months (1 year), NOT 5 years!
+      assert.strictEqual(profile.professionalExperienceMonths, 12);
+      assert.strictEqual(profile.formattedExperience, '1 year');
+    });
+
+    it('should flag ambiguous or missing dates as INSUFFICIENT_EVIDENCE rather than generating random numbers', () => {
+      const undatedJobResume = `
+Mark Wilson
+Experience:
+Senior Backend Engineer at Enterprise Solutions
+- Designed message queues and Kafka pipelines.
+Skills: Go, Docker, Kafka
+      `;
+
+      const profile = calculateExperienceProfile(undatedJobResume);
+      assert.strictEqual(profile.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.INSUFFICIENT_EVIDENCE);
+      assert.strictEqual(profile.formattedExperience, '');
+    });
+
+    it('should strictly preserve deterministic experience in extractResumeClaims even if LLM returns hallucinated number', async () => {
+      const studentResume = `
+Aman Gupta
+B.Tech Computer Science 2021 - 2025
+Skills: React, JavaScript, CSS
+Projects: Portfolio, Todo App
+      `;
+
+      // Mock LLM that hallucinates "3 years" for a student
+      const hallucinatingAskAI = async () => JSON.stringify({
+        role: 'Frontend Developer',
+        experience: '3 years', // Hallucinated by LLM!
+        skills: ['React', 'JavaScript'],
+        projects: [{ title: 'Portfolio', claims: [] }],
+      });
+
+      const result = await extractResumeClaims({
+        resumeText: studentResume,
+        askAIFn: hallucinatingAskAI,
+      });
+
+      // The deterministic calculation engine MUST override the LLM hallucination
+      assert.strictEqual(result.experience, 'Fresher (0 years)');
+      assert.strictEqual(result.experienceEvidenceStatus, EXPERIENCE_EVIDENCE_STATUS.NO_EMPLOYMENT_FOUND);
+      assert.strictEqual(result.role, 'Frontend Developer');
     });
   });
 });

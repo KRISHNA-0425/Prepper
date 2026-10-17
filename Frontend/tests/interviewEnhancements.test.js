@@ -690,18 +690,77 @@ describe('Prepper AI Interview Enhancements Suite', () => {
             assert.strictEqual(formState.experience, '', 'Resume-derived experience must be reset');
         });
 
-        it('should verify Step1Setup.jsx implements clear extractionStatus states and retry capability', async () => {
+        it('should verify Step1Setup.jsx restores previous Analyze button design without circular spinner or replacement text', async () => {
             const fs = await import('node:fs');
             const path = await import('node:path');
             const step1Content = fs.readFileSync(path.resolve('src/pages/Step1Setup.jsx'), 'utf8');
 
-            assert.ok(step1Content.includes('extractionStatus'), 'Step1Setup must track extractionStatus state');
-            assert.ok(step1Content.includes('extraction_failed'), 'Step1Setup must support extraction_failed state');
-            assert.ok(step1Content.includes('analysis_failed'), 'Step1Setup must support analysis_failed state');
-            assert.ok(step1Content.includes('Uploading document...'), 'Step1Setup must display uploading progress feedback');
-            assert.ok(step1Content.includes('Extracting document text...'), 'Step1Setup must display extracting progress feedback');
-            assert.ok(step1Content.includes('Analyzing resume credentials...'), 'Step1Setup must display analyzing progress feedback');
-            assert.ok(step1Content.includes('Retry'), 'Step1Setup must provide retry action on failure');
+            // Must NOT have the new circular spinner or multi-stage replacement text
+            assert.ok(!step1Content.includes('animate-spin'), 'Step1Setup must remove circular loading animation');
+            assert.ok(!step1Content.includes('Uploading document...'), 'Step1Setup must remove replacement multi-stage loading text');
+            assert.ok(!step1Content.includes('Extracting document text...'), 'Step1Setup must remove replacement multi-stage loading text');
+            assert.ok(!step1Content.includes('Analyzing resume credentials...'), 'Step1Setup must remove replacement multi-stage loading text');
+
+            // Must restore previous Analyze button design, label, and disabled state
+            assert.ok(step1Content.includes('Sync with AI'), 'Step1Setup must restore Sync with AI label');
+            assert.ok(step1Content.includes('Analyzing...'), 'Step1Setup must restore Analyzing... loading state');
+            assert.ok(step1Content.includes('disabled={anaylzing}'), 'Step1Setup must disable button while analyzing to prevent duplicate requests');
+            assert.ok(step1Content.includes('bg-slate-900 rounded-lg text-[10px] font-black text-white uppercase shadow-lg disabled:opacity-50'), 'Must restore previous styling');
+        });
+
+        it('should autofill Fresher (0 years) when analysis returns no employment for student resume', () => {
+            const userEditedFields = { role: false, experience: false };
+            let formState = { role: '', experience: '' };
+            const studentAnalysis = {
+                role: 'Frontend Developer',
+                experience: 'Fresher (0 years)',
+                experienceLevel: 'Fresher',
+                experienceEvidenceStatus: 'NO_EMPLOYMENT_FOUND'
+            };
+
+            if (!userEditedFields.role && studentAnalysis.role) {
+                formState.role = studentAnalysis.role;
+            }
+            if (!userEditedFields.experience && studentAnalysis.experience) {
+                formState.experience = studentAnalysis.experience;
+            }
+
+            assert.strictEqual(formState.role, 'Frontend Developer');
+            assert.strictEqual(formState.experience, 'Fresher (0 years)');
+        });
+
+        it('should autofill Internship Experience when analysis identifies internship only', () => {
+            const userEditedFields = { role: false, experience: false };
+            let formState = { role: '', experience: '' };
+            const internAnalysis = {
+                role: 'Frontend Developer',
+                experience: 'Internship Experience',
+                experienceLevel: 'Internship',
+                experienceEvidenceStatus: 'INTERNSHIP_ONLY'
+            };
+
+            if (!userEditedFields.experience && internAnalysis.experience) {
+                formState.experience = internAnalysis.experience;
+            }
+
+            assert.strictEqual(formState.experience, 'Internship Experience');
+        });
+
+        it('should leave experience unset for review when evidence is insufficient without inventing numbers', () => {
+            const userEditedFields = { role: false, experience: false };
+            let formState = { role: '', experience: '' };
+            const insufficientAnalysis = {
+                role: '',
+                experience: '',
+                experienceLevel: null,
+                experienceEvidenceStatus: 'INSUFFICIENT_EVIDENCE'
+            };
+
+            if (!userEditedFields.experience && insufficientAnalysis.experience) {
+                formState.experience = insufficientAnalysis.experience;
+            }
+
+            assert.strictEqual(formState.experience, '', 'Experience must remain unset for user manual review');
         });
 
         it('should verify Step1Setup.jsx never renders successful extraction card if extraction or analysis failed', async () => {

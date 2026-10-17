@@ -30,6 +30,30 @@ export const LIMITS = Object.freeze({
 });
 
 /**
+ * Deterministic Experience Evidence States
+ */
+export const EXPERIENCE_EVIDENCE_STATUS = Object.freeze({
+  UNANALYZED: 'UNANALYZED',
+  NO_EMPLOYMENT_FOUND: 'NO_EMPLOYMENT_FOUND', // Fresher: student, projects only, no employment
+  INTERNSHIP_ONLY: 'INTERNSHIP_ONLY', // Documented internships only, no full-time jobs
+  DOCUMENTED_EMPLOYMENT: 'DOCUMENTED_EMPLOYMENT', // Valid dated full-time / professional employment
+  INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE', // Employment claimed but dates missing, conflicting or invalid
+  ANALYSIS_FAILED: 'ANALYSIS_FAILED', // Extraction or analysis failed
+});
+
+/**
+ * Experience Category Classifications
+ */
+export const EXPERIENCE_LEVELS = Object.freeze({
+  FRESHER: 'Fresher (0 years)',
+  INTERNSHIP: 'Internship Experience',
+  ENTRY_LEVEL: 'Entry-Level',
+  MID_LEVEL: 'Mid-Level',
+  SENIOR_LEVEL: 'Senior-Level',
+  LEAD_STAFF: 'Lead/Staff-Level',
+});
+
+/**
  * Conservatively normalizes text for exact substring verification.
  * Collapses multiple whitespace characters and newlines into single spaces.
  * Does not alter semantic casing or word tokens.
@@ -381,39 +405,88 @@ export const extractTextFromDocxBuffer = (buffer) => {
   return '';
 };
 
-export const calculateExperienceFromDates = (text) => {
-  if (!text || typeof text !== 'string') return '';
+/**
+ * Deterministically analyzes resume text to calculate:
+ * - professionalExperienceMonths (full-time only)
+ * - internshipExperienceMonths (internships only)
+ * - relevantExperienceMonths (full-time + 50% internship credit)
+ * - experienceEvidenceStatus (NO_EMPLOYMENT_FOUND | INTERNSHIP_ONLY | DOCUMENTED_EMPLOYMENT | INSUFFICIENT_EVIDENCE)
+ * - experienceLevel (Fresher | Internship | Entry-Level | Mid-Level | Senior-Level | Lead/Staff-Level)
+ * - formattedExperience ('Fresher (0 years)' | 'Internship Experience' | 'X years')
+ *
+ * @param {string} text - Raw cleaned resume text
+ * @returns {object} Calculated deterministic experience profile
+ */
+export const calculateExperienceProfile = (text) => {
+  if (!text || typeof text !== 'string' || !text.trim()) {
+    return {
+      professionalExperienceMonths: 0,
+      internshipExperienceMonths: 0,
+      relevantExperienceMonths: 0,
+      experienceEvidenceStatus: EXPERIENCE_EVIDENCE_STATUS.INSUFFICIENT_EVIDENCE,
+      experienceLevel: null,
+      formattedExperience: '',
+    };
+  }
 
   const lines = text.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
-  const intervals = [];
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const dateRangeRegex = /(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)\s*(?:-|to|\u2013|\u2014|\/)\s*(?:(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)|(present|current|now)\b)/i;
+  const professionalIntervals = [];
+  const internshipIntervals = [];
 
-  const isAcademicOrIntern = (str) => {
-    return /\b(intern|internship|trainee|apprentice|student|university|college|school|bachelor|master|b\.s\.|m\.s\.|b\.tech|phd|coursework|academic project|capstone|thesis)\b/i.test(str);
+  let hasUndatedEmployment = false;
+  let hasDocumentedEducation = false;
+  let hasDocumentedProjects = false;
+
+  const isInternship = (str) => {
+    return /\b(intern|internship|trainee|apprentice|fellow)\b/i.test(str);
   };
+
+  const isAcademic = (str) => {
+    return /\b(university|college|school|bachelor|b\.tech|b\.s\.|m\.s\.|m\.tech|phd|coursework|academic project|capstone|thesis|cgpa|gpa|semester|class of|candidate for|student)\b/i.test(str);
+  };
+
+  const isJobTitleOrRole = (str) => {
+    return /\b(software engineer|frontend|backend|full stack|developer|consultant|architect|analyst|devops|sre|programmer|designer|qa engineer|manager|tech lead|team lead|specialist)\b/i.test(str);
+  };
+
+  const dateRangeRegex = /(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)\s*(?:-|to|\u2013|\u2014|\/)\s*(?:(?:((?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|0?[1-9]|1[0-2]))[.,\s/–-]*)?(\b(?:19|20)\d{2}\b)|(present|current|now|ongoing)\b)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(dateRangeRegex);
-    if (!match) continue;
 
-    // Exclude if current line or immediately preceding title line mentions intern/academic
-    if (isAcademicOrIntern(line)) {
+    const lineWithoutEmail = line.replace(/[\w.-]+@[\w.-]+\.\w+/g, '');
+    if (/\b(b\.tech|bachelor|master|degree|m\.tech|b\.s\.|m\.s\.|phd|diploma|cgpa|gpa|university|college|institute of technology)\b/i.test(lineWithoutEmail) ||
+        /^(?:education|academics|qualifications)\b/i.test(lineWithoutEmail)) {
+      hasDocumentedEducation = true;
+    }
+    if (/\b(projects|academic projects|personal projects|key projects|github\.com|hackathon|portfolio)\b/i.test(lineWithoutEmail) ||
+        /^(?:projects|academic & personal projects)\b/i.test(lineWithoutEmail)) {
+      hasDocumentedProjects = true;
+    }
+
+    const match = line.match(dateRangeRegex);
+    if (!match) {
+      if (isJobTitleOrRole(line) && !isAcademic(line) && !isInternship(line)) {
+        const prevMatch = i > 0 && lines[i - 1].match(dateRangeRegex);
+        const nextMatch = i < lines.length - 1 && lines[i + 1].match(dateRangeRegex);
+        if (!prevMatch && !nextMatch) {
+          hasUndatedEmployment = true;
+        }
+      }
       continue;
     }
-    if (i > 0 && isAcademicOrIntern(lines[i - 1])) {
-      continue;
-    }
+
+    const context = `${i > 0 ? lines[i - 1] : ''} ${line}`;
 
     const startMonth = parseMonthNumber(match[1]);
     const startYear = parseInt(match[2], 10);
 
     let endYear, endMonth;
-    if (match[5] && /present|current|now/i.test(match[5])) {
+    if (match[5] && /present|current|now|ongoing/i.test(match[5])) {
       endYear = currentYear;
       endMonth = currentMonth;
     } else if (match[4]) {
@@ -423,38 +496,127 @@ export const calculateExperienceFromDates = (text) => {
       continue;
     }
 
+    if (startYear < 1970 || startYear > currentYear + 1 || endYear < startYear) {
+      continue;
+    }
+    if (endYear === startYear && endMonth < startMonth) {
+      continue;
+    }
+
     const startTotalMonths = startYear * 12 + startMonth;
     const endTotalMonths = endYear * 12 + endMonth;
 
-    if (endTotalMonths >= startTotalMonths && startYear >= 1970 && endYear <= currentYear + 1) {
-      intervals.push([startTotalMonths, endTotalMonths]);
+    if (endTotalMonths >= startTotalMonths) {
+      if (isInternship(context)) {
+        internshipIntervals.push([startTotalMonths, endTotalMonths]);
+        continue;
+      }
+      if (isAcademic(context)) {
+        hasDocumentedEducation = true;
+        continue;
+      }
+      professionalIntervals.push([startTotalMonths, endTotalMonths]);
     }
+    continue;
   }
 
-  if (intervals.length === 0) return '';
+  const mergeIntervals = (list) => {
+    if (list.length === 0) return 0;
+    list.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    let cur = [...list[0]];
+    for (let i = 1; i < list.length; i++) {
+      const next = list[i];
+      if (next[0] <= cur[1] + 1) {
+        cur[1] = Math.max(cur[1], next[1]);
+      } else {
+        merged.push(cur);
+        cur = [...next];
+      }
+    }
+    merged.push(cur);
+    return merged.reduce((acc, [start, end]) => acc + (end - start + 1), 0);
+  };
 
-  intervals.sort((a, b) => a[0] - b[0]);
+  const professionalExperienceMonths = mergeIntervals(professionalIntervals);
+  const internshipExperienceMonths = mergeIntervals(internshipIntervals);
+  const relevantExperienceMonths = professionalExperienceMonths + Math.floor(internshipExperienceMonths / 2);
 
-  const merged = [];
-  let current = [...intervals[0]];
+  let experienceEvidenceStatus;
+  let experienceLevel = null;
+  let formattedExperience = '';
 
-  for (let i = 1; i < intervals.length; i++) {
-    const next = intervals[i];
-    if (next[0] <= current[1] + 1) {
-      current[1] = Math.max(current[1], next[1]);
+  // Check explicit stated claim in text (e.g. "Data Analyst with 3 years experience")
+  const statedMatch = text.match(/(?:with\s+)?(\d+)\+?\s*(?:-\s*\d+)?\s*years?(?:\s+of)?\s+experience/i);
+  const statedYears = statedMatch ? parseInt(statedMatch[1], 10) : null;
+
+  let effectiveProfMonths = professionalExperienceMonths;
+
+  if (professionalExperienceMonths > 0) {
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.DOCUMENTED_EMPLOYMENT;
+    const years = Math.round(professionalExperienceMonths / 12);
+
+    if (professionalExperienceMonths < 24) {
+      experienceLevel = EXPERIENCE_LEVELS.ENTRY_LEVEL;
+      formattedExperience = years <= 1 ? '1 year' : `${years} years`;
+    } else if (professionalExperienceMonths < 60) {
+      experienceLevel = EXPERIENCE_LEVELS.MID_LEVEL;
+      formattedExperience = `${years} years`;
+    } else if (professionalExperienceMonths < 96) {
+      experienceLevel = EXPERIENCE_LEVELS.SENIOR_LEVEL;
+      formattedExperience = `${years} years`;
     } else {
-      merged.push(current);
-      current = [...next];
+      experienceLevel = EXPERIENCE_LEVELS.LEAD_STAFF;
+      formattedExperience = `${years} years`;
     }
+  } else if (internshipExperienceMonths > 0) {
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.INTERNSHIP_ONLY;
+    experienceLevel = EXPERIENCE_LEVELS.INTERNSHIP;
+    formattedExperience = 'Internship Experience';
+  } else if (statedYears !== null && statedYears > 0 && !hasDocumentedEducation) {
+    // Validated explicitly stated claim in resume text without contradicting dated employment or academic-only profile
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.DOCUMENTED_EMPLOYMENT;
+    effectiveProfMonths = statedYears * 12;
+    if (effectiveProfMonths < 24) {
+      experienceLevel = EXPERIENCE_LEVELS.ENTRY_LEVEL;
+      formattedExperience = statedYears === 1 ? '1 year' : `${statedYears} years`;
+    } else if (effectiveProfMonths < 60) {
+      experienceLevel = EXPERIENCE_LEVELS.MID_LEVEL;
+      formattedExperience = `${statedYears} years`;
+    } else if (effectiveProfMonths < 96) {
+      experienceLevel = EXPERIENCE_LEVELS.SENIOR_LEVEL;
+      formattedExperience = `${statedYears} years`;
+    } else {
+      experienceLevel = EXPERIENCE_LEVELS.LEAD_STAFF;
+      formattedExperience = `${statedYears} years`;
+    }
+  } else if (hasUndatedEmployment) {
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.INSUFFICIENT_EVIDENCE;
+    experienceLevel = null;
+    formattedExperience = '';
+  } else if (hasDocumentedEducation || hasDocumentedProjects) {
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.NO_EMPLOYMENT_FOUND;
+    experienceLevel = EXPERIENCE_LEVELS.FRESHER;
+    formattedExperience = 'Fresher (0 years)';
+  } else {
+    experienceEvidenceStatus = EXPERIENCE_EVIDENCE_STATUS.INSUFFICIENT_EVIDENCE;
+    experienceLevel = null;
+    formattedExperience = '';
   }
-  merged.push(current);
 
-  const totalMonths = merged.reduce((acc, [start, end]) => acc + (end - start), 0);
-  const years = Math.round(totalMonths / 12);
+  return {
+    professionalExperienceMonths: effectiveProfMonths,
+    internshipExperienceMonths,
+    relevantExperienceMonths,
+    experienceEvidenceStatus,
+    experienceLevel,
+    formattedExperience,
+  };
+};
 
-  if (years <= 0) return '0-1 years';
-  if (years === 1) return '1 year';
-  return `${years} years`;
+export const calculateExperienceFromDates = (text) => {
+  const profile = calculateExperienceProfile(text);
+  return profile.formattedExperience;
 };
 
 /**
@@ -538,7 +700,18 @@ export const inferTargetRole = ({ resumeText, skills = [], projects = [] }) => {
   const hasDevOps = /\b(docker|kubernetes|aws|azure|gcp|terraform|jenkins|ci\/cd|ansible|helm)\b/i.test(combinedContext);
   const hasData = /\b(pandas|numpy|scikit-learn|tensorflow|pytorch|power bi|tableau|spark|hadoop|data warehouse)\b/i.test(combinedContext);
 
-  if (hasFrontend && hasBackend) return 'Full-Stack Developer';
+  const frontendMatches = (combinedContext.match(/\b(react|vue|angular|svelte|next\.js|nuxt|html|html5|css|css3|tailwind|javascript|typescript|redux)\b/gi) || []).length;
+  const backendMatches = (combinedContext.match(/\b(node|node\.js|express|django|fastapi|spring|flask|nest\.js|postgresql|postgres|mongodb|mongo|mysql|redis|rest api|graphql)\b/gi) || []).length;
+
+  if (hasFrontend && hasBackend) {
+    if (frontendMatches >= 2 * backendMatches && frontendMatches >= 4) {
+      return 'Frontend Developer';
+    }
+    if (backendMatches >= 2 * frontendMatches && backendMatches >= 4) {
+      return 'Backend Developer';
+    }
+    return 'Full-Stack Developer';
+  }
   if (hasFrontend && !hasBackend) return 'Frontend Developer';
   if (hasBackend && !hasFrontend) return 'Backend Developer';
   if (hasDevOps) return 'DevOps Engineer';
@@ -618,12 +791,17 @@ export const extractResumeClaims = async ({
   // Graceful fallback if AI calls failed completely
   if (!parsedData) {
     const fallbackRole = inferTargetRole({ resumeText });
-    const fallbackExperience = calculateExperienceFromDates(resumeText);
+    const expProfile = calculateExperienceProfile(resumeText);
 
     return {
       success: false,
       role: fallbackRole,
-      experience: fallbackExperience,
+      experience: expProfile.formattedExperience,
+      experienceLevel: expProfile.experienceLevel,
+      experienceEvidenceStatus: expProfile.experienceEvidenceStatus,
+      professionalExperienceMonths: expProfile.professionalExperienceMonths,
+      internshipExperienceMonths: expProfile.internshipExperienceMonths,
+      relevantExperienceMonths: expProfile.relevantExperienceMonths,
       skills: [],
       projects: [],
       standaloneClaims: [],
@@ -648,11 +826,9 @@ export const extractResumeClaims = async ({
     role = inferTargetRole({ resumeText, skills: parsedData.skills || parsedData.technicalSkills, projects: parsedData.projects || parsedData.keyProjects });
   }
 
-  let rawExperience = parsedData.experience ?? parsedData.yearsOfExperience ?? parsedData.totalExperience;
-  let experience = normalizeExperienceString(rawExperience);
-  if (!experience) {
-    experience = calculateExperienceFromDates(resumeText);
-  }
+  // Experience calculation is STRICTLY DETERMINISTIC: validate dates and intervals from source evidence
+  const expProfile = calculateExperienceProfile(resumeText);
+  let experience = expProfile.formattedExperience;
 
   const rawSkills = parsedData.skills ?? parsedData.technicalSkills ?? [];
   const skills = Array.isArray(rawSkills)
@@ -726,6 +902,11 @@ export const extractResumeClaims = async ({
     success: true,
     role,
     experience,
+    experienceLevel: expProfile.experienceLevel,
+    experienceEvidenceStatus: expProfile.experienceEvidenceStatus,
+    professionalExperienceMonths: expProfile.professionalExperienceMonths,
+    internshipExperienceMonths: expProfile.internshipExperienceMonths,
+    relevantExperienceMonths: expProfile.relevantExperienceMonths,
     skills,
     projects: processedProjects,
     standaloneClaims: processedStandalone,

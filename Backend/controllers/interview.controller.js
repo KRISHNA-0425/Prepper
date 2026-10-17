@@ -117,12 +117,17 @@ export const resumeAnalyse = async (req, res) => {
         // Source-grounded Resume Intelligence extraction pipeline
         const extraction = await extractResumeClaims({ resumeText });
 
-        // Return structured, validated fields with backward compatibility
+        // Return structured, validated fields with deterministic experience metrics
         return res.status(200).json({
             role: extraction.role || '',
             targetRole: extraction.role || '',
             experience: extraction.experience || '',
             yearsOfExperience: extraction.experience || '',
+            experienceLevel: extraction.experienceLevel || null,
+            experienceEvidenceStatus: extraction.experienceEvidenceStatus || 'UNANALYZED',
+            professionalExperienceMonths: extraction.professionalExperienceMonths || 0,
+            internshipExperienceMonths: extraction.internshipExperienceMonths || 0,
+            relevantExperienceMonths: extraction.relevantExperienceMonths || 0,
             projects: Array.isArray(extraction.projects) ? extraction.projects.map((p) => p.title || p) : [],
             skills: extraction.skills || [],
             resumeText,
