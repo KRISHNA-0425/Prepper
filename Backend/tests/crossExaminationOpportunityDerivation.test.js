@@ -506,4 +506,119 @@ describe('Cross-Examination Opportunity Derivation Hotfix Suite (HTTP 422 Resolu
     assert.strictEqual(res.body.session.status, 'awaiting_answer');
     assert.strictEqual(res.body.session.questions.length, 1);
   });
+
+  // -------------------------------------------------------------
+  // 10. Real MY_RESUME.pdf Upload with AI Extraction Failure (Deterministic Fallback)
+  // -------------------------------------------------------------
+  it('10. should derive opportunities and initialize session from real MY_RESUME.pdf when AI fails completely', async () => {
+    const realPdfPath = path.resolve('C:/Users/263237/Downloads/MY_RESUME.pdf');
+    if (!fs.existsSync(realPdfPath)) return;
+
+    const pdfBuffer = await fs.promises.readFile(realPdfPath);
+    const MockSession = createMockSessionClass();
+
+    let opportunitiesReceived = null;
+    const controller = createCrossExaminationController({
+      SessionModel: MockSession,
+      parsePdfFn: defaultParsePdf,
+      extractClaimsFn: ({ resumeText }) => extractResumeClaims({
+        resumeText,
+        askAIFn: async () => { throw new Error('AI extraction unavailable (local timeout/quota)'); },
+      }),
+      analyzeBlueprintFn: analyzeProjectClaims,
+      generateQuestionsFn: async ({ examinationBlueprint }) => {
+        opportunitiesReceived = examinationBlueprint.allOpportunitiesSorted;
+        return {
+          success: true,
+          questions: [
+            {
+              questionId: 'q_fallback_1',
+              questionText: 'How was the dataset collected for Sign Language Recognition?',
+              opportunityId: examinationBlueprint.allOpportunitiesSorted[0].opportunityId,
+            },
+          ],
+        };
+      },
+    });
+
+    const req = {
+      userId: dummyUserId,
+      file: {
+        buffer: pdfBuffer,
+        originalname: 'MY_RESUME.pdf',
+        size: pdfBuffer.length,
+      },
+      body: {
+        targetRole: 'Software Engineer',
+      },
+    };
+    const res = createMockRes();
+
+    await controller.createSession(req, res);
+
+    assert.strictEqual(res.statusCode, 201, 'Failed to create session with deterministic fallback');
+    assert.ok(res.body.session);
+    assert.ok(Array.isArray(opportunitiesReceived) && opportunitiesReceived.length > 0, 'Must derive opportunities from deterministic projects');
+    const createdSession = MockSession.getCreated();
+    assert.ok(createdSession);
+    assert.ok(createdSession.projects.some((p) => p.title.includes('Sign Language Recognition System')));
+  });
+
+  // -------------------------------------------------------------
+  // 11. PDF Text Reaches Claim Extractor Verifiably
+  // -------------------------------------------------------------
+  it('11. should verify valid PDF text extracted from buffer reaches the claim extractor', async () => {
+    const realPdfPath = path.resolve('C:/Users/263237/Downloads/MY_RESUME.pdf');
+    if (!fs.existsSync(realPdfPath)) return;
+
+    const pdfBuffer = await fs.promises.readFile(realPdfPath);
+    let capturedResumeText = null;
+
+    const controller = createCrossExaminationController({
+      SessionModel: createMockSessionClass(),
+      parsePdfFn: defaultParsePdf,
+      extractClaimsFn: async ({ resumeText }) => {
+        capturedResumeText = resumeText;
+        return {
+          role: 'Full Stack Developer',
+          projects: [
+            {
+              projectId: 'prj_test_1',
+              title: 'Portfolio Website',
+              claims: [
+                {
+                  claimId: 'clm_test_1',
+                  statement: 'Built personal portfolio website with React',
+                  category: 'PROJECT_CONTRIBUTION',
+                },
+              ],
+            },
+          ],
+        };
+      },
+      analyzeBlueprintFn: analyzeProjectClaims,
+      generateQuestionsFn: async ({ examinationBlueprint }) => ({
+        success: true,
+        questions: [
+          {
+            questionId: 'q_1',
+            questionText: 'Tell me about Portfolio Website',
+            opportunityId: examinationBlueprint.allOpportunitiesSorted[0].opportunityId,
+          },
+        ],
+      }),
+    });
+
+    const req = {
+      userId: dummyUserId,
+      file: { buffer: pdfBuffer, originalname: 'MY_RESUME.pdf', size: pdfBuffer.length },
+    };
+    const res = createMockRes();
+
+    await controller.createSession(req, res);
+
+    assert.strictEqual(res.statusCode, 201);
+    assert.ok(capturedResumeText, 'Extracted resume text must reach extractClaimsFn');
+    assert.ok(capturedResumeText.includes('Sagun Yadav'), 'Captured text must contain real candidate name from PDF');
+  });
 });
