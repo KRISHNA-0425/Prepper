@@ -202,7 +202,7 @@ function InterViewHistory() {
                                         </p>
                                         <button 
                                             type="button"
-                                            onClick={() => navigate('/interview')}
+                                            onClick={() => navigate('/cross-examination')}
                                             className='mt-6 px-8 py-3 bg-yellow-400 text-slate-950 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform cursor-pointer'
                                         >
                                             Start Cross-Examination
@@ -238,7 +238,13 @@ function InterViewHistory() {
                                         variants={cardVars}
                                         key={item._id}
                                         whileHover={{ x: 10, backgroundColor: "rgba(30, 41, 59, 0.8)" }}
-                                        onClick={() => navigate(`/report/${item._id}`)}
+                                        onClick={() => {
+                                            if (item.sessionType === 'dedicated_cross_exam' || item.isDedicatedCrossExam) {
+                                                navigate(`/cross-examination/${item.sessionId || item._id}`);
+                                            } else {
+                                                navigate(`/report/${item._id}`);
+                                            }
+                                        }}
                                         className='group relative bg-slate-900/40 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-800 hover:border-yellow-400/50 cursor-pointer transition-all duration-300'
                                     >
                                         <div className='absolute inset-0 bg-yellow-400/5 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity pointer-events-none' />
@@ -258,7 +264,7 @@ function InterViewHistory() {
                                                     {item.enableCrossQuestioning && (
                                                         <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-yellow-400/10 text-yellow-400 border border-yellow-400/30">
                                                             <RiShieldFlashLine className="text-[10px]" />
-                                                            <span>Cross-Exam ({item.crossQuestioningType || 'Technical'})</span>
+                                                            <span>Cross-Exam ({item.crossQuestioningType || (item.isDedicatedCrossExam ? 'Dedicated' : 'Technical')})</span>
                                                         </span>
                                                     )}
                                                 </div>
@@ -273,10 +279,10 @@ function InterViewHistory() {
                                                         <HiCpuChip className='text-xs' />
                                                         <span className='text-[10px] font-bold uppercase tracking-widest'>{item.mode}</span>
                                                     </div>
-                                                    {Array.isArray(item.questions) && item.questions.length > 0 && (
+                                                    {((item.totalQuestions > 0) || (Array.isArray(item.questions) && item.questions.length > 0)) && (
                                                         <div className='flex items-center gap-1.5'>
                                                             <span className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>
-                                                                {item.questions.length} {item.questions.length === 1 ? 'Question' : 'Questions'}
+                                                                {item.totalQuestions || item.questions.length} {(item.totalQuestions || item.questions.length) === 1 ? 'Question' : 'Questions'}
                                                             </span>
                                                         </div>
                                                     )}
@@ -293,11 +299,15 @@ function InterViewHistory() {
                                                 <div className='text-left md:text-right'>
                                                     <div className='flex items-baseline md:justify-end gap-1'>
                                                         <span className='text-3xl font-black text-white group-hover:text-yellow-400 transition-colors'>
-                                                            {item.finalScore || 0}
+                                                            {typeof item.finalScore === 'number' ? item.finalScore : (item.status === 'Completed' ? '100' : '--')}
                                                         </span>
-                                                        <span className='text-sm font-black text-slate-600'>%</span>
+                                                        {typeof item.finalScore === 'number' && (
+                                                            <span className='text-sm font-black text-slate-600'>%</span>
+                                                        )}
                                                     </div>
-                                                    <p className='text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1'>Aggregate Score</p>
+                                                    <p className='text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1'>
+                                                        {item.sessionType === 'dedicated_cross_exam' || item.isDedicatedCrossExam ? 'Readiness Score' : 'Aggregate Score'}
+                                                    </p>
                                                 </div>
                                                 
                                                 <div className='w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:bg-yellow-400 transition-all duration-300 shadow-lg group-hover:shadow-yellow-400/20'>

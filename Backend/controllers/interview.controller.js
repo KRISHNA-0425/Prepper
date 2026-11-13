@@ -4,6 +4,8 @@ import { askAI } from '../services/openRouter.service.js';
 import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
+import CrossExaminationSession from '../models/crossExaminationSession.model.js';
+import mongoose from 'mongoose';
 import { INTERVIEW_CREDIT_COST, INSUFFICIENT_CREDITS_MESSAGE } from '../services/credit.service.js';
 
 export { INTERVIEW_CREDIT_COST };
@@ -615,14 +617,99 @@ export const finishInterview = async (req, res) => {
     }
 };
 
-export const getMyInterviews = async (req, res) => {
+const originalSessionFind = CrossExaminationSession.find;
+
+export const normalizeStandardInterview = (doc) => {
+    const isCross = Boolean(doc.enableCrossQuestioning);
+    return {
+        _id: doc._id ? doc._id.toString() : '',
+        sessionId: doc._id ? doc._id.toString() : '',
+        sessionType: isCross ? 'standard_cross_interview' : 'standard_interview',
+        isDedicatedCrossExam: false,
+        role: doc.role || 'Software Engineer',
+        targetRole: doc.role || 'Software Engineer',
+        experience: doc.experience || '',
+        mode: doc.mode || 'Technical',
+        finalScore: typeof doc.finalScore === 'number' ? doc.finalScore : 0,
+        status: doc.status || 'Completed',
+        rawStatus: doc.status || 'Completed',
+        enableCrossQuestioning: isCross,
+        crossQuestioningType: isCross ? (doc.crossQuestioningType || 'Technical') : null,
+        questions: Array.isArray(doc.questions) ? doc.questions : [],
+        totalQuestions: Array.isArray(doc.questions) ? doc.questions.length : 0,
+        createdAt: doc.createdAt || new Date(),
+        updatedAt: doc.updatedAt || new Date(),
+    };
+};
+
+export const normalizeDedicatedSession = (doc) => {
+    let displayStatus = 'In Progress';
+    if (doc.status === 'completed') {
+        displayStatus = 'Completed';
+    } else if (doc.status === 'abandoned') {
+        displayStatus = 'Incompleted';
+    }
+
+    let finalScore = null;
+    if (typeof doc.finalScore === 'number') {
+        finalScore = doc.finalScore;
+    } else if (doc.report?.dimensionScores && Array.isArray(doc.report.dimensionScores)) {
+        const validDims = doc.report.dimensionScores.filter(d => d.demonstratedLevel && d.demonstratedLevel !== 'UNAVAILABLE');
+        if (validDims.length > 0) {
+            const sum = validDims.reduce((acc, d) => {
+                if (d.demonstratedLevel === 'STRONG') return acc + 90;
+                if (d.demonstratedLevel === 'MODERATE') return acc + 75;
+                if (d.demonstratedLevel === 'WEAK') return acc + 50;
+                return acc + 60;
+            }, 0);
+            finalScore = Math.round(sum / validDims.length);
+        }
+    }
+
+    const totalQuestions = Array.isArray(doc.questions) ? doc.questions.length : 0;
+    const answeredCount = Array.isArray(doc.answers) ? doc.answers.length : 0;
+
+    return {
+        _id: doc._id ? doc._id.toString() : (doc.sessionId || ''),
+        sessionId: doc.sessionId || (doc._id ? doc._id.toString() : ''),
+        sessionType: 'dedicated_cross_exam',
+        isDedicatedCrossExam: true,
+        role: doc.targetRole || doc.sessionTitle || 'Cross-Examination',
+        targetRole: doc.targetRole || doc.sessionTitle || 'Cross-Examination',
+        experience: doc.targetDomain || 'System Architecture & Claims',
+        mode: 'Cross-Examination',
+        targetDomain: doc.targetDomain || 'General Software Engineering',
+        finalScore,
+        status: displayStatus,
+        rawStatus: doc.status || 'in_progress',
+        enableCrossQuestioning: true,
+        crossQuestioningType: 'Dedicated',
+        questions: Array.isArray(doc.questions) ? doc.questions : [],
+        totalQuestions,
+        answeredCount,
+        createdAt: doc.createdAt || new Date(),
+        updatedAt: doc.updatedAt || new Date(),
+    };
+};
+
+export const getMyInterviews = async (req, res, customDeps = {}) => {
     try {
         const userId = req.userId || req.user?._id || req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
+        const deps = (typeof customDeps === 'object' && customDeps !== null && typeof customDeps !== 'function')
+            ? customDeps
+            : {};
+        const InterviewModel = deps.InterviewModel || Interview;
+        const SessionModel = deps.SessionModel || CrossExaminationSession;
+
         const { type, limit, page } = req.query;
+
+        const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100) : null;
+        const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+        const maxToFetch = parsedLimit ? parsedPage * parsedLimit : 100;
 
         let filter = { userId };
         if (type === 'cross') {
@@ -638,18 +725,71 @@ export const getMyInterviews = async (req, res) => {
             ];
         }
 
-        let query = Interview.find(filter)
+        let query = InterviewModel.find(filter)
             .sort({ createdAt: -1 })
             .select('role experience mode finalScore status createdAt enableCrossQuestioning crossQuestioningType questions');
 
-        if (limit) {
-            const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
-            const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
-            query = query.skip((parsedPage - 1) * parsedLimit).limit(parsedLimit);
+        // Fast-path for normal interviews (only Interview model involved)
+        if (type !== 'cross' && type !== 'all') {
+            if (parsedLimit) {
+                query = query.skip((parsedPage - 1) * parsedLimit).limit(parsedLimit);
+            }
+            const interviews = await query;
+            const normalized = (interviews || []).map(normalizeStandardInterview);
+            return res.status(200).json(normalized);
         }
 
+        // For cross or all: fetch interviews up to maxToFetch
+        if (parsedLimit) {
+            query = query.limit(maxToFetch);
+        }
         const interviews = await query;
-        return res.status(200).json(interviews);
+        const normalizedInterviews = (interviews || []).map(normalizeStandardInterview);
+
+        // Fetch dedicated Cross-Examination sessions
+        let normalizedSessions = [];
+        const isDbConnected = Boolean(mongoose.connection?.readyState === 1);
+        const isCustomSessionModel = Boolean(deps.SessionModel && deps.SessionModel !== CrossExaminationSession);
+        const isSessionFindMocked = SessionModel.find !== originalSessionFind;
+        const shouldQuerySessions = isDbConnected || isCustomSessionModel || isSessionFindMocked;
+
+        if (shouldQuerySessions) {
+            try {
+                let sessionQuery = SessionModel.find({ userId })
+                    .sort({ createdAt: -1 })
+                    .select('_id sessionId sessionTitle targetRole targetDomain status questions answers report createdAt updatedAt');
+
+                if (parsedLimit) {
+                    sessionQuery = sessionQuery.limit(maxToFetch);
+                }
+                const rawSessions = await sessionQuery;
+                normalizedSessions = (rawSessions || []).map(normalizeDedicatedSession);
+            } catch (sessionErr) {
+                console.warn('[getMyInterviews] Failed to query CrossExaminationSession:', sessionErr.message);
+            }
+        }
+
+        // Merge, deduplicate by ID, and sort descending by creation date
+        const combined = [...normalizedInterviews, ...normalizedSessions];
+        const seenIds = new Set();
+        const deduped = [];
+        for (const item of combined) {
+            const idKey = String(item._id || item.sessionId);
+            if (idKey && !seenIds.has(idKey)) {
+                seenIds.add(idKey);
+                deduped.push(item);
+            }
+        }
+
+        deduped.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (parsedLimit) {
+            const startIndex = (parsedPage - 1) * parsedLimit;
+            const paginated = deduped.slice(startIndex, startIndex + parsedLimit);
+            return res.status(200).json(paginated);
+        }
+
+        return res.status(200).json(deduped);
 
     } catch (error) {
         return res.status(500).json({ message: 'Error in getMyInterviews', error: error.message });

@@ -230,6 +230,18 @@ export const getMyCrossExaminationSessions = async (limit = 20) => {
 };
 
 /**
+ * GET /api/interview/getInterview
+ * Retrieves unified history records filtered by type ('normal' | 'cross' | 'all').
+ */
+export const getUnifiedHistory = async (type = 'normal', limit = 50) => {
+  const response = await axios.get(
+    `${backendServerUrl}/api/interview/getInterview?type=${type}&limit=${limit}`,
+    { withCredentials: true }
+  );
+  return response.data;
+};
+
+/**
  * GET /api/cross-examination/sessions/:sessionId
  * Retrieves an active or completed session by ID.
  */
