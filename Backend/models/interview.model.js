@@ -1,12 +1,18 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
 const questionSchema = new mongoose.Schema({
     question: { 
         type: String, 
         required: true 
     },
-    difficulty: String,
-    timeLimit: Number,
+    difficulty: {
+        type: String,
+        default: 'medium'
+    },
+    timeLimit: {
+        type: Number,
+        default: 60
+    },
     answer: { 
         type: String, 
         default: "" 
@@ -31,7 +37,7 @@ const questionSchema = new mongoose.Schema({
         type: Number, 
         default: 0 
     },
-})
+});
 
 const interviewSchema = new mongoose.Schema({
     userId: {
@@ -74,8 +80,63 @@ const interviewSchema = new mongoose.Schema({
         type: String,
         enum: ["Technical", "Behavioral"],
         default: "Technical"
+    },
+
+    // --- Packaging, Pricing & Timing Fields ---
+    interviewMode: {
+        type: String,
+        enum: ["question_based", "time_based"],
+        default: "question_based"
+    },
+    selectedQuestionCount: {
+        type: Number,
+        default: 10
+    },
+    selectedDurationMinutes: {
+        type: Number,
+        default: null
+    },
+    targetQuestionCount: {
+        type: Number,
+        default: 10
+    },
+    creditsCharged: {
+        type: Number,
+        default: 50
+    },
+    difficulty: {
+        type: String,
+        default: "medium"
+    },
+    answerTimeLimitSeconds: {
+        type: Number,
+        default: 60
+    },
+    startedAt: {
+        type: Date,
+        default: Date.now
+    },
+    expiresAt: {
+        type: Date,
+        default: null
+    },
+    currentQuestionIndex: {
+        type: Number,
+        default: 0
+    },
+    currentQuestionStartedAt: {
+        type: Date,
+        default: Date.now
+    },
+    currentQuestionDeadline: {
+        type: Date,
+        default: null
+    },
+    isEvaluating: {
+        type: Boolean,
+        default: false
     }
-}, { timestamps: true })
+}, { timestamps: true });
 
 const Interview = mongoose.model("Interview", interviewSchema);
 
