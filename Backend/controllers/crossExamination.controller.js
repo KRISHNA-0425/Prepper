@@ -9,6 +9,16 @@ import fs from 'fs';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mongoose from 'mongoose';
 import CrossExaminationSession from '../models/crossExaminationSession.model.js';
+import User from '../models/user.model.js';
+import {
+  INTERVIEW_CREDIT_COST,
+  INSUFFICIENT_CREDITS_MESSAGE,
+  checkUserCredits,
+  deductInterviewCredits,
+  refundInterviewCredits,
+} from '../services/credit.service.js';
+
+export { INTERVIEW_CREDIT_COST, INSUFFICIENT_CREDITS_MESSAGE };
 import { extractResumeClaims, verifySourceExcerpt } from '../services/resumeIntelligence.service.js';
 import { analyzeProjectClaims } from '../services/projectClaimAnalysis.service.js';
 import { generateCrossExaminationQuestions, ENGINE_LIMITS } from '../services/questionEngine.service.js';
@@ -25,6 +35,9 @@ import {
   REPORT_SCHEMA_VERSION,
   validateProjectProfileContract,
   hashSourceText,
+  generateDomainId,
+  CLAIM_CATEGORIES,
+  VERIFICATION_STATUSES,
 } from '../contracts/crossExamination.contracts.js';
 
 /**
@@ -199,6 +212,10 @@ export const sanitizeSessionForCandidate = (session) => {
  */
 export const createCrossExaminationController = ({
   SessionModel = CrossExaminationSession,
+  UserModel = User,
+  checkCreditsFn = checkUserCredits,
+  deductCreditsFn = deductInterviewCredits,
+  refundCreditsFn = refundInterviewCredits,
   extractClaimsFn = extractResumeClaims,
   analyzeBlueprintFn = analyzeProjectClaims,
   generateQuestionsFn = generateCrossExaminationQuestions,
@@ -208,6 +225,14 @@ export const createCrossExaminationController = ({
   parsePdfFn = defaultParsePdf,
   verifyExcerptFn = verifySourceExcerpt,
 } = {}) => {
+  const isDbConnected = Boolean(mongoose.connection?.readyState === 1);
+  const isCustomCreditHandler = Boolean(
+    (UserModel && UserModel !== User) ||
+    checkCreditsFn !== checkUserCredits ||
+    deductCreditsFn !== deductInterviewCredits
+  );
+  const shouldCheckCredits = isCustomCreditHandler || (UserModel && isDbConnected);
+
   /**
    * POST /api/cross-examination/sessions
    * Creates an authenticated, initialized cross-examination session.
@@ -215,6 +240,8 @@ export const createCrossExaminationController = ({
   const createSession = async (req, res) => {
     let userId = null;
     let idempotencyKey = null;
+    let creditsDeducted = false;
+    let creditsLeft = undefined;
     try {
       userId = req.userId || req.user?._id || req.user?.id;
       if (!userId) {
@@ -234,6 +261,16 @@ export const createCrossExaminationController = ({
             message: 'Existing session retrieved for idempotency key',
             session: sanitizeSessionForCandidate(existingSession),
             isIdempotentReplay: true,
+          });
+        }
+      }
+
+      // Early credit validation before running expensive resume intelligence & AI analysis
+      if (shouldCheckCredits) {
+        const creditCheck = await checkCreditsFn(userId, UserModel);
+        if (!creditCheck.hasCredits) {
+          return res.status(creditCheck.statusCode || 400).json({
+            message: creditCheck.message,
           });
         }
       }
@@ -317,12 +354,78 @@ export const createCrossExaminationController = ({
 
         // Execute resume extraction pipeline
         const extraction = await extractClaimsFn({ resumeText });
+
+        let rawProjects = Array.isArray(extraction.projects) && extraction.projects.length > 0
+          ? extraction.projects
+          : (Array.isArray(extraction.detailedProjects) ? extraction.detailedProjects : []);
+
+        // Normalize extracted projects to guarantee valid claims contract
+        let normalizedProjects = rawProjects.map((prj, pIdx) => {
+          const projectId = prj.projectId || generateDomainId('prj');
+          const title = String(prj.title || prj.name || `Project ${pIdx + 1}`).trim();
+          let claims = Array.isArray(prj.claims) ? [...prj.claims] : [];
+
+          if (claims.length === 0) {
+            if (prj.description) {
+              const verified = verifyExcerptFn(resumeText, prj.description.slice(0, 100));
+              claims.push({
+                claimId: generateDomainId('clm'),
+                statement: prj.description.slice(0, 150),
+                category: CLAIM_CATEGORIES.PROJECT_CONTRIBUTION,
+                sourceExcerpt: verified.isVerified ? prj.description.slice(0, 100) : '',
+                provenanceType: verified.isVerified ? PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT : PROVENANCE_TYPES.AI_INFERRED_CATEGORY,
+                confidence: CONFIDENCE_LEVELS.HIGH,
+                verificationStatus: VERIFICATION_STATUSES.UNVERIFIED,
+              });
+            }
+            for (const ach of prj.achievements || []) {
+              if (ach) {
+                const verified = verifyExcerptFn(resumeText, String(ach).slice(0, 100));
+                claims.push({
+                  claimId: generateDomainId('clm'),
+                  statement: String(ach).slice(0, 150),
+                  category: CLAIM_CATEGORIES.PROJECT_CONTRIBUTION,
+                  sourceExcerpt: verified.isVerified ? String(ach).slice(0, 100) : '',
+                  provenanceType: verified.isVerified ? PROVENANCE_TYPES.EXPLICIT_SOURCE_STATEMENT : PROVENANCE_TYPES.AI_INFERRED_CATEGORY,
+                  confidence: CONFIDENCE_LEVELS.HIGH,
+                  verificationStatus: VERIFICATION_STATUSES.UNVERIFIED,
+                });
+              }
+            }
+          }
+
+          return {
+            ...prj,
+            projectId,
+            title,
+            claims,
+          };
+        });
+
+        const rawStandalone = Array.isArray(extraction.standaloneClaims) ? extraction.standaloneClaims : [];
+        const rawAll = Array.isArray(extraction.allClaims) ? extraction.allClaims : [];
+
+        // If no explicit projects were detected, but standalone or all claims exist, group them into a project container
+        if (normalizedProjects.length === 0 && (rawAll.length > 0 || rawStandalone.length > 0)) {
+          const claimsToGroup = rawAll.length > 0 ? rawAll : rawStandalone;
+          normalizedProjects.push({
+            projectId: generateDomainId('prj'),
+            title: 'Professional Experience & Technical Contributions',
+            description: 'Candidate technical achievements and claims',
+            candidateRole: targetRole || extraction.role || 'Software Engineer',
+            claims: claimsToGroup,
+          });
+        }
+
         profile = {
-          projects: extraction.projects || [],
-          standaloneClaims: extraction.standaloneClaims || [],
-          allClaims: extraction.allClaims || [],
+          role: extraction.role,
+          projects: normalizedProjects,
+          standaloneClaims: rawStandalone,
+          allClaims: normalizedProjects.flatMap((p) => p.claims || []).concat(rawStandalone),
           resumeHash: extraction.resumeHash || hashSourceText(resumeText),
-          provenanceStats: extraction.provenanceStats,
+          provenanceStats: extraction.provenanceStats || {
+            totalClaims: normalizedProjects.reduce((acc, p) => acc + (p.claims?.length || 0), 0),
+          },
         };
         resumeExcerpt = resumeText.slice(0, 3000);
         resumeHash = profile.resumeHash;
@@ -400,6 +503,18 @@ export const createCrossExaminationController = ({
         status: idx === 0 ? 'current' : 'pending',
       }));
 
+      // Billable success point: Deduct interview credits atomically right before saving session
+      if (shouldCheckCredits) {
+        const deduction = await deductCreditsFn(userId, UserModel);
+        if (!deduction.success) {
+          return res.status(deduction.statusCode || 400).json({
+            message: deduction.message,
+          });
+        }
+        creditsDeducted = true;
+        creditsLeft = deduction.creditsLeft;
+      }
+
       // 7. Persist session with explicit ownership
       const sessionInstance = new SessionModel({
         userId,
@@ -431,16 +546,39 @@ export const createCrossExaminationController = ({
         answers: [],
       });
 
-      const savedSession = await sessionInstance.save();
+      let savedSession;
+      try {
+        savedSession = await sessionInstance.save();
+      } catch (saveErr) {
+        if (shouldCheckCredits && creditsDeducted) {
+          try {
+            await refundCreditsFn(userId, UserModel);
+            creditsDeducted = false;
+          } catch (refundErr) {
+            console.error('Failed to refund credits on session save error:', refundErr);
+          }
+        }
+        throw saveErr;
+      }
 
       // 8. Return candidate-sanitized payload
-      return res.status(201).json({
+      const responsePayload = {
         message: 'Cross-examination session created successfully',
         session: sanitizeSessionForCandidate(savedSession),
-      });
+      };
+      if (creditsLeft !== undefined) {
+        responsePayload.creditsLeft = creditsLeft;
+      }
+      return res.status(201).json(responsePayload);
     } catch (err) {
       // Handle concurrent creation race condition when duplicate key error (E11000) occurs on idempotencyKey
       if (err.code === 11000 && idempotencyKey && userId) {
+        if (shouldCheckCredits && creditsDeducted) {
+          try {
+            await refundCreditsFn(userId, UserModel);
+            creditsDeducted = false;
+          } catch (_) {}
+        }
         const winningSession = await SessionModel.findOne({ userId, idempotencyKey });
         if (winningSession) {
           return res.status(200).json({

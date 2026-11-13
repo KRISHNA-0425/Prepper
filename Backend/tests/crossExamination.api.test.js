@@ -1082,6 +1082,10 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
       const customController = createCrossExaminationController({
         SessionModel: customStore.createModelClass(),
         evaluateAnswerFn: mockEvaluateAnswer,
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
       });
 
       // Create session
@@ -1170,6 +1174,10 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
         SessionModel: customStore.createModelClass(),
         evaluateAnswerFn: mockEvaluateAnswer,
         generateFollowUpFn: mockGenerateFollowUp,
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
       });
 
       // Create session
@@ -1212,6 +1220,10 @@ describe('Cross-Examination Session Lifecycle APIs', () => {
       const customController = createCrossExaminationController({
         SessionModel: customStore.createModelClass(),
         evaluateAnswerFn: failingEvaluateAnswer,
+        generateQuestionsFn: async () => ({
+          success: true,
+          questions: createSampleQuestions(),
+        }),
       });
 
       const createRes = createMockRes();
