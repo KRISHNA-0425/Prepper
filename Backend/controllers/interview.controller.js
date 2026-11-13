@@ -6,9 +6,23 @@ import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
 import CrossExaminationSession from '../models/crossExaminationSession.model.js';
 import mongoose from 'mongoose';
-import { INTERVIEW_CREDIT_COST, INSUFFICIENT_CREDITS_MESSAGE } from '../services/credit.service.js';
+import {
+    INTERVIEW_CREDIT_COST,
+    INSUFFICIENT_CREDITS_MESSAGE,
+    checkUserCredits,
+    deductInterviewCredits,
+    refundInterviewCredits
+} from '../services/credit.service.js';
+import {
+    calculateInterviewPricing,
+    calculateQuestionDeadline,
+    verifyAnswerDeadline,
+    STANDARDIZED_DIFFICULTY,
+    ANSWER_TIME_LIMIT_SECONDS,
+    TIME_PACKAGES
+} from '../services/interviewPricing.service.js';
 
-export { INTERVIEW_CREDIT_COST };
+export { INTERVIEW_CREDIT_COST, STANDARDIZED_DIFFICULTY, ANSWER_TIME_LIMIT_SECONDS, TIME_PACKAGES };
 
 export const cleanExtractedResumeText = (rawText) => {
     if (!rawText || typeof rawText !== 'string') return '';
@@ -202,8 +216,34 @@ export const resumeAnalyse = async (req, res) => {
 };
 
 export const generateQuestions = async (req, res) => {
+    let creditsDeductedAmount = 0;
+    const safeRefund = async () => {
+        if (creditsDeductedAmount > 0) {
+            const toRefund = creditsDeductedAmount;
+            creditsDeductedAmount = 0; // prevent duplicate refund
+            try {
+                await refundInterviewCredits(req.userId, User, toRefund);
+            } catch (rErr) {
+                console.error("[generateQuestions] CRITICAL: Failed to refund credits:", rErr);
+            }
+        }
+    };
+
     try {
-        let { role, experience, mode, resumeText, projects, skills, enableCrossQuestioning, crossQuestioningType } = req.body;
+        let {
+            role,
+            experience,
+            mode,
+            resumeText,
+            projects,
+            skills,
+            enableCrossQuestioning,
+            crossQuestioningType,
+            interviewMode,
+            selectedQuestionCount,
+            durationMinutes,
+            timePackage
+        } = req.body;
 
         role = role?.trim();
         experience = experience?.trim();
@@ -225,14 +265,34 @@ export const generateQuestions = async (req, res) => {
             return res.status(400).json({ message: "Please enter all the data" });
         }
 
-        const user = await User.findById(req.userId);
-        if (!user) {
-            return res.status(404).json({ message: "user not found" });
+        // 1. Authoritative Pricing Calculation & Server-Side Enforcement (Never trust client pricing)
+        const pricing = calculateInterviewPricing({
+            interviewMode,
+            selectedQuestionCount,
+            durationMinutes: durationMinutes || req.body.selectedDurationMinutes,
+            timePackage
+        });
+
+        if (!pricing.valid) {
+            return res.status(400).json({ message: pricing.error });
         }
 
-        if (user.credits < INTERVIEW_CREDIT_COST) {
-            return res.status(400).json({ message: INSUFFICIENT_CREDITS_MESSAGE });
+        // 2. Authoritative User Balance Verification
+        const creditCheck = await checkUserCredits(req.userId, User, pricing.creditsCharged);
+        if (!creditCheck.hasCredits) {
+            return res.status(creditCheck.statusCode || 400).json({
+                message: creditCheck.message || INSUFFICIENT_CREDITS_MESSAGE
+            });
         }
+
+        // 3. Atomic Deduction (Exactly once, tracked for safe rollback)
+        const deduction = await deductInterviewCredits(req.userId, User, pricing.creditsCharged);
+        if (!deduction.success) {
+            return res.status(deduction.statusCode || 400).json({
+                message: deduction.message || INSUFFICIENT_CREDITS_MESSAGE
+            });
+        }
+        creditsDeductedAmount = pricing.creditsCharged;
 
         const projectText = Array.isArray(projects) && projects.length ? projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean).join(', ') : "None";
         const skillText = Array.isArray(skills) && skills.length ? skills.map(s => typeof s === 'string' ? s : (s.name || s.title || '')).filter(Boolean).join(', ') : "None";
@@ -248,8 +308,12 @@ export const generateQuestions = async (req, res) => {
         `;
 
         if (!userPrompt.trim()) {
+            await safeRefund();
             return res.status(400).json({ message: "prompt is empty" });
         }
+
+        const targetCount = pricing.targetQuestionCount;
+        const maxTokens = Math.max(800, targetCount * 90);
 
         const messages = [
             {
@@ -257,7 +321,7 @@ export const generateQuestions = async (req, res) => {
                 content: `
                 You are a real human interviewer conducting a professional interview.
                 Speak in simple, natural English language as if you are directly talking to the candidate.
-                Generate Exactly 5 questions
+                Generate Exactly ${targetCount} questions
                 Strict rules:
                 - Each question must contain between 15-25 words
                 - Each question should be single complete sentence
@@ -268,12 +332,8 @@ export const generateQuestions = async (req, res) => {
                 - Keep language simple and conversational
                 - Questions must be practical and realistic.
                 
-                difficulty progression:
-                question 1 -> easy
-                question 2 -> easy
-                question 3 -> medium
-                question 4 -> medium
-                question 5 -> hard
+                Difficulty requirement:
+                All questions MUST be of MEDIUM difficulty. Do not generate easy or hard questions.
 
                 Make questions based on the candidate's role, experience, interview mode, projects, skills, and resume details.
                 `
@@ -286,9 +346,10 @@ export const generateQuestions = async (req, res) => {
 
         let aiResponse;
         try {
-            aiResponse = await askAI(messages, { max_tokens: 800 });
+            aiResponse = await askAI(messages, { max_tokens: maxTokens });
         } catch (aiErr) {
             console.error("[generateQuestions] AI provider error:", aiErr.message || aiErr);
+            await safeRefund();
             const status = (aiErr.status === 402 || aiErr.status === 429) ? 503 : 500;
             const message = aiErr.status === 402
                 ? "AI generation quota exceeded. Please check API credits or try again later."
@@ -297,121 +358,283 @@ export const generateQuestions = async (req, res) => {
         }
 
         if (!aiResponse || !aiResponse.trim()) {
+            await safeRefund();
             return res.status(500).json({ message: "AI didn't gave the answer" });
         }
 
         const rawLines = aiResponse.split("\n").map(q => q.trim()).filter(q => q.length > 0);
-        const questionArray = rawLines
+        let questionArray = rawLines
             .map(q => q.replace(/^\d+[\.\)]\s*|^[-*]\s*/, '').trim())
             .filter(q => q.length > 10 && !q.toLowerCase().startsWith('here are') && !q.toLowerCase().startsWith('sure,'))
-            .slice(0, 5);
+            .slice(0, targetCount);
 
-        if (!questionArray.length) {
-            return res.status(500).json({
-                message: "AI didn't generate questions"
+        // Bounded completion retry if AI generated fewer questions than purchased allocation
+        if (questionArray.length < targetCount && questionArray.length > 0) {
+            const deficit = targetCount - questionArray.length;
+            try {
+                const retryMessages = [
+                    {
+                        role: "system",
+                        content: `You are an interviewer. Generate exactly ${deficit} more unique interview questions for the role: ${role}. Medium difficulty, one sentence per line, 15-25 words, no numbering, no explanations.`
+                    },
+                    { role: "user", content: `Please provide ${deficit} additional medium-difficulty questions.` }
+                ];
+                const retryResponse = await askAI(retryMessages, { max_tokens: Math.max(400, deficit * 90) });
+                if (retryResponse) {
+                    const extraLines = retryResponse.split("\n").map(q => q.trim()).filter(q => q.length > 0)
+                        .map(q => q.replace(/^\d+[\.\)]\s*|^[-*]\s*/, '').trim())
+                        .filter(q => q.length > 10 && !q.toLowerCase().startsWith('here are') && !q.toLowerCase().startsWith('sure,'));
+                    for (const extra of extraLines) {
+                        if (questionArray.length < targetCount && !questionArray.includes(extra)) {
+                            questionArray.push(extra);
+                        }
+                    }
+                }
+            } catch (retryErr) {
+                console.warn("[generateQuestions] Question deficit retry completion non-fatal error:", retryErr.message);
+            }
+        }
+
+        // Validate final allocation: never charge full price for an under-allocated interview
+        if (questionArray.length < targetCount) {
+            await safeRefund();
+            return res.status(503).json({
+                message: `Unable to generate the full allocation of ${targetCount} questions. Your credits have been fully refunded. Please try again.`
             });
         }
 
-        user.credits -= INTERVIEW_CREDIT_COST;
-        await user.save();
-
-        const interview = await Interview.create({
-            userId: user._id,
-            role,
-            experience,
-            mode: safeMode,
-            resumeText: safeResume,
-            enableCrossQuestioning,
-            crossQuestioningType: safeCrossQuestioningType,
-            questions: questionArray.map((q, idx) => ({
-                question: q,
-                difficulty: ["easy", "easy", "medium", "medium", "hard"][idx] || "medium",
-                timeLimit: [60, 60, 90, 90, 120][idx] || 60,
-                isFollowUp: false,
-                depth: 0,
-            }))
+        const startedAt = new Date();
+        const expiresAt = pricing.selectedDurationMinutes
+            ? new Date(startedAt.getTime() + pricing.selectedDurationMinutes * 60 * 1000)
+            : null;
+        const currentQuestionStartedAt = new Date();
+        const currentQuestionDeadline = calculateQuestionDeadline({
+            currentQuestionStartedAt,
+            answerTimeLimitSeconds: 60,
+            expiresAt
         });
+
+        let interview;
+        try {
+            interview = await Interview.create({
+                userId: req.userId,
+                role,
+                experience,
+                mode: safeMode,
+                resumeText: safeResume,
+                enableCrossQuestioning,
+                crossQuestioningType: safeCrossQuestioningType,
+                interviewMode: pricing.interviewMode,
+                selectedQuestionCount: pricing.selectedQuestionCount,
+                selectedDurationMinutes: pricing.selectedDurationMinutes,
+                targetQuestionCount: pricing.targetQuestionCount,
+                creditsCharged: pricing.creditsCharged,
+                difficulty: 'medium',
+                answerTimeLimitSeconds: 60,
+                startedAt,
+                expiresAt,
+                currentQuestionIndex: 0,
+                currentQuestionStartedAt,
+                currentQuestionDeadline,
+                questions: questionArray.map((q) => ({
+                    question: q,
+                    difficulty: "medium", // Medium difficulty exclusively
+                    timeLimit: 60,        // Strict 60-second limit
+                    isFollowUp: false,
+                    depth: 0,
+                }))
+            });
+        } catch (createErr) {
+            await safeRefund();
+            throw createErr;
+        }
+
+        // Successfully created: clear refund tracker to prevent accidental post-creation rollback
+        creditsDeductedAmount = 0;
 
         res.json({
             interviewId: interview._id,
-            creditsLeft: user.credits,
-            userName: user.name,
+            creditsLeft: deduction.creditsLeft,
+            userName: creditCheck.user?.name || "Candidate",
             questions: interview.questions,
             mode: safeMode,
             enableCrossQuestioning: interview.enableCrossQuestioning,
-            crossQuestioningType: interview.crossQuestioningType
+            crossQuestioningType: interview.crossQuestioningType,
+            interviewMode: interview.interviewMode,
+            selectedQuestionCount: interview.selectedQuestionCount,
+            selectedDurationMinutes: interview.selectedDurationMinutes,
+            targetQuestionCount: interview.targetQuestionCount,
+            creditsCharged: interview.creditsCharged,
+            difficulty: interview.difficulty,
+            answerTimeLimitSeconds: interview.answerTimeLimitSeconds,
+            startedAt: interview.startedAt,
+            expiresAt: interview.expiresAt,
+            currentQuestionIndex: 0,
+            currentQuestionStartedAt: interview.currentQuestionStartedAt,
+            currentQuestionDeadline: interview.currentQuestionDeadline,
         });
 
     } catch (error) {
+        await safeRefund();
         console.error("[generateQuestions] Unexpected error:", error.message || error);
         return res.status(500).json({ message: "internal Server error in the generateQuestion controller" });
     }
 };
 
 export const submitAnswer = async (req, res) => {
+    let lockedInterviewId = null;
     try {
         const { interviewId, answer, timeTaken, questionIndex } = req.body;
+
+        const userId = req.userId || req.user?._id || req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: "Authentication required" });
+        }
+
+        if (!interviewId) {
+            return res.status(400).json({ message: "Interview ID is required" });
+        }
 
         const interview = await Interview.findById(interviewId);
         if (!interview) {
             return res.status(404).json({ message: "Interview session not found" });
         }
 
-        if (questionIndex < 0 || questionIndex >= interview.questions.length) {
-            return res.status(400).json({ message: "Invalid question index" });
+        // 1. Strict Ownership Validation (Anti-IDOR)
+        if (!interview.userId || interview.userId.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Forbidden: You cannot access or submit to another candidate's interview" });
         }
 
-        const question = interview.questions[questionIndex];
+        // 2. Strict State Validation
+        if (interview.status === "Completed") {
+            return res.status(400).json({ message: "Interview session is already completed" });
+        }
 
-        // 1. Handle Empty Answer
-        if (!answer || answer.trim() === "") {
-            question.score = 0;
-            question.feedback = "You didn't submit an answer for this question.";
-            question.answer = "";
+        const now = new Date();
+        const isSessionExpired = Boolean(interview.expiresAt && now.getTime() >= new Date(interview.expiresAt).getTime());
+        if (isSessionExpired) {
+            interview.status = "Completed";
             await interview.save();
-            return res.json({ 
-                feedback: question.feedback, 
-                score: 0,
-                questions: interview.questions 
+            return res.status(410).json({ message: "Interview session has expired", isSessionExpired: true });
+        }
+
+        // 3. Question Sequence & State Validation
+        const expectedIndex = Number(interview.currentQuestionIndex || 0);
+        if (Number(questionIndex) !== expectedIndex) {
+            return res.status(409).json({
+                message: "Question out of sequence or already submitted",
+                currentQuestionIndex: expectedIndex
             });
         }
 
-        // 2. Prepare AI Evaluation Messages (Timeout policy: do NOT discard answer if candidate submitted)
+        if (expectedIndex < 0 || expectedIndex >= interview.questions.length) {
+            return res.status(400).json({ message: "Invalid question index" });
+        }
+
+        // 4. Duplicate Submission Protection & Atomic Conditional Lock
+        let lockedDoc;
+        if (typeof Interview.findOneAndUpdate === 'function') {
+            lockedDoc = await Interview.findOneAndUpdate(
+                {
+                    _id: interviewId,
+                    userId: interview.userId,
+                    status: { $ne: "Completed" },
+                    currentQuestionIndex: expectedIndex,
+                    isEvaluating: { $ne: true }
+                },
+                {
+                    $set: { isEvaluating: true }
+                },
+                { new: true }
+            );
+        } else {
+            if (interview.isEvaluating) {
+                return res.status(409).json({ message: "Question is currently being evaluated. Please wait." });
+            }
+            interview.isEvaluating = true;
+            await interview.save();
+            lockedDoc = interview;
+        }
+
+        if (!lockedDoc) {
+            const fresh = await Interview.findById(interviewId);
+            if (fresh?.isEvaluating) {
+                return res.status(409).json({ message: "Question is currently being evaluated. Please wait." });
+            }
+            return res.status(409).json({
+                message: "Question already submitted or session state modified",
+                currentQuestionIndex: fresh?.currentQuestionIndex
+            });
+        }
+
+        lockedInterviewId = interviewId;
+        const currentQuestion = lockedDoc.questions[expectedIndex];
+
+        // 5. Server-Side Deadline Verification
+        const deadlineCheck = verifyAnswerDeadline({
+            currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
+            currentQuestionDeadline: lockedDoc.currentQuestionDeadline,
+            answerTimeLimitSeconds: lockedDoc.answerTimeLimitSeconds || 60,
+            gracePeriodSeconds: 5,
+            now,
+        });
+
+        // 6. Handle Empty Answer or Timeout Submission
+        if (!answer || answer.trim() === "") {
+            currentQuestion.score = 0;
+            currentQuestion.confidence = 0;
+            currentQuestion.communication = 0;
+            currentQuestion.correctness = 0;
+            currentQuestion.feedback = deadlineCheck.isTimedOut
+                ? "Time expired. No answer was submitted."
+                : "You didn't submit an answer for this question.";
+            currentQuestion.answer = "";
+
+            lockedDoc.currentQuestionIndex = expectedIndex + 1;
+            lockedDoc.currentQuestionStartedAt = new Date();
+            lockedDoc.currentQuestionDeadline = calculateQuestionDeadline({
+                currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
+                answerTimeLimitSeconds: lockedDoc.answerTimeLimitSeconds || 60,
+                expiresAt: lockedDoc.expiresAt
+            });
+            lockedDoc.isEvaluating = false;
+
+            await lockedDoc.save();
+            lockedInterviewId = null; // Lock released safely
+
+            const targetAllocation = lockedDoc.targetQuestionCount || lockedDoc.questions.length;
+            const isAllocationExhausted = lockedDoc.currentQuestionIndex >= targetAllocation || lockedDoc.currentQuestionIndex >= lockedDoc.questions.length;
+
+            return res.json({
+                feedback: currentQuestion.feedback,
+                score: 0,
+                questions: lockedDoc.questions,
+                currentQuestionIndex: lockedDoc.currentQuestionIndex,
+                currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
+                currentQuestionDeadline: lockedDoc.currentQuestionDeadline,
+                isSessionExpired: false,
+                targetQuestionCount: lockedDoc.targetQuestionCount,
+                isAllocationExhausted
+            });
+        }
+
+        // 7. Non-Empty Answer: Evaluate Response with AI
         const messages = [
             {
                 role: "system",
                 content: `
 You are a professional human interviewer evaluating a candidate's answer in a real interview.
-
 Evaluate naturally and fairly, like a real person would.
-
 Score the answer in these areas (0 to 10):
-
 1. Confidence – Does the answer sound clear, confident, and well-presented?
 2. Communication – Is the language simple, clear, and easy to understand?
 3. Correctness – Is the answer accurate, relevant, and complete?
 
-Rules:
-- Be realistic and unbiased.
-- Do not give random high scores.
-- If the answer is weak, score low.
-- If the answer is strong and detailed, score high.
-- Consider clarity, structure, and relevance.
-
-Calculate:
-finalScore = average of confidence, communication, and correctness (rounded to nearest whole number).
-
+Calculate finalScore as average of confidence, communication, and correctness (rounded to nearest whole number).
 Feedback Rules:
-- Write natural human feedback.
-- 10 to 15 words only.
-- Sound like real interview feedback.
-- Can suggest improvement if needed.
-- Do NOT repeat the question.
-- Do NOT explain scoring.
-- Keep tone professional and honest.
-
-Return ONLY valid JSON in this format:
-
+- Write natural human feedback (10 to 15 words only).
+- Do NOT repeat the question or explain scoring.
+Return ONLY valid JSON in format:
 {
   "confidence": number,
   "communication": number,
@@ -423,14 +646,10 @@ Return ONLY valid JSON in this format:
             },
             {
                 role: "user",
-                content: `
-Question: ${question.question}
-Answer: ${answer}
-`
+                content: `Question: ${currentQuestion.question}\nAnswer: ${answer}`
             }
         ];
 
-        // 3. Call AI and Handle Response with safe parsing
         let parsed = { confidence: 6, communication: 6, correctness: 6, finalScore: 6, feedback: "Response recorded and evaluated." };
         try {
             const aiResponse = await askAI(messages);
@@ -443,133 +662,142 @@ Answer: ${answer}
                     finalScore: Number(data.finalScore) || 6,
                     feedback: String(data.feedback || "Response recorded and evaluated.").trim()
                 };
-            } else if (aiResponse) {
-                const manualParsed = JSON.parse(aiResponse);
-                parsed = {
-                    confidence: Number(manualParsed.confidence) || 6,
-                    communication: Number(manualParsed.communication) || 6,
-                    correctness: Number(manualParsed.correctness) || 6,
-                    finalScore: Number(manualParsed.finalScore) || 6,
-                    feedback: String(manualParsed.feedback || "Response recorded and evaluated.").trim()
-                };
             }
         } catch (evalErr) {
-            console.warn("AI evaluation fallback triggered:", evalErr.message);
+            console.warn("[submitAnswer] AI evaluation fallback triggered:", evalErr.message);
         }
 
-        // 4. Update Current Question in DB
-        question.answer = answer;
-        question.confidence = parsed.confidence;
-        question.communication = parsed.communication;
-        question.correctness = parsed.correctness;
-        question.score = parsed.finalScore;
-        question.feedback = parsed.feedback;
+        // If submitted after deadline + grace period, apply late-submission penalty
+        if (deadlineCheck.isTimedOut) {
+            parsed.finalScore = Math.min(parsed.finalScore, 4);
+            parsed.feedback = `[Time Expired] ${parsed.feedback}`;
+        }
 
-        // 5. Feature D: Optional Adaptive Cross-Questioning Probing
+        currentQuestion.answer = answer.trim();
+        currentQuestion.confidence = parsed.confidence;
+        currentQuestion.communication = parsed.communication;
+        currentQuestion.correctness = parsed.correctness;
+        currentQuestion.score = parsed.finalScore;
+        currentQuestion.feedback = parsed.feedback;
+
+        // 8. Adaptive Cross-Questioning (Phase 4: Follow-up replaces unasked primary question, allocation strictly capped)
         let followUpQuestion = null;
-        const isCrossQuestioningEnabled = Boolean(interview.enableCrossQuestioning);
+        const isCrossQuestioningEnabled = Boolean(lockedDoc.enableCrossQuestioning);
+        const targetAllocation = lockedDoc.targetQuestionCount || lockedDoc.questions.length;
+        const existingFollowUpsCount = lockedDoc.questions.filter(q => q.isFollowUp).length;
+        const currentDepth = Number(currentQuestion.depth) || 0;
 
-        if (isCrossQuestioningEnabled) {
-            const currentDepth = Number(question.depth) || 0;
-            const existingFollowUpsCount = interview.questions.filter(q => q.isFollowUp).length;
+        // Check if there are unasked primary questions later in the sequence that can be replaced
+        let lastUnaskedPrimaryIndex = -1;
+        for (let i = lockedDoc.questions.length - 1; i > expectedIndex; i--) {
+            if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
+                lastUnaskedPrimaryIndex = i;
+                break;
+            }
+        }
 
-            // Bounding guards:
-            // 1. Max depth 1 (follow-ups cannot generate nested follow-ups)
-            // 2. Max 2 follow-ups total across the entire interview
-            // 3. Answer has meaningful content (>= 20 chars)
-            // 4. Score is in probing range (between 2 and 8)
-            const isEligibleForProbe = 
-                currentDepth < 1 &&
-                existingFollowUpsCount < 2 &&
-                answer.trim().length >= 20 &&
-                parsed.finalScore >= 2 &&
-                parsed.finalScore <= 8;
+        const isEligibleForProbe =
+            isCrossQuestioningEnabled &&
+            !deadlineCheck.isTimedOut &&
+            currentDepth < 1 &&
+            existingFollowUpsCount < 2 &&
+            lastUnaskedPrimaryIndex > expectedIndex &&
+            answer.trim().length >= 20 &&
+            parsed.finalScore >= 2 &&
+            parsed.finalScore <= 8;
 
-            if (isEligibleForProbe) {
-                try {
-                    const crossType = interview.crossQuestioningType || 'Technical';
-                    const isBehavioral = crossType === 'Behavioral';
-                    const probeSystemPrompt = isBehavioral
-                        ? `You are an expert interviewer specializing in behavioral probing.
+        if (isEligibleForProbe) {
+            try {
+                const crossType = lockedDoc.crossQuestioningType || 'Technical';
+                const isBehavioral = crossType === 'Behavioral';
+                const probeSystemPrompt = isBehavioral
+                    ? `You are an expert interviewer specializing in behavioral probing.
 Based on the candidate's answer, decide whether a targeted behavioral follow-up question is warranted.
-Probe into concrete situations, the candidate's individual ownership, decisions, collaboration, conflicts, actions taken, outcomes, and lessons learned.
-Rules:
-- If warranted, return JSON:
+Probe into concrete situations, individual ownership, decisions, collaboration, conflicts, actions taken, and outcomes.
+Return ONLY valid JSON:
 {
   "warranted": true,
   "followUpQuestion": "A single direct behavioral follow-up question (15-25 words)",
   "difficulty": "medium"
-}
-- If the answer was sufficient or not suitable for probing, return JSON:
-{
-  "warranted": false
-}
-Return ONLY valid JSON.`
-                        : `You are an expert interviewer specializing in technical and architectural probing.
-Based on the candidate's answer, decide whether a targeted technical follow-up question is warranted to probe deeper into technical specifics, architectural trade-offs, debugging decisions, edge cases, performance, and evidence for technical claims.
-Rules:
-- If warranted, return JSON:
+} or { "warranted": false }`
+                    : `You are an expert interviewer specializing in technical probing.
+Based on the candidate's answer, decide whether a targeted technical follow-up question is warranted to probe technical specifics, architectural trade-offs, debugging, and performance.
+Return ONLY valid JSON:
 {
   "warranted": true,
   "followUpQuestion": "A single direct technical follow-up question (15-25 words)",
   "difficulty": "medium"
-}
-- If the answer was sufficient or not suitable for probing, return JSON:
-{
-  "warranted": false
-}
-Return ONLY valid JSON.`;
+} or { "warranted": false }`;
 
-                    const probeMessages = [
-                        {
-                            role: "system",
-                            content: probeSystemPrompt
-                        },
-                        {
-                            role: "user",
-                            content: `Role: ${interview.role}\nOriginal Question: ${question.question}\nCandidate Answer: ${answer}\nFeedback: ${parsed.feedback}`
-                        }
-                    ];
+                const probeMessages = [
+                    { role: "system", content: probeSystemPrompt },
+                    { role: "user", content: `Role: ${lockedDoc.role}\nOriginal Question: ${currentQuestion.question}\nCandidate Answer: ${answer}\nFeedback: ${parsed.feedback}` }
+                ];
 
-                    const probeResponse = await askAI(probeMessages);
-                    const { data: probeData } = safeParseJson(probeResponse);
+                const probeResponse = await askAI(probeMessages);
+                const { data: probeData } = safeParseJson(probeResponse);
 
-                    if (probeData && probeData.warranted && probeData.followUpQuestion) {
-                        const qText = String(probeData.followUpQuestion).trim();
-                        // Validate non-empty and not identical to original
-                        if (qText.length >= 15 && qText.toLowerCase() !== question.question.toLowerCase()) {
-                            followUpQuestion = {
-                                question: qText,
-                                difficulty: probeData.difficulty === 'hard' ? 'hard' : 'medium',
-                                timeLimit: 90,
-                                isFollowUp: true,
-                                parentQuestionIndex: questionIndex,
-                                depth: currentDepth + 1,
-                                answer: "",
-                                feedback: "",
-                                score: 0,
-                                confidence: 0,
-                                communication: 0,
-                                correctness: 0
-                            };
+                if (probeData && probeData.warranted && probeData.followUpQuestion) {
+                    const qText = String(probeData.followUpQuestion).trim();
+                    if (qText.length >= 15 && qText.toLowerCase() !== currentQuestion.question.toLowerCase()) {
+                        followUpQuestion = {
+                            question: qText,
+                            difficulty: "medium", // Strictly medium difficulty
+                            timeLimit: 60,        // Strict 60s
+                            isFollowUp: true,
+                            parentQuestionIndex: expectedIndex,
+                            depth: currentDepth + 1,
+                            answer: "",
+                            feedback: "",
+                            score: 0,
+                            confidence: 0,
+                            communication: 0,
+                            correctness: 0
+                        };
 
-                            // Insert into interview.questions directly after current question
-                            interview.questions.splice(questionIndex + 1, 0, followUpQuestion);
+                        // Insert follow-up directly after current question
+                        lockedDoc.questions.splice(expectedIndex + 1, 0, followUpQuestion);
+
+                        // Displace / pop the last unasked primary question to ensure total questions never exceeds targetAllocation
+                        for (let i = lockedDoc.questions.length - 1; i > expectedIndex + 1; i--) {
+                            if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
+                                lockedDoc.questions.splice(i, 1);
+                                break;
+                            }
                         }
                     }
-                } catch (probeErr) {
-                    console.warn("Follow-up generation non-fatal error:", probeErr.message);
                 }
+            } catch (probeErr) {
+                console.warn("[submitAnswer] Follow-up generation non-fatal error:", probeErr.message);
             }
         }
 
-        await interview.save();
+        // 9. Advance Question Index & Reset Server-Side 60s Deadline
+        lockedDoc.currentQuestionIndex = expectedIndex + 1;
+        lockedDoc.currentQuestionStartedAt = new Date();
+        lockedDoc.currentQuestionDeadline = calculateQuestionDeadline({
+            currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
+            answerTimeLimitSeconds: lockedDoc.answerTimeLimitSeconds || 60,
+            expiresAt: lockedDoc.expiresAt
+        });
+        lockedDoc.isEvaluating = false;
+
+        await lockedDoc.save();
+        lockedInterviewId = null; // Lock released safely
+
+        const isAllocationExhausted = lockedDoc.currentQuestionIndex >= targetAllocation || lockedDoc.currentQuestionIndex >= lockedDoc.questions.length;
 
         return res.status(200).json({ 
             feedback: parsed.feedback,
             score: parsed.finalScore,
             followUpQuestion,
-            questions: interview.questions
+            questions: lockedDoc.questions,
+            currentQuestionIndex: lockedDoc.currentQuestionIndex,
+            currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
+            currentQuestionDeadline: lockedDoc.currentQuestionDeadline,
+            isSessionExpired: false,
+            targetQuestionCount: lockedDoc.targetQuestionCount,
+            isAllocationExhausted
         });
 
     } catch (error) {
@@ -578,15 +806,37 @@ Return ONLY valid JSON.`;
             message: "Internal Server error in the submitAnswer controller",
             error: error.message
         });
+    } finally {
+        if (lockedInterviewId) {
+            try {
+                await Interview.updateOne(
+                    { _id: lockedInterviewId, isEvaluating: true },
+                    { $set: { isEvaluating: false } }
+                );
+            } catch (unlockErr) {
+                console.error("[submitAnswer] Lock release failed in finally block:", unlockErr.message);
+            }
+        }
     }
 };
 
 export const finishInterview = async (req, res) => {
     try {
         const { interviewId } = req.body;
+
+        const userId = req.userId || req.user?._id || req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: "Authentication required" });
+        }
+
         const interview = await Interview.findById(interviewId);
         if (!interview) {
             return res.status(404).json({ message: "Interview not found" });
+        }
+
+        // Strict Ownership Validation (Anti-IDOR)
+        if (!interview.userId || interview.userId.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Forbidden: You cannot access or complete another candidate's interview" });
         }
 
         let totalScore = 0, totalConfidence = 0, totalCorrectness = 0, totalCommunication = 0;
@@ -604,7 +854,21 @@ export const finishInterview = async (req, res) => {
             confidence: totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0,
             communication: totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0,
             correctness: totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0,
-            questions: interview.questions
+            questions: interview.questions,
+            role: interview.role,
+            experience: interview.experience,
+            mode: interview.mode,
+            enableCrossQuestioning: interview.enableCrossQuestioning || false,
+            crossQuestioningType: interview.crossQuestioningType || 'Technical',
+            interviewMode: interview.interviewMode || 'question_based',
+            selectedQuestionCount: interview.selectedQuestionCount || totalQuestions,
+            selectedDurationMinutes: interview.selectedDurationMinutes || null,
+            targetQuestionCount: interview.targetQuestionCount || totalQuestions,
+            creditsCharged: typeof interview.creditsCharged === 'number' ? interview.creditsCharged : 50,
+            difficulty: interview.difficulty || 'medium',
+            answerTimeLimitSeconds: interview.answerTimeLimitSeconds || 60,
+            startedAt: interview.startedAt || interview.createdAt,
+            expiresAt: interview.expiresAt || null,
         };
 
         interview.finalScore = data.finalScore;
@@ -637,6 +901,15 @@ export const normalizeStandardInterview = (doc) => {
         crossQuestioningType: isCross ? (doc.crossQuestioningType || 'Technical') : null,
         questions: Array.isArray(doc.questions) ? doc.questions : [],
         totalQuestions: Array.isArray(doc.questions) ? doc.questions.length : 0,
+        interviewMode: doc.interviewMode || 'question_based',
+        selectedQuestionCount: doc.selectedQuestionCount || (Array.isArray(doc.questions) ? doc.questions.length : 0),
+        selectedDurationMinutes: doc.selectedDurationMinutes || null,
+        targetQuestionCount: doc.targetQuestionCount || (Array.isArray(doc.questions) ? doc.questions.length : 0),
+        creditsCharged: typeof doc.creditsCharged === 'number' ? doc.creditsCharged : 50,
+        difficulty: doc.difficulty || 'medium',
+        answerTimeLimitSeconds: doc.answerTimeLimitSeconds || 60,
+        startedAt: doc.startedAt || doc.createdAt || new Date(),
+        expiresAt: doc.expiresAt || null,
         createdAt: doc.createdAt || new Date(),
         updatedAt: doc.updatedAt || new Date(),
     };
@@ -833,10 +1106,72 @@ export const getInterviewReport = async (req, res) => {
             correctness: avgCorrectness,
             questions: interview.questions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
-            crossQuestioningType: interview.crossQuestioningType || 'Technical'
+            crossQuestioningType: interview.crossQuestioningType || 'Technical',
+            interviewMode: interview.interviewMode || 'question_based',
+            selectedQuestionCount: interview.selectedQuestionCount || totalQuestions,
+            selectedDurationMinutes: interview.selectedDurationMinutes || null,
+            targetQuestionCount: interview.targetQuestionCount || totalQuestions,
+            creditsCharged: typeof interview.creditsCharged === 'number' ? interview.creditsCharged : 50,
+            difficulty: interview.difficulty || 'medium',
+            answerTimeLimitSeconds: interview.answerTimeLimitSeconds || 60,
+            startedAt: interview.startedAt || interview.createdAt,
+            expiresAt: interview.expiresAt || null,
         });
 
     } catch (error) {
         return res.status(500).json({ message: 'Error in getInterviewReport', error: error.message });
+    }
+};
+
+/**
+ * GET /api/interview/session/:id
+ * Retrieves an active interview session for the authenticated candidate.
+ * Used for resuming sessions and synchronizing timer state across refreshes.
+ */
+export const getInterviewSession = async (req, res) => {
+    try {
+        const interview = await Interview.findById(req.params.id);
+        if (!interview) {
+            return res.status(404).json({ message: "Interview session not found" });
+        }
+
+        const userId = req.userId || req.user?._id || req.user?.id;
+        if (interview.userId && userId && interview.userId.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Forbidden: You cannot access another user's interview" });
+        }
+
+        const now = new Date();
+        const isSessionExpired = Boolean(interview.expiresAt && now.getTime() >= new Date(interview.expiresAt).getTime());
+        if (isSessionExpired && interview.status !== "Completed") {
+            interview.status = "Completed";
+            await interview.save();
+        }
+
+        const totalQuestions = interview.questions.length;
+        return res.status(200).json({
+            interviewId: interview._id,
+            role: interview.role,
+            experience: interview.experience,
+            mode: interview.mode,
+            status: interview.status,
+            isSessionExpired,
+            questions: interview.questions,
+            enableCrossQuestioning: interview.enableCrossQuestioning || false,
+            crossQuestioningType: interview.crossQuestioningType || 'Technical',
+            interviewMode: interview.interviewMode || 'question_based',
+            selectedQuestionCount: interview.selectedQuestionCount || totalQuestions,
+            selectedDurationMinutes: interview.selectedDurationMinutes || null,
+            targetQuestionCount: interview.targetQuestionCount || totalQuestions,
+            creditsCharged: typeof interview.creditsCharged === 'number' ? interview.creditsCharged : 50,
+            difficulty: interview.difficulty || 'medium',
+            answerTimeLimitSeconds: interview.answerTimeLimitSeconds || 60,
+            startedAt: interview.startedAt || interview.createdAt,
+            expiresAt: interview.expiresAt || null,
+            currentQuestionIndex: interview.currentQuestionIndex || 0,
+            currentQuestionStartedAt: interview.currentQuestionStartedAt || interview.createdAt,
+            currentQuestionDeadline: interview.currentQuestionDeadline || null,
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error in getInterviewSession', error: error.message });
     }
 };

@@ -1,7 +1,15 @@
 import express from 'express'
 import isAuth from '../middleware/isAuth.js';
 import { upload, handleResumeUpload } from '../middleware/multer.js';
-import { finishInterview, generateQuestions, getInterviewReport, getMyInterviews, resumeAnalyse, submitAnswer } from '../controllers/interview.controller.js';
+import {
+    finishInterview,
+    generateQuestions,
+    getInterviewReport,
+    getInterviewSession,
+    getMyInterviews,
+    resumeAnalyse,
+    submitAnswer
+} from '../controllers/interview.controller.js';
 // import limiter from '../middleware/rateLimiter.js';
 
 const interviewRouter = express.Router();
@@ -12,6 +20,7 @@ interviewRouter.post("/submitAnswer", isAuth, submitAnswer);
 interviewRouter.post("/finish", isAuth, finishInterview);
 
 interviewRouter.get('/getInterview', isAuth, getMyInterviews);
+interviewRouter.get('/session/:id', isAuth, getInterviewSession);
 interviewRouter.get('/cross-history', isAuth, (req, res) => {
     req.query.type = 'cross';
     return getMyInterviews(req, res);

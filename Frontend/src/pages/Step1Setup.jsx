@@ -24,6 +24,9 @@ function Step1Setup({ onStart }) {
     const [anaylzing, setAnaylzing] = useState(false)
     const [enableCrossQuestioning, setEnableCrossQuestioning] = useState(false);
     const [crossQuestioningType, setCrossQuestioningType] = useState('Technical');
+    const [interviewMode, setInterviewMode] = useState('question_based'); // 'question_based' | 'time_based'
+    const [selectedQuestionCount, setSelectedQuestionCount] = useState(10); // 5 to 20
+    const [timePackage, setTimePackage] = useState('30'); // '30' | '60' | '120'
     const userEditedFieldsRef = useRef({ role: false, experience: false });
     const uploadedFileRef = useRef(null);
     const activeExtractionIdRef = useRef(0);
@@ -173,7 +176,26 @@ function Step1Setup({ onStart }) {
     //     onStart();
     // };
 
+    const calculateCreditCost = () => {
+        if (interviewMode === 'time_based') {
+            if (timePackage === '30') return 50;
+            if (timePackage === '60') return 75;
+            if (timePackage === '120') return 150;
+            return 50;
+        }
+        return selectedQuestionCount * 5;
+    };
+
+    const requiredCredits = calculateCreditCost();
+    const userBalance = Number(userData?.credits ?? 0);
+    const hasSufficientCredits = userBalance >= requiredCredits;
+
     const handleStart = async () => {
+        if (!hasSufficientCredits) {
+            toast.error(`Insufficient credits. You need ${requiredCredits} credits but currently have ${userBalance}.`);
+            return;
+        }
+
         setLoading(true);
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/generateQuestions',
@@ -185,18 +207,21 @@ function Step1Setup({ onStart }) {
                     projects,
                     resumeText: hasValidResume ? resumeText : '',
                     enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning),
-                    crossQuestioningType: crossQuestioningType || "Technical"
+                    crossQuestioningType: crossQuestioningType || "Technical",
+                    interviewMode,
+                    selectedQuestionCount: interviewMode === 'question_based' ? selectedQuestionCount : undefined,
+                    durationMinutes: interviewMode === 'time_based' ? Number(timePackage) : undefined,
+                    timePackage: interviewMode === 'time_based' ? timePackage : undefined,
                 },
                 { withCredentials: true }
-            )
-            console.log(result.data)
+            );
 
             if (userData) {
-                dispatch(setUserData({ ...userData, credits: result.data.creditsLeft }))
+                dispatch(setUserData({ ...userData, credits: result.data.creditsLeft }));
             }
             setLoading(false);
 
-            onStart(result.data)
+            onStart(result.data);
 
         } catch (error) {
             console.log("error in handleStart", error);
@@ -204,7 +229,7 @@ function Step1Setup({ onStart }) {
             toast.error(errMsg);
             setLoading(false);
         }
-    }
+    };
 
     return (
         <>
@@ -368,6 +393,167 @@ function Step1Setup({ onStart }) {
                                     )}
                                 </motion.div>
 
+                                {/* --- Interview Format & Packaging Selector --- */}
+                                <motion.div layout className="p-4 bg-slate-50 border-2 border-slate-100 rounded-xl space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                                            <HiSparkles className="text-yellow-500 text-xs" /> Interview Format
+                                        </label>
+                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-yellow-400/20 text-yellow-800 rounded-md border border-yellow-400/40">
+                                            Medium Difficulty
+                                        </span>
+                                    </div>
+
+                                    {/* Mode Toggle Tabs */}
+                                    <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setInterviewMode('question_based')}
+                                            className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                                                interviewMode === 'question_based'
+                                                    ? 'bg-slate-900 text-yellow-400 shadow-md'
+                                                    : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            Question-Based
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setInterviewMode('time_based')}
+                                            className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                                                interviewMode === 'time_based'
+                                                    ? 'bg-slate-900 text-yellow-400 shadow-md'
+                                                    : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            Time-Based
+                                        </button>
+                                    </div>
+
+                                    {/* Mode A: Question-Based Selector */}
+                                    {interviewMode === 'question_based' ? (
+                                        <div className="space-y-3 pt-1">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="text-xs font-black text-slate-800 block">Question Allocation</span>
+                                                    <span className="text-[10px] text-slate-500">5 to 20 questions (5 credits / question)</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-lg font-black text-slate-900">{selectedQuestionCount}</span>
+                                                    <span className="text-[10px] font-bold text-slate-500 ml-1">Questions</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Range Slider & Stepper */}
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedQuestionCount(prev => Math.max(5, prev - 1))}
+                                                    disabled={selectedQuestionCount <= 5}
+                                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    type="range"
+                                                    min="5"
+                                                    max="20"
+                                                    step="1"
+                                                    value={selectedQuestionCount}
+                                                    onChange={(e) => setSelectedQuestionCount(Number(e.target.value))}
+                                                    className="flex-1 accent-yellow-400 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedQuestionCount(prev => Math.min(20, prev + 1))}
+                                                    disabled={selectedQuestionCount >= 20}
+                                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-[10px]">
+                                                <span className="font-bold text-slate-500">Strict 60s per answer</span>
+                                                <span className="font-black text-slate-800">No overall session cap</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Mode B: Time-Based Packages */
+                                        <div className="space-y-2 pt-1">
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { key: '30', label: 'Half an Hour', duration: '30 min', target: '10 Qs', credits: 50 },
+                                                    { key: '60', label: 'One Hour', duration: '60 min', target: '15 Qs', credits: 75 },
+                                                    { key: '120', label: 'Two Hours', duration: '120 min', target: '30 Qs', credits: 150 },
+                                                ].map(pkg => {
+                                                    const isSelected = timePackage === pkg.key;
+                                                    return (
+                                                        <div
+                                                            key={pkg.key}
+                                                            onClick={() => setTimePackage(pkg.key)}
+                                                            className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                                                                isSelected
+                                                                    ? 'bg-slate-900 text-white border-yellow-400 shadow-md'
+                                                                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            <div>
+                                                                <span className={`text-[8px] font-black uppercase tracking-wider block ${isSelected ? 'text-yellow-400' : 'text-slate-400'}`}>
+                                                                    {pkg.label}
+                                                                </span>
+                                                                <span className="text-xs font-black block mt-0.5">{pkg.duration}</span>
+                                                                <span className={`text-[9px] font-semibold block ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{pkg.target}</span>
+                                                            </div>
+                                                            <div className="mt-2 pt-1 border-t border-white/10 flex items-baseline justify-between">
+                                                                <span className={`text-xs font-black ${isSelected ? 'text-yellow-400' : 'text-slate-900'}`}>{pkg.credits}</span>
+                                                                <span className="text-[8px] font-bold uppercase text-slate-400">credits</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
+                                                <span className="font-bold">Strict 60s per answer</span>
+                                                <span className="font-bold">Session ends at time or question target</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Pricing & Credit Balance Summary */}
+                                    <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                                        hasSufficientCredits
+                                            ? 'bg-white border-slate-200'
+                                            : 'bg-red-50/70 border-red-200'
+                                    }`}>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-black text-slate-800">
+                                                    Cost: <span className="text-yellow-600 font-black">{requiredCredits} Credits</span>
+                                                </span>
+                                                <span className="text-[10px] text-slate-400">•</span>
+                                                <span className="text-[10px] font-bold text-slate-500">
+                                                    Balance: <span className={hasSufficientCredits ? 'font-bold text-slate-700' : 'font-bold text-red-600'}>{userBalance} Credits</span>
+                                                </span>
+                                            </div>
+                                            {!hasSufficientCredits && (
+                                                <p className="text-[10px] font-semibold text-red-600 mt-0.5">
+                                                    Insufficient balance. Need {requiredCredits - userBalance} more credits.
+                                                </p>
+                                            )}
+                                        </div>
+                                        {!hasSufficientCredits && (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate('/pricing')}
+                                                className="px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-lg shadow-xs transition-colors cursor-pointer"
+                                            >
+                                                Get Credits
+                                            </button>
+                                        )}
+                                    </div>
+                                </motion.div>
+
                                 <AnimatePresence mode='wait'>
                                     {!anaylsisDone ? (
                                         <motion.div
@@ -502,13 +688,13 @@ function Step1Setup({ onStart }) {
                                 <motion.button
                                     layout
                                     onClick={handleStart}
-                                    disabled={!role || !experience || anaylzing || loading}
+                                    disabled={!role || !experience || anaylzing || loading || !hasSufficientCredits}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     type="submit"
                                     className='w-full bg-slate-900 text-white py-3.5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-slate-800 transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2'
                                 >
-                                    {loading ? "Starting..." : "Start Interview"}
+                                    {loading ? "Starting..." : !hasSufficientCredits ? "Insufficient Credits" : "Start Interview"}
                                     <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
                                 </motion.button>
                             </form>

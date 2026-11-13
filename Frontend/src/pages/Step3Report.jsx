@@ -61,6 +61,30 @@ function Step3Report({ report }) {
                     </div>
                 </header>
 
+                {/* Session Packaging & Specification Badges */}
+                <div className="flex flex-wrap items-center gap-2 mb-8">
+                    <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-slate-950 shadow-sm">
+                        {report.interviewMode === 'time_based' ? 'Time-Based Interview' : 'Question-Based Interview'}
+                    </span>
+                    {report.interviewMode === 'time_based' && report.selectedDurationMinutes && (
+                        <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 text-slate-200 border border-slate-800">
+                            {report.selectedDurationMinutes} Minutes Max
+                        </span>
+                    )}
+                    <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 text-slate-200 border border-slate-800">
+                        {report.targetQuestionCount || report.selectedQuestionCount || report.questions?.length || 0} Questions
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 text-yellow-400 border border-yellow-400/30">
+                        {report.creditsCharged || 50} Credits Spent
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-800">
+                        Medium Difficulty
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 text-slate-300 border border-slate-800">
+                        60s / Answer
+                    </span>
+                </div>
+
                 <div className='grid lg:grid-cols-3 gap-8'>
                     
                     {/* LEFT COLUMN: Circular Metrics & Radar */}
