@@ -350,16 +350,46 @@ export const generateQuestions = async (req, res) => {
         } catch (aiErr) {
             console.error("[generateQuestions] AI provider error:", aiErr.message || aiErr);
             await safeRefund();
+
+            const isDailyQuota = aiErr.code === 'FREE_MODEL_DAILY_LIMIT_EXCEEDED' ||
+                aiErr.errorCode === 'FREE_MODEL_DAILY_LIMIT_EXCEEDED' ||
+                (typeof aiErr.message === 'string' && aiErr.message.toLowerCase().includes('free-models-per-day'));
+
+            let creditsLeft;
+            try {
+                const refreshedUser = await User.findById(req.userId);
+                creditsLeft = refreshedUser?.credits;
+            } catch (uErr) {
+                console.error("[generateQuestions] Failed to fetch refreshed balance after refund:", uErr.message);
+            }
+
+            if (isDailyQuota) {
+                return res.status(429).json({
+                    errorCode: 'FREE_MODEL_DAILY_LIMIT_EXCEEDED',
+                    message: "The AI provider's free daily model quota has been exhausted. Please try again tomorrow or later when the daily quota resets. Your interview credits have been fully refunded.",
+                    creditsLeft,
+                });
+            }
+
             const status = (aiErr.status === 402 || aiErr.status === 429) ? 503 : 500;
             const message = aiErr.status === 402
                 ? "AI generation quota exceeded. Please check API credits or try again later."
                 : (aiErr.message || "Failed to generate interview questions from AI provider");
-            return res.status(status).json({ message });
+            return res.status(status).json({
+                message,
+                errorCode: aiErr.code || (aiErr.status === 402 ? 'QUOTA_EXCEEDED' : 'AI_PROVIDER_ERROR'),
+                creditsLeft
+            });
         }
 
         if (!aiResponse || !aiResponse.trim()) {
             await safeRefund();
-            return res.status(500).json({ message: "AI didn't gave the answer" });
+            let creditsLeft;
+            try {
+                const refreshedUser = await User.findById(req.userId);
+                creditsLeft = refreshedUser?.credits;
+            } catch {}
+            return res.status(500).json({ message: "AI didn't gave the answer", creditsLeft });
         }
 
         const rawLines = aiResponse.split("\n").map(q => q.trim()).filter(q => q.length > 0);
@@ -398,8 +428,14 @@ export const generateQuestions = async (req, res) => {
         // Validate final allocation: never charge full price for an under-allocated interview
         if (questionArray.length < targetCount) {
             await safeRefund();
+            let creditsLeft;
+            try {
+                const refreshedUser = await User.findById(req.userId);
+                creditsLeft = refreshedUser?.credits;
+            } catch {}
             return res.status(503).json({
-                message: `Unable to generate the full allocation of ${targetCount} questions. Your credits have been fully refunded. Please try again.`
+                message: `Unable to generate the full allocation of ${targetCount} questions. Your credits have been fully refunded. Please try again.`,
+                creditsLeft
             });
         }
 
@@ -476,8 +512,13 @@ export const generateQuestions = async (req, res) => {
 
     } catch (error) {
         await safeRefund();
+        let creditsLeft;
+        try {
+            const refreshedUser = await User.findById(req.userId);
+            creditsLeft = refreshedUser?.credits;
+        } catch {}
         console.error("[generateQuestions] Unexpected error:", error.message || error);
-        return res.status(500).json({ message: "internal Server error in the generateQuestion controller" });
+        return res.status(500).json({ message: "internal Server error in the generateQuestion controller", creditsLeft });
     }
 };
 
@@ -545,7 +586,7 @@ export const submitAnswer = async (req, res) => {
                 {
                     $set: { isEvaluating: true }
                 },
-                { new: true }
+                { returnDocument: 'after' }
             );
         } else {
             if (interview.isEvaluating) {
