@@ -531,3 +531,181 @@ To maintain fair platform economics and prevent resource starvation:
 - **Module 4 (Live Coding Session)**: Dynamic formula calibrated by question count and time limit:
   $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
 - **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
+
+---
+
+## ⚙️ Installation & Development Setup
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher (`v20+` recommended)
+- **MongoDB**: Local MongoDB community server or MongoDB Atlas cluster URI
+- **OpenRouter API Key**: For LLM generation ([OpenRouter.ai](https://openrouter.ai/))
+- **Razorpay Account**: For credit payments (Test mode keys suffice for development)
+- **Language Compilers** *(Optional for local Module 4 testing)*: `python`, `g++`, `gcc`, `javac`/`java`, `go`
+
+### 1. Clone & Install Dependencies
+```bash
+# Clone the repository
+git clone https://github.com/KRISHNA-0425/Prepper.git
+cd Prepper
+
+# Install backend dependencies
+cd Backend
+npm install
+
+# Install frontend dependencies
+cd ../Frontend
+npm install
+```
+
+### 2. Environment Variables Configuration
+
+#### Backend Environment (`Backend/.env`)
+```env
+PORT=5000
+NODE_ENV=development
+SERVER_URL=http://localhost:5173
+MONGO_URL=mongodb+srv://<username>:<password>@cluster0.mongodb.net/prepper?retryWrites=true&w=majority
+JWT_SECRET=your_super_secret_jwt_key_here
+
+# OpenRouter AI Configuration
+OPEN_ROUTER_URL=https://openrouter.ai/api/v1/chat/completions
+OPEN_ROUTER_APIKEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPEN_ROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+
+# Razorpay Payment Gateway
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Live Code Execution Engine (Module 4)
+CODE_EXECUTION_ENABLED=true
+CODE_EXECUTION_PROVIDER=local
+MAX_CONCURRENT_EXECUTIONS=3
+```
+
+#### Frontend Environment (`Frontend/.env`)
+```env
+VITE_SERVER_URL=http://localhost:5000
+VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+```
+
+### 3. Running Development Servers
+```bash
+# In Terminal 1: Start Backend (with nodemon)
+cd Backend
+npm run dev
+
+# In Terminal 2: Start Frontend (with Vite HMR)
+cd Frontend
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser to access the application.
+
+---
+
+## 🧪 Comprehensive Verification & Test Suites
+
+The platform includes exhaustive unit, integration, and security regression test suites across both frontend and backend layers:
+
+### Running Test Suites
+```bash
+# Run complete frontend test suite (187 tests)
+npm --prefix Frontend test
+
+# Run frontend production build
+npm --prefix Frontend run build
+
+# Run backend execution & security test suites
+node --test Backend/tests/localCodeExecution.test.js Backend/tests/securityAndProductionAudit.test.js Backend/tests/codingSecurityMatrix.test.js
+
+# Run cross-examination tests
+node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnalysis.service.test.js
+```
+
+### Verification Matrix Summary
+- **Frontend Regression Suite**: **187 / 187 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, dual splitters, localStorage persistence, 503 error handling).
+- **Backend Execution Engine Suite**: **15 / 15 tests passing** (Host compiler registry, stdout/stdin, C/C++/Java/Python/JS execution, infinite loop timeouts, output capping, memory limits, test case runner).
+- **Security & Production Audit Suite**: **12 / 12 tests passing** (Anti-IDOR, secrets isolation, ephemeral directory cleanup, network egress blocking, concurrency semaphore, fail-closed production guard).
+- **Vite Production Bundler**: **Passed cleanly in 11.2s** with 0 errors.
+
+---
+
+## 📁 Repository Directory Structure
+
+```text
+Prepper/
+├── Backend/                             # Express REST API Server
+│   ├── config/                          # Database connection & runtime setup
+│   ├── controllers/                     # Business logic controllers
+│   │   ├── auth.controller.js           # Auth & JWT management
+│   │   ├── interview.controller.js      # Module 1 standard interview
+│   │   ├── crossExamination.controller.js # Module 2 cross-examination
+│   │   ├── coding.controller.js         # Module 4 live coding endpoints
+│   │   └── payment.controller.js        # Razorpay payment verification
+│   ├── middleware/                      # Auth guards, upload & rate limiting
+│   ├── models/                          # Mongoose schemas
+│   │   ├── User.js                      # User profile & credit balance
+│   │   ├── Interview.js                 # Unified interview sessions & trajectory
+│   │   ├── CodingProblem.js             # Problem descriptions & test cases
+│   │   ├── CodingSubmission.js          # Execution attempts & verdicts
+│   │   └── Payment.js                   # Razorpay transaction log
+│   ├── services/                        # Domain logic services
+│   │   ├── openRouter.service.js        # LLM integration & fault-tolerant retries
+│   │   ├── interviewPricing.service.js  # Dynamic credit computation & refund guards
+│   │   ├── adaptiveQuestion.service.js  # Module 3 dynamic difficulty & steering
+│   │   ├── answerAnalysis.service.js    # Module 2 project probing & claims
+│   │   ├── answerEvaluation.service.js  # 6-rubric evidence grounding
+│   │   ├── codeExecution/               # In-backend zero-cost execution
+│   │   │   ├── execution.service.js     # Sandboxed process spawning & timeouts
+│   │   │   ├── languageRegistry.js      # Dynamic host compiler discovery
+│   │   │   ├── testCaseRunner.js        # Test case evaluation & hidden masking
+│   │   │   ├── executionLimits.js       # Hard caps (5000ms, 64KB, 256MB)
+│   │   │   └── executionValidator.js    # Payload size & language validation
+│   │   └── coding/
+│   │       ├── executionAdapter.service.js # Pluggable provider router
+│   │       └── providers/
+│   │           └── local.provider.js    # Local sandboxed execution provider
+│   ├── tests/                           # Unit, integration & security test suites
+│   └── server.js                        # Express app entrypoint
+│
+├── Frontend/                            # React 19 + Vite Single Page Application
+│   ├── src/
+│   │   ├── components/                  # Modular UI components
+│   │   │   ├── Navbar.jsx               # Navigation bar with dedicated pills
+│   │   │   ├── coding/
+│   │   │   │   └── CodingWorkspace.jsx  # Monaco editor, splitters, drawer, modes
+│   │   │   └── cross-examination/       # Probing cards & claim inspectors
+│   │   ├── pages/                       # Primary route views
+│   │   │   ├── Home.jsx                 # Landing page & feature showcase
+│   │   │   ├── Step1Setup.jsx           # Module 1 interview setup form
+│   │   │   ├── Step2Interview.jsx       # Module 1 live conversational session
+│   │   │   ├── Step3Report.jsx          # Scorecard, trajectory, study roadmap
+│   │   │   ├── CrossExaminationSetup.jsx# Module 2 setup & claim anchor review
+│   │   │   ├── CrossExaminationPage.jsx # Module 2 high-pressure interrogation
+│   │   │   ├── CodingSetup.jsx          # Module 4 setup, questions & timer selector
+│   │   │   ├── CodingSessionPage.jsx    # Module 4 live coding session mount
+│   │   │   └── InterViewHistory.jsx     # Unified session history & discriminators
+│   │   ├── redux/                       # Redux store & slices
+│   │   ├── App.jsx                      # Route registry
+│   │   └── main.jsx                     # Vite root mount
+│   ├── tests/                           # Frontend integration test suites
+│   └── package.json
+│
+└── README.md                            # Comprehensive Platform Documentation
+```
+
+---
+
+## 🤝 Contributing & Code of Conduct
+
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes with descriptive commit messages following Conventional Commits format.
+4. Verify all tests pass (`npm --prefix Frontend test` and `node --test Backend/tests/*.test.js`).
+5. Open a Pull Request for review.
+
+---
+
+## 📜 License
+
+This project is licensed under the **ISC License**.
