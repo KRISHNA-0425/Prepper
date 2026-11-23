@@ -90,6 +90,17 @@ export default function CodingWorkspace({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const workspaceRef = useRef(null);
 
+  // Sync fullscreen state with document fullscreenchange events (e.g. Esc key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // Overall Session Countdown Timer
   const [timeLeft, setTimeLeft] = useState(() => {
     if (expiresAt) {
@@ -344,12 +355,12 @@ export default function CodingWorkspace({
   return (
     <div
       ref={workspaceRef}
-      className={`min-h-[85vh] bg-slate-950 text-slate-100 flex flex-col rounded-2xl border border-slate-800 shadow-2xl overflow-hidden ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
+      className={`h-full w-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden ${
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'border-0 border-slate-800'
       }`}
     >
       {/* Top Navbar */}
-      <div className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between select-none">
+      <div className="h-12 sm:h-14 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between select-none shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1 bg-cyan-950/60 border border-cyan-800/50 rounded-lg text-cyan-400 font-semibold text-sm">
             <HiCodeBracket className="w-4 h-4 text-cyan-400" />
@@ -431,9 +442,9 @@ export default function CodingWorkspace({
       </div>
 
       {/* Main Workspace Split Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* Left Panel: Problem Description (col-span-5) */}
-        <div className="lg:col-span-5 border-r border-slate-800 flex flex-col bg-slate-900/40 overflow-y-auto p-5 space-y-4">
+        <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col bg-slate-900/40 min-h-0 h-full overflow-y-auto p-4 sm:p-5 space-y-4">
           <div>
             <h2 className="text-xl font-bold text-slate-100 mb-1">
               {currentProblem?.title}
@@ -531,9 +542,9 @@ export default function CodingWorkspace({
         </div>
 
         {/* Right Panel: Editor & Execution Console (col-span-7) */}
-        <div className="lg:col-span-7 flex flex-col bg-slate-950 min-h-0 overflow-hidden">
+        <div className="lg:col-span-7 flex flex-col bg-slate-950 min-h-0 h-full overflow-hidden">
           {/* Monaco Editor Container */}
-          <div className="flex-1 min-h-[300px] lg:min-h-[360px] relative">
+          <div className="flex-1 min-h-[160px] relative overflow-hidden">
             <Editor
               height="100%"
               theme="vs-dark"
@@ -556,7 +567,7 @@ export default function CodingWorkspace({
 
           {/* Custom Input Drawer when toggled */}
           {useCustomInput && (
-            <div className="bg-slate-900/90 border-t border-slate-800 p-2.5 space-y-1">
+            <div className="bg-slate-900/90 border-t border-slate-800 p-2 sm:p-2.5 space-y-1 shrink-0">
               <label className="text-[11px] font-bold uppercase text-slate-400 flex items-center justify-between">
                 <span>Standard Input (stdin):</span>
                 <span className="text-[10px] text-slate-500 lowercase">passed to program standard input</span>
@@ -572,7 +583,7 @@ export default function CodingWorkspace({
           )}
 
           {/* Action Ribbon: Custom Input toggle & 3 Execution Buttons */}
-          <div className="h-14 bg-slate-900/90 border-t border-b border-slate-800 px-4 flex items-center justify-between">
+          <div className="h-12 sm:h-14 bg-slate-900/90 border-t border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between shrink-0">
             <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
               <input
                 type="checkbox"
@@ -617,9 +628,9 @@ export default function CodingWorkspace({
           </div>
 
           {/* Bottom Drawer: Console & Test Results */}
-          <div className="h-64 bg-slate-900/70 flex flex-col min-h-0">
+          <div className="h-52 sm:h-56 lg:h-64 bg-slate-900/70 flex flex-col min-h-0 shrink-0">
             {/* Drawer Header Tabs */}
-            <div className="flex items-center justify-between px-4 bg-slate-900 border-b border-slate-800 text-xs">
+            <div className="flex items-center justify-between px-3 sm:px-4 bg-slate-900 border-b border-slate-800 text-xs shrink-0">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setActiveTab('tests')}
