@@ -18,6 +18,7 @@ A comprehensive, full-stack web application designed to help users prepare for i
 - **📊 Interactive Data Visualization**: Integrated `recharts` and `react-circular-progressbar` for clear, visual feedback on user progress, strengths, and areas of improvement.
 - **🎨 Modern & Responsive UI**: Beautiful interfaces built with React and TailwindCSS, featuring smooth micro-animations using Framer Motion and custom components like `CapabilityCard`.
 - **🚀 State & API Management**: Robust frontend data management with Redux Toolkit and fast, secure API communication via Axios.
+- **💻 Live Coding Interview & Evaluation Engine (Module 4)**: Full-featured Monaco code editor with multi-language execution (JavaScript, Python, C++, Java, TypeScript, Go) powered by self-hosted Judge0 CE in Docker. Features deterministic test case validation (with hidden test masking), algorithmic Big-O complexity analysis, and AI code reviews.
 - **🔒 Backend Security**: Built-in rate limiting using `express-rate-limit` to prevent abuse, secure endpoints, and ensure high availability.
 
 ## 🛠️ Tech Stack
@@ -66,6 +67,9 @@ Prepper/
 │   ├── README.md            # Frontend documentation
 │   └── package.json
 │
+├── infrastructure/          # Self-hosted infrastructure
+│   └── judge0/              # Judge0 CE Docker Compose & configuration ([Judge0 README](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/infrastructure/judge0/README.md))
+│
 └── README.md                # Project documentation
 ```
 
@@ -107,6 +111,7 @@ cd Prepper
    RAZORPAY_KEY_ID=your_razorpay_key_id
    RAZORPAY_KEY_SECRET=your_razorpay_key_secret
    NODE_ENV=development
+   JUDGE0_API_URL=http://localhost:2358
    ```
 4. Start the backend development server:
    ```bash
@@ -135,6 +140,23 @@ cd Prepper
    npm run dev
    ```
    *The frontend application should now be accessible at http://localhost:5173.*
+
+### 4. Live Coding Engine Setup (Judge0 CE via Docker)
+
+To run the multi-language live coding execution engine:
+1. Start the Judge0 CE container cluster:
+   ```bash
+   docker compose -f infrastructure/judge0/docker-compose.yml up -d
+   ```
+2. Verify API health:
+   ```bash
+   curl http://localhost:2358/about
+   ```
+3. To stop Judge0:
+   ```bash
+   docker compose -f infrastructure/judge0/docker-compose.yml down
+   ```
+*(For full details and troubleshooting, see [infrastructure/judge0/README.md](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/infrastructure/judge0/README.md))*
 
 ## 🤝 Contributing
 
