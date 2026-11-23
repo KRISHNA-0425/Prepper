@@ -312,6 +312,28 @@ export default function CompanyInterviewSession() {
           </div>
         </div>
 
+        {/* Module 4 Live Coding Workspace Link for Online Assessment rounds */}
+        {(session?.interviewType === 'coding' || (session?.codingProblems && session.codingProblems.length > 0)) && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-400">
+                <RiCodeSSlashLine className="text-base" /> Module 4: Live Coding Assessment Active
+              </span>
+              <p className="text-xs text-slate-300">
+                This round includes executable coding challenges. You can write and verify your solution in the Monaco Editor workspace with sandboxed test case execution.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`/coding/${sessionId}`)}
+              className="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+            >
+              <RiCodeSSlashLine />
+              Open Monaco Coding Workspace
+            </button>
+          </div>
+        )}
+
         {/* Progress Dots */}
         <div className="flex items-center gap-1.5 px-1">
           {session?.questions?.map((q, idx) => {
