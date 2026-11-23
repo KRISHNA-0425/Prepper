@@ -158,39 +158,31 @@ function CrossExaminationSetup() {
     const toastId = toast.loading('Extracting resume claims and preparing cross-examination...');
 
     try {
-      const response = await createCrossExaminationSession({
+      const payload = {
         resumeFile: inputMode === 'upload' ? resumeFile : null,
-        resumeText: inputMode === 'text' ? resumeText.trim() : null,
-        targetRole: targetRole.trim(),
-        targetDomain: targetDomain.trim(),
+        resumeText: inputMode === 'text' ? resumeText : null,
+        targetRole: targetRole.trim() || undefined,
+        targetDomain: targetDomain.trim() || undefined,
         questionCount,
         idempotencyKey: currentIdempotencyKeyRef.current,
-      });
+      };
 
-      toast.success(
-        response.isIdempotentReplay
-          ? 'Resumed existing cross-examination session.'
-          : 'Cross-examination session created successfully!',
-        { id: toastId }
-      );
+      const result = await createCrossExaminationSession(payload);
+      toast.dismiss(toastId);
+      toast.success('Cross-examination session created!');
 
-      // Reset idempotency key for future new attempts
+      // Reset idempotency key on success
       currentIdempotencyKeyRef.current = null;
 
-      const sessionId = response?.session?.sessionId || response?.session?._id;
-      if (sessionId) {
-        navigate(`/cross-examination/${sessionId}`);
-      } else {
-        toast.error('Session created but session ID is missing.', { id: toastId });
-      }
+      // Navigate to the live cross-examination screen
+      navigate(`/cross-examination/${result.session._id}`, {
+        state: { sessionData: result.session },
+      });
     } catch (err) {
-      console.error('Session creation failed:', err);
-      const serverMessage =
-        err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to initialize session';
-
+      toast.dismiss(toastId);
+      const serverMessage = err.response?.data?.message || err.message || 'Failed to start cross-examination session.';
       setValidationError(serverMessage);
-      toast.error(serverMessage, { id: toastId });
-      // Keep currentIdempotencyKeyRef.current intact so retrying reuses the same idempotency key
+      toast.error(serverMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -201,9 +193,9 @@ function CrossExaminationSetup() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="min-h-screen w-full flex items-center justify-center bg-[#F5EC5A] p-3 sm:p-4 md:p-6 lg:p-8 font-poppins overflow-y-auto"
+        className="min-h-screen w-full flex items-center justify-center bg-[#F5EC5A] dark:bg-slate-950 p-3 sm:p-4 md:p-6 lg:p-8 font-poppins overflow-y-auto transition-colors duration-200"
       >
-        <div className="w-full max-w-6xl bg-white rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] grid grid-cols-1 md:grid-cols-2 overflow-hidden my-auto md:h-[90vh] md:max-h-[840px]">
+        <div className="w-full max-w-6xl bg-white dark:bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-transparent dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 overflow-hidden my-auto md:h-[90vh] md:max-h-[840px]">
           {/* --- Left Column: Branding --- */}
           <motion.div
             initial={{ x: -50 }}
@@ -213,7 +205,7 @@ function CrossExaminationSetup() {
             <button
               type="button"
               aria-label="Back to home"
-              className="absolute top-5 left-5 md:top-8 md:left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="absolute top-5 left-5 md:top-8 md:left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer"
               onClick={() => navigate('/')}
             >
               <IoArrowBackOutline size={26} className="text-yellow-500" />
@@ -268,29 +260,29 @@ function CrossExaminationSetup() {
           </motion.div>
 
           {/* --- Right Column: Form --- */}
-          <motion.div className="p-6 md:px-8 md:py-6 lg:p-10 flex flex-col bg-white overflow-y-auto min-h-0 custom-scrollbar">
+          <motion.div className="p-6 md:px-8 md:py-6 lg:p-10 flex flex-col bg-white dark:bg-slate-900 overflow-y-auto min-h-0 custom-scrollbar">
             <motion.div layout className="max-w-md mx-auto w-full space-y-4 my-auto py-2">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">
                     Cross-Examination Setup
                   </h2>
                   {pastSessions.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setShowPastSessionsModal(true)}
-                      className="text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <RiHistoryLine /> Past ({pastSessions.length})
                     </button>
                   )}
                 </div>
-                <p className="text-slate-500 font-medium text-xs">Fill details or let AI extract from your resume</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-xs">Fill details or let AI extract from your resume</p>
               </motion.div>
 
               <form onSubmit={handleStartSession} className="space-y-4">
                 {/* Resume Input Mode Toggle Tabs */}
-                <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                <div className="grid grid-cols-2 gap-2 bg-slate-200/70 dark:bg-slate-800 p-1 rounded-xl">
                   <button
                     type="button"
                     onClick={() => {
@@ -299,8 +291,8 @@ function CrossExaminationSetup() {
                     }}
                     className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
                       inputMode === 'upload'
-                        ? 'bg-slate-900 text-yellow-400 shadow-md'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-900 dark:bg-yellow-400 text-yellow-400 dark:text-slate-950 shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <FaFileArrowUp className="text-sm" />
@@ -314,8 +306,8 @@ function CrossExaminationSetup() {
                     }}
                     className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
                       inputMode === 'text'
-                        ? 'bg-slate-900 text-yellow-400 shadow-md'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-900 dark:bg-yellow-400 text-yellow-400 dark:text-slate-950 shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <HiOutlineDocumentText className="text-base" />
@@ -331,10 +323,10 @@ function CrossExaminationSetup() {
                     onDrop={handleDrop}
                     className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all group relative ${
                       isDragging
-                        ? 'border-yellow-400 bg-yellow-50/50 scale-[1.01]'
+                        ? 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-400/10 scale-[1.01]'
                         : resumeFile
-                        ? 'border-emerald-500 bg-emerald-50/50'
-                        : 'border-slate-200 hover:bg-yellow-50/50 hover:border-yellow-400'
+                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-yellow-50/50 dark:hover:bg-yellow-400/5 hover:border-yellow-400'
                     }`}
                     onClick={() => document.getElementById('resumeUploadInput').click()}
                   >
@@ -347,17 +339,17 @@ function CrossExaminationSetup() {
                     />
                     {resumeFile ? (
                       <div className="flex flex-col items-center gap-1">
-                        <HiOutlineCheckCircle className="text-2xl text-emerald-600 mb-0.5" />
-                        <p className="text-xs font-bold text-slate-800 truncate max-w-full">{resumeFile.name}</p>
-                        <p className="text-[10px] text-slate-500">
+                        <HiOutlineCheckCircle className="text-2xl text-emerald-600 dark:text-emerald-400 mb-0.5" />
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate max-w-full">{resumeFile.name}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
                           {(resumeFile.size / (1024 * 1024)).toFixed(2)} MB • Click or drop to replace
                         </p>
                       </div>
                     ) : (
                       <div>
                         <FaFileArrowUp className="text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1" />
-                        <p className="text-xs font-bold text-slate-600 truncate">
-                          Drag and drop your PDF resume, or <span className="text-yellow-600 underline">browse</span>
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">
+                          Drag and drop your PDF resume, or <span className="text-yellow-600 dark:text-yellow-400 underline">browse</span>
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5">Supported format: PDF (Max size: 10MB)</p>
                       </div>
@@ -371,7 +363,7 @@ function CrossExaminationSetup() {
                     <div className="flex items-center justify-between">
                       <label
                         htmlFor="resumeTextArea"
-                        className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400"
+                        className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
                       >
                         <HiOutlineDocumentText /> Resume Content
                       </label>
@@ -395,7 +387,7 @@ function CrossExaminationSetup() {
                         setValidationError('');
                       }}
                       placeholder="Paste your resume content, experience descriptions, and technical project details here..."
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800 text-xs custom-scrollbar"
+                      className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-3 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all font-semibold text-slate-800 dark:text-slate-100 text-xs custom-scrollbar"
                     />
                   </div>
                 )}
@@ -405,10 +397,10 @@ function CrossExaminationSetup() {
                   <div className="group space-y-1">
                     <label
                       htmlFor="targetRoleInput"
-                      className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 group-focus-within:text-yellow-600 transition-colors"
+                      className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400 group-focus-within:text-yellow-600 transition-colors"
                     >
                       <HiBriefcase /> Target Role{' '}
-                      <span className="text-slate-300 font-normal lowercase">(optional)</span>
+                      <span className="text-slate-400 font-normal lowercase">(optional)</span>
                     </label>
                     <input
                       id="targetRoleInput"
@@ -417,14 +409,14 @@ function CrossExaminationSetup() {
                       value={targetRole}
                       onChange={(e) => setTargetRole(e.target.value)}
                       placeholder="e.g. Senior Backend Engineer"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800"
+                      className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 font-semibold text-slate-800 dark:text-slate-100 text-sm transition-all"
                     />
                   </div>
 
                   <div className="group space-y-1">
                     <label
                       htmlFor="targetDomainInput"
-                      className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 group-focus-within:text-yellow-600 transition-colors"
+                      className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400 group-focus-within:text-yellow-600 transition-colors"
                     >
                       <HiCode /> Target Technical Domain
                     </label>
@@ -435,21 +427,21 @@ function CrossExaminationSetup() {
                       value={targetDomain}
                       onChange={(e) => setTargetDomain(e.target.value)}
                       placeholder="e.g. Distributed Systems & Cloud Infrastructure"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800"
+                      className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 font-semibold text-slate-800 dark:text-slate-100 text-sm transition-all"
                     />
                   </div>
                 </motion.div>
 
                 {/* Question Allocation Selector */}
-                <motion.div layout className="p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl space-y-2.5">
+                <motion.div layout className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-black text-slate-800 block">Question Allocation</span>
-                      <span className="text-[10px] text-slate-500">3 to 10 probing inquiries</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 block">Question Allocation</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">3 to 10 probing inquiries</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-base font-black text-slate-900">{questionCount}</span>
-                      <span className="text-[10px] font-bold text-slate-500 ml-1">Questions</span>
+                      <span className="text-base font-black text-slate-900 dark:text-white">{questionCount}</span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Questions</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -460,8 +452,8 @@ function CrossExaminationSetup() {
                         onClick={() => setQuestionCount(num)}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                           questionCount === num
-                            ? 'bg-slate-900 text-yellow-400 shadow-sm'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:border-yellow-400 hover:text-slate-900'
+                            ? 'bg-slate-900 dark:bg-yellow-400 text-yellow-400 dark:text-slate-950 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         {num}
@@ -471,10 +463,10 @@ function CrossExaminationSetup() {
                 </motion.div>
 
                 {/* Zero Fabrication Guarantee Note */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start gap-2.5 text-[11px] text-slate-600 leading-snug">
-                  <HiOutlineInformationCircle className="text-yellow-600 text-base shrink-0 mt-0.5" />
+                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-start gap-2.5 text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                  <HiOutlineInformationCircle className="text-yellow-600 dark:text-yellow-400 text-base shrink-0 mt-0.5" />
                   <span>
-                    <strong className="text-slate-800 font-bold">Zero Fabrication Guarantee:</strong> Questions are
+                    <strong className="text-slate-800 dark:text-slate-200 font-bold">Zero Fabrication Guarantee:</strong> Questions are
                     strictly grounded in claims extracted from your resume. Internal evaluation rubrics are kept
                     server-side to ensure candidate fairness.
                   </span>
@@ -487,7 +479,7 @@ function CrossExaminationSetup() {
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
-                      className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-xs text-red-600 font-medium"
+                      className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-2 text-xs text-red-600 dark:text-red-400 font-medium"
                     >
                       <HiOutlineExclamationCircle className="text-red-500 text-base shrink-0 mt-0.5" />
                       <span>{validationError}</span>
@@ -502,17 +494,17 @@ function CrossExaminationSetup() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-slate-900 text-white py-3.5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-slate-800 transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 cursor-pointer"
+                  className="w-full h-12 bg-[#F7D63A] hover:bg-[#ffe04d] text-slate-950 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-3 shadow-xl transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 cursor-pointer border border-yellow-400/80"
                 >
                   {isSubmitting ? (
                     <>
-                      <RiCpuLine className="text-xl animate-spin text-yellow-400" />
+                      <RiCpuLine className="text-xl animate-spin text-slate-950" />
                       <span>Analyzing Claims & Generating Blueprint...</span>
                     </>
                   ) : (
                     <>
                       <span>Begin Cross-Examination</span>
-                      <HiArrowRight className="text-yellow-400 group-hover:translate-x-1 transition-transform" />
+                      <HiArrowRight className="text-slate-950 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </motion.button>
@@ -548,7 +540,7 @@ function CrossExaminationSetup() {
                   type="button"
                   aria-label="Close past sessions"
                   onClick={() => setShowPastSessionsModal(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <HiX size={20} />
                 </button>
