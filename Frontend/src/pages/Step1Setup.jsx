@@ -27,9 +27,6 @@ function Step1Setup({ onStart }) {
     const [interviewMode, setInterviewMode] = useState('question_based'); // 'question_based' | 'time_based'
     const [selectedQuestionCount, setSelectedQuestionCount] = useState(10); // 5 to 20
     const [timePackage, setTimePackage] = useState('30'); // '30' | '60' | '120'
-    const [codingLanguage, setCodingLanguage] = useState('javascript');
-    const [codingCategory, setCodingCategory] = useState('Problem Solving');
-    const [codingDifficulty, setCodingDifficulty] = useState('Medium');
     const userEditedFieldsRef = useRef({ role: false, experience: false });
     const uploadedFileRef = useRef(null);
     const activeExtractionIdRef = useRef(0);
@@ -215,10 +212,7 @@ function Step1Setup({ onStart }) {
                     enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning),
                     crossQuestioningType: crossQuestioningType || "Technical",
                     interviewMode,
-                    interviewType: mode === 'Coding' ? 'coding' : 'conceptual',
-                    codingLanguage: mode === 'Coding' ? codingLanguage : undefined,
-                    codingCategory: mode === 'Coding' ? codingCategory : undefined,
-                    codingDifficulty: mode === 'Coding' ? codingDifficulty : undefined,
+                    interviewType: 'conceptual',
                     selectedQuestionCount: interviewMode === 'question_based' ? selectedQuestionCount : undefined,
                     durationMinutes: interviewMode === 'time_based' ? Number(timePackage) : undefined,
                     timePackage: interviewMode === 'time_based' ? timePackage : undefined,
@@ -362,66 +356,9 @@ function Step1Setup({ onStart }) {
                                         <select value={mode} onChange={(e) => setMode(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'>
                                             <option value="Technical">Technical</option>
                                             <option value="HR">HR/Behavioral</option>
-                                            <option value="Coding">Live Coding Interview</option>
                                         </select>
                                     </div>
                                 </motion.div>
-
-                                {/* Live Coding Interview Configuration Panel */}
-                                {mode === 'Coding' && (
-                                    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="p-3.5 bg-cyan-950/20 border-2 border-cyan-800/40 rounded-xl space-y-3">
-                                        <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <HiCode className="w-4 h-4 text-cyan-400" />
-                                            Live Coding Configuration
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Language</label>
-                                                <select
-                                                    value={codingLanguage}
-                                                    onChange={(e) => setCodingLanguage(e.target.value)}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-medium"
-                                                >
-                                                    <option value="c">C (GCC)</option>
-                                                    <option value="cpp">C++ (G++)</option>
-                                                    <option value="python">Python 3</option>
-                                                    <option value="java">Java (OpenJDK)</option>
-                                                    <option value="javascript">JavaScript (Node.js)</option>
-                                                    <option value="typescript">TypeScript</option>
-                                                    <option value="go">Go</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Category</label>
-                                                <select
-                                                    value={codingCategory}
-                                                    onChange={(e) => setCodingCategory(e.target.value)}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-medium"
-                                                >
-                                                    <option value="Problem Solving">Problem Solving (General)</option>
-                                                    <option value="Arrays and Strings">Arrays & Strings</option>
-                                                    <option value="Hash Maps and Sets">Hash Maps & Sets</option>
-                                                    <option value="Linked Lists">Linked Lists</option>
-                                                    <option value="Stacks and Queues">Stacks & Queues</option>
-                                                    <option value="Trees and Graphs">Trees & Graphs</option>
-                                                    <option value="Dynamic Programming">Dynamic Programming</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Difficulty</label>
-                                                <select
-                                                    value={codingDifficulty}
-                                                    onChange={(e) => setCodingDifficulty(e.target.value)}
-                                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-medium"
-                                                >
-                                                    <option value="easy">Easy</option>
-                                                    <option value="medium">Medium</option>
-                                                    <option value="hard">Hard</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
 
                                 {/* Feature D: Optional Cross-Questioning Option */}
                                 <motion.div layout className={`p-3.5 border-2 rounded-xl transition-colors space-y-2.5 ${!hasValidResume ? 'bg-slate-50/60 border-slate-100 opacity-80' : 'bg-slate-50 border-slate-100 hover:border-yellow-400/60'}`}>

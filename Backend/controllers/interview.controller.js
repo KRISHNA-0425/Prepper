@@ -298,7 +298,10 @@ export const generateQuestions = async (req, res) => {
             interviewMode,
             selectedQuestionCount,
             durationMinutes: durationMinutes || req.body.selectedDurationMinutes,
-            timePackage
+            timePackage,
+            interviewType: isCodingInterview ? 'coding' : req.body.interviewType,
+            isCoding: isCodingInterview,
+            difficulty: req.body.codingDifficulty || req.body.difficulty
         });
 
         if (!pricing.valid) {
@@ -405,7 +408,10 @@ export const generateQuestions = async (req, res) => {
                     delete obj.hiddenTestCases;
                     return obj;
                 }),
-                questions: interview.questions
+                questions: interview.questions,
+                selectedDurationMinutes: pricing.selectedDurationMinutes,
+                expiresAt,
+                startedAt
             });
         }
 

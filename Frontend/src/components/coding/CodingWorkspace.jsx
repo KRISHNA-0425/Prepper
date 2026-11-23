@@ -41,6 +41,8 @@ export default function CodingWorkspace({
   onProblemChange,
   onFinishInterview,
   initialLanguage = 'javascript',
+  durationMinutes = null,
+  expiresAt = null,
 }) {
   const [activeProblemIdx, setActiveProblemIdx] = useState(currentProblemIndex);
   const [selectedLang, setSelectedLang] = useState(() => {
@@ -70,6 +72,40 @@ export default function CodingWorkspace({
   const [pastSubmissionsList, setPastSubmissionsList] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const workspaceRef = useRef(null);
+
+  // Overall Session Countdown Timer
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (expiresAt) {
+      const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000);
+      return Math.max(0, diff);
+    }
+    if (durationMinutes) {
+      return Number(durationMinutes) * 60;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          toast.error('Session time limit has reached zero!', { icon: '⏱️' });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft]);
+
+  const formatMMSS = (sec) => {
+    if (sec === null) return null;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   // Initialize starter code when problem or language changes
   useEffect(() => {
@@ -305,6 +341,21 @@ export default function CodingWorkspace({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Session Timer if time limit configured */}
+          {timeLeft !== null && (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                timeLeft < 300
+                  ? 'bg-rose-950/80 text-rose-400 border border-rose-800 animate-pulse'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700'
+              }`}
+              title="Time remaining for this coding session"
+            >
+              <HiClock className="w-3.5 h-3.5 text-amber-400" />
+              <span>{formatMMSS(timeLeft)}</span>
+            </div>
+          )}
+
           {/* Language Selector */}
           <select
             value={selectedLang.slug}

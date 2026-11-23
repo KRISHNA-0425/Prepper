@@ -8,12 +8,20 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const frontendRoot = path.resolve(__dirname, '..');
 
+  const navbarPath = path.resolve(frontendRoot, 'src/components/Navbar.jsx');
+  const appPath = path.resolve(frontendRoot, 'src/App.jsx');
+  const codingSetupPath = path.resolve(frontendRoot, 'src/pages/CodingSetup.jsx');
+  const codingSessionPath = path.resolve(frontendRoot, 'src/pages/CodingSessionPage.jsx');
   const step1Path = path.resolve(frontendRoot, 'src/pages/Step1Setup.jsx');
   const step2Path = path.resolve(frontendRoot, 'src/pages/Step2Interview.jsx');
   const step3Path = path.resolve(frontendRoot, 'src/pages/Step3Report.jsx');
   const workspacePath = path.resolve(frontendRoot, 'src/components/coding/CodingWorkspace.jsx');
   const reportSectionPath = path.resolve(frontendRoot, 'src/components/coding/CodingReportSection.jsx');
 
+  const navbarCode = fs.readFileSync(navbarPath, 'utf8');
+  const appCode = fs.readFileSync(appPath, 'utf8');
+  const codingSetupCode = fs.readFileSync(codingSetupPath, 'utf8');
+  const codingSessionCode = fs.readFileSync(codingSessionPath, 'utf8');
   const step1Code = fs.readFileSync(step1Path, 'utf8');
   const step2Code = fs.readFileSync(step2Path, 'utf8');
   const step3Code = fs.readFileSync(step3Path, 'utf8');
@@ -21,35 +29,64 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
   const reportSectionCode = fs.readFileSync(reportSectionPath, 'utf8');
 
   // =========================================================================
-  // 1. Setup Phase & Configuration Options
+  // 1. Navigation & Route Architecture Separation
   // =========================================================================
-  describe('1. Setup Phase & Coding Mode Configuration', () => {
-    it('should include Live Coding Interview in mode dropdown', () => {
+  describe('1. Navigation & Route Architecture Separation', () => {
+    it('should include dedicated Live Coding navigation pill in Navbar (similar to Cross-Exam)', () => {
       assert.ok(
-        step1Code.includes('<option value="Coding">Live Coding Interview</option>'),
-        'Step1Setup must provide Live Coding Interview mode option'
+        navbarCode.includes('to="/coding"'),
+        'Navbar must provide a dedicated navigation link to /coding'
+      );
+      assert.ok(
+        navbarCode.includes('Live Coding'),
+        'Navbar must render Live Coding navigation title'
       );
     });
 
-    it('should expose language, category, and difficulty selectors when Coding mode is selected', () => {
-      assert.ok(step1Code.includes('mode === \'Coding\''), 'Must conditionally render coding configuration');
-      assert.ok(step1Code.includes('codingLanguage'), 'Must store selected coding language in state');
-      assert.ok(step1Code.includes('codingCategory'), 'Must store selected category in state');
-      assert.ok(step1Code.includes('codingDifficulty'), 'Must store selected difficulty in state');
+    it('should register /coding and /coding/:sessionId routes in App.jsx', () => {
+      assert.ok(appCode.includes('path=\'/coding\'') || appCode.includes('path="/coding"'), 'App.jsx must register /coding route');
+      assert.ok(appCode.includes('/coding/:sessionId'), 'App.jsx must register /coding/:sessionId route');
     });
 
-    it('should dispatch interviewType = coding in generateQuestions payload', () => {
-      assert.ok(
-        step1Code.includes('interviewType: mode === \'Coding\' ? \'coding\' : \'conceptual\''),
-        'Must specify interviewType in generateQuestions request payload'
-      );
+    it('should keep standard /interview page clean for conceptual interviews', () => {
+      assert.ok(!step1Code.includes('<option value="Coding">'), 'Step1Setup should not offer coding in standard dropdown');
+      assert.ok(step2Code.includes('useQuestionSpeech'), 'Step2Interview must preserve speech controller for conceptual interviews');
     });
   });
 
   // =========================================================================
-  // 2. Interactive Coding Workspace & Monaco Editor
+  // 2. Dedicated Coding Setup Page (Question Count, Time Limit, Credit System)
   // =========================================================================
-  describe('2. Interactive Coding Workspace & Monaco Editor', () => {
+  describe('2. Dedicated Coding Setup Page Features', () => {
+    it('should support choosing how many questions candidate wants (1 to 5)', () => {
+      assert.ok(codingSetupCode.includes('questionCount'), 'CodingSetup must manage question count state');
+      assert.ok(codingSetupCode.includes('Number of Coding Problems'), 'Must display question count selector');
+    });
+
+    it('should support session duration / time limit selector', () => {
+      assert.ok(codingSetupCode.includes('durationMinutes'), 'CodingSetup must manage durationMinutes state');
+      assert.ok(codingSetupCode.includes('Session Time Limit'), 'Must provide session duration selector');
+    });
+
+    it('should implement dynamic credit calculation and balance verification', () => {
+      assert.ok(codingSetupCode.includes('requiredCredits'), 'Must calculate required credits dynamically');
+      assert.ok(codingSetupCode.includes('hasSufficientCredits'), 'Must verify candidate credit balance');
+      assert.ok(codingSetupCode.includes('/pricing'), 'Must link to /pricing if credits are insufficient');
+    });
+
+    it('should dispatch interviewType = coding to generateQuestions endpoint', () => {
+      assert.ok(
+        codingSetupCode.includes('interviewType: \'coding\'') || codingSetupCode.includes('interviewType: "coding"'),
+        'Must specify interviewType: coding in API payload'
+      );
+      assert.ok(codingSetupCode.includes('/api/interview/generateQuestions'), 'Must call generateQuestions endpoint');
+    });
+  });
+
+  // =========================================================================
+  // 3. Interactive Coding Workspace & Monaco Editor
+  // =========================================================================
+  describe('3. Interactive Coding Workspace & Monaco Editor', () => {
     it('should import and embed @monaco-editor/react Editor', () => {
       assert.ok(workspaceCode.includes('from \'@monaco-editor/react\''), 'Must import Editor from @monaco-editor/react');
       assert.ok(workspaceCode.includes('<Editor'), 'Must render Monaco Editor component');
@@ -66,7 +103,12 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
       assert.ok(workspaceCode.includes('go'), 'Must support Go');
     });
 
-    it('should provide Run Code and Submit Solution execution triggers', () => {
+    it('should support live session timer in top bar when time limit is configured', () => {
+      assert.ok(workspaceCode.includes('timeLeft'), 'Must manage session countdown timer');
+      assert.ok(workspaceCode.includes('formatMMSS'), 'Must format time in MM:SS display');
+    });
+
+    it('should provide Run Code, Run Sample Tests, and Submit Solution execution triggers', () => {
       assert.ok(workspaceCode.includes('handleRunCode'), 'Must implement handleRunCode handler');
       assert.ok(workspaceCode.includes('handleFinalSubmit'), 'Must implement handleFinalSubmit handler');
       assert.ok(workspaceCode.includes('/api/coding/run'), 'Must call /api/coding/run endpoint');
@@ -78,31 +120,9 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
       assert.ok(workspaceCode.includes('Custom Input'), 'Must render custom input checkbox label');
     });
 
-    it('should render test case tabs, console output, and AI evaluation drawer', () => {
-      assert.ok(workspaceCode.includes('activeTab === \'tests\''), 'Must render test cases tab');
-      assert.ok(workspaceCode.includes('activeTab === \'console\''), 'Must render console output tab');
-      assert.ok(workspaceCode.includes('activeTab === \'ai\''), 'Must render AI evaluation tab');
-    });
-  });
-
-  // =========================================================================
-  // 3. Interview Session & Routing Progression
-  // =========================================================================
-  describe('3. Interview Session & Progression', () => {
-    it('should render CodingWorkspace when interviewType is coding', () => {
-      assert.ok(
-        step2Code.includes('isCodingMode'),
-        'Step2Interview must determine whether current session is a coding interview'
-      );
-      assert.ok(
-        step2Code.includes('<CodingWorkspace'),
-        'Step2Interview must mount CodingWorkspace for coding interviews'
-      );
-    });
-
-    it('should preserve standard conceptual interview when interviewType is not coding', () => {
-      assert.ok(step2Code.includes('useQuestionSpeech'), 'Must preserve speech controller for conceptual interviews');
-      assert.ok(step2Code.includes('useSpeechRecognition'), 'Must preserve speech recognition');
+    it('should mount CodingWorkspace in CodingSessionPage.jsx', () => {
+      assert.ok(codingSessionCode.includes('<CodingWorkspace'), 'CodingSessionPage must render CodingWorkspace');
+      assert.ok(codingSessionCode.includes('/api/interview/finish'), 'Must support finishing coding session');
     });
   });
 

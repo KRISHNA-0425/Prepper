@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine } from "react-icons/ri";
+import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine, RiCodeSSlashLine } from "react-icons/ri";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { backendServerUrl } from '../App';
@@ -19,6 +19,7 @@ function Navbar() {
     const dispatch = useDispatch();
 
     const isCrossExamActive = location.pathname.startsWith('/cross-examination');
+    const isLiveCodingActive = location.pathname.startsWith('/coding');
 
     const handleLogout = async () => {
         try {
@@ -65,6 +66,22 @@ function Navbar() {
                         <RiShieldFlashLine className="text-yellow-600 text-sm shrink-0" />
                         <span className="hidden sm:inline">Cross-Examination</span>
                         <span className="sm:hidden text-[11px]">Cross-Exam</span>
+                    </Link>
+
+                    {/* Dedicated Live Coding Navigation Item */}
+                    <Link 
+                        to="/coding" 
+                        aria-label="Live Coding"
+                        aria-current={isLiveCodingActive ? "page" : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-all shadow-xs border ${
+                            isLiveCodingActive 
+                                ? 'bg-indigo-500/20 text-indigo-950 border-indigo-400/70 shadow-sm ring-1 ring-indigo-400/40' 
+                                : 'bg-white/50 hover:bg-white/80 text-slate-800 border-white/70'
+                        }`}
+                    >
+                        <RiCodeSSlashLine className="text-indigo-600 text-sm shrink-0" />
+                        <span className="hidden sm:inline">Live Coding</span>
+                        <span className="sm:hidden text-[11px]">Coding</span>
                     </Link>
                 </div>
 

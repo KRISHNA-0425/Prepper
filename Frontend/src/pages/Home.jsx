@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector } from 'react-redux'
 import { HiSparkles, HiArrowRight } from "react-icons/hi";
-import { RiHistoryLine, RiRobot2Line, RiBarChartGroupedLine, RiShieldFlashLine } from "react-icons/ri";
+import { RiHistoryLine, RiRobot2Line, RiBarChartGroupedLine, RiShieldFlashLine, RiCodeSSlashLine } from "react-icons/ri";
 import AuthModel from '../components/AuthModel';
 import { useNavigate } from 'react-router-dom';
 import FeatureCard from '../components/FeatureCard';
@@ -101,6 +101,19 @@ function Home() {
                         >
                             Mock Interview
                             <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                                if (!userData) return setShowAuth(true);
+                                navigate('/coding');
+                            }}
+                            className='group w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(79,70,229,0.3)] transition-all'
+                        >
+                            <RiCodeSSlashLine className='text-yellow-300 text-xl' />
+                            Live Coding
                         </motion.button>
 
                         <motion.button
