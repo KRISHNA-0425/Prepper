@@ -35,3 +35,11 @@ export { default as testCaseService } from './coding/testCase.service.js';
 export * as creditService from './credit.service.js';
 export * as interviewPricingService from './interviewPricing.service.js';
 export * as razorpayService from './razorpay.service.js';
+
+// 6. Module 5: Personalized Interview Recovery Plan Services
+export * as recoveryPlanService from './recoveryPlan/recoveryPlan.service.js';
+export * as evidenceHarvesterService from './recoveryPlan/evidenceHarvester.service.js';
+export * as recoveryPlanValidator from './recoveryPlan/recoveryPlanValidator.js';
+export * as recoveryPlanFallback from './recoveryPlan/recoveryPlanFallback.js';
+export * as reassessmentService from './recoveryPlan/reassessment.service.js';
+
