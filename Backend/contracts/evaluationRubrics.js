@@ -85,3 +85,76 @@ export const CRITERIA_WEIGHTS_BY_CATEGORY = {
  * @param {string} [mode='Technical'] - 'HR' | 'Technical'
  * @returns {string} One of QUESTION_CATEGORIES
  */
+export const detectQuestionCategory = (questionText = '', mode = 'Technical') => {
+  const qLower = String(questionText || '').toLowerCase();
+  const safeMode = String(mode || '').toLowerCase();
+
+  if (safeMode === 'hr' || safeMode === 'behavioral') {
+    return QUESTION_CATEGORIES.BEHAVIORAL;
+  }
+
+  // Behavioral indicators
+  if (
+    qLower.includes('tell me about a time') ||
+    qLower.includes('describe a situation') ||
+    qLower.includes('how do you handle conflict') ||
+    qLower.includes('how do you prioritize') ||
+    qLower.includes('give an example of when')
+  ) {
+    return QUESTION_CATEGORIES.BEHAVIORAL;
+  }
+
+  // System Design indicators
+  if (
+    qLower.includes('system design') ||
+    qLower.includes('design a') ||
+    qLower.includes('architect') ||
+    qLower.includes('scale') ||
+    qLower.includes('high availability') ||
+    qLower.includes('microservices') ||
+    qLower.includes('distributed system') ||
+    qLower.includes('database sharding') ||
+    qLower.includes('load balancer')
+  ) {
+    return QUESTION_CATEGORIES.SYSTEM_DESIGN;
+  }
+
+  // Coding / Algorithmic indicators
+  if (
+    qLower.includes('write a function') ||
+    qLower.includes('implement an algorithm') ||
+    qLower.includes('time complexity') ||
+    qLower.includes('space complexity') ||
+    qLower.includes('big o') ||
+    qLower.includes('data structure') ||
+    qLower.includes('binary tree') ||
+    qLower.includes('linked list') ||
+    qLower.includes('recursion')
+  ) {
+    return QUESTION_CATEGORIES.CODING;
+  }
+
+  // Conceptual indicators
+  if (
+    qLower.includes('what is the difference between') ||
+    qLower.includes('explain the concept of') ||
+    qLower.includes('how does') ||
+    qLower.includes('what are the principles of') ||
+    qLower.includes('what does it mean when') ||
+    qLower.includes('define')
+  ) {
+    return QUESTION_CATEGORIES.CONCEPTUAL;
+  }
+
+  return QUESTION_CATEGORIES.TECHNICAL;
+};
+
+/**
+ * Returns the weights configuration for a given category.
+ * Falls back to 'technical' if unknown.
+ * @param {string} category
+ * @returns {Record<string, number>}
+ */
+export const getCriteriaWeights = (category = QUESTION_CATEGORIES.TECHNICAL) => {
+  return CRITERIA_WEIGHTS_BY_CATEGORY[category] || CRITERIA_WEIGHTS_BY_CATEGORY[QUESTION_CATEGORIES.TECHNICAL];
+};
