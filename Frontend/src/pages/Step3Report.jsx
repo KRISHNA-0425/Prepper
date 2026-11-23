@@ -390,6 +390,92 @@ function Step3Report({ report }) {
           </div>
         </section>
 
+        {/* SECTION C: Evidence Explorer */}
+        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+            <div>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <HiOutlineCodeBracket className="text-yellow-400 text-xl" />
+                Evidence Explorer
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Every awarded score mapped to exact transcripts and verified candidate citations.
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: 'all', label: `All (${allEvidenceItems.length})` },
+                { id: 'correct', label: 'Correct' },
+                { id: 'partially_correct', label: 'Partial' },
+                { id: 'incorrect', label: 'Misunderstood / Gaps' },
+                { id: 'missing', label: 'Missing' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setEvidenceFilter(tab.id)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    evidenceFilter === tab.id
+                      ? 'bg-yellow-400 text-slate-950 font-black shadow-xs'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredEvidence.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs italic">
+              No evidence items matching the selected filter.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredEvidence.slice(0, 8).map((ev, i) => {
+                const isCorrect = ev.classification === 'correct';
+                const isPartial = ev.classification === 'partially_correct';
+
+                return (
+                  <div
+                    key={i}
+                    className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between space-y-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[10px] font-black uppercase text-slate-400">
+                          Q{ev.questionIndex} • {ev.criterionName}
+                        </span>
+                        <span
+                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isCorrect
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                              : isPartial
+                              ? 'bg-yellow-950 text-yellow-400 border border-yellow-800/50'
+                              : 'bg-red-950 text-red-400 border border-red-800/50'
+                          }`}
+                        >
+                          {ev.classification.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {ev.text && (
+                        <div className="bg-slate-900/90 rounded-xl p-2.5 border-l-2 border-yellow-400 text-xs font-mono text-slate-200 italic mb-2">
+                          "{ev.text}"
+                        </div>
+                      )}
+
+                      <p className="text-xs text-slate-300 leading-relaxed">{ev.explanation}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         
     </div>
   );
