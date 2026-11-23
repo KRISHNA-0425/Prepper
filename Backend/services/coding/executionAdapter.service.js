@@ -144,13 +144,22 @@ export class CodeExecutionAdapter {
 
   /**
    * Resolves the active provider according to environment configuration.
+   * Guarantees strict fail-closed security: NEVER falls back silently to mock execution
+   * if an external provider was requested.
    */
   getActiveProvider() {
     const providerName = (process.env.CODE_EXECUTION_PROVIDER || 'mock').toLowerCase().trim();
     const isExecutionEnabled = process.env.CODE_EXECUTION_ENABLED === 'true';
 
-    // If disabled or set to mock, return hermetic mock provider
-    if (!isExecutionEnabled || providerName === 'mock') {
+    // If disabled entirely by configuration, reject with 503
+    if (!isExecutionEnabled) {
+      const err = new Error('Code execution engine is currently disabled by administrator configuration (CODE_EXECUTION_ENABLED=false)');
+      err.statusCode = 503;
+      err.code = 'EXECUTION_DISABLED';
+      throw err;
+    }
+
+    if (providerName === 'mock') {
       return this.providers.mock;
     }
 
@@ -158,8 +167,11 @@ export class CodeExecutionAdapter {
       return this.providers[providerName];
     }
 
-    // Default fallback to mock
-    return this.providers.mock;
+    // Explicit error: never fall back to mock when an unknown or misconfigured provider is set
+    const err = new Error(`Configured execution provider '${providerName}' is not recognized or supported. Strict policy: Never silently falling back to mock in production.`);
+    err.statusCode = 503;
+    err.code = 'PROVIDER_UNRECOGNIZED';
+    throw err;
   }
 
   /**
@@ -220,12 +232,21 @@ export class CodeExecutionAdapter {
         language: normalizedLang
       };
     } catch (err) {
-      // If external provider failed (connection refused / network timeout), fail gracefully with structured diagnostic
+      // If external provider failed (e.g. ECONNREFUSED, timeout, or 502/503 from sandbox host),
+      // raise explicit provider unavailable error rather than masking as normal candidate code failure.
+      if (provider.name !== 'mock') {
+        const provErr = new Error(`Execution Provider Unavailable (${provider.name}): ${err.message}. Please check sandbox service health.`);
+        provErr.statusCode = 503;
+        provErr.code = 'EXECUTION_PROVIDER_UNAVAILABLE';
+        provErr.provider = provider.name;
+        throw provErr;
+      }
+
       return {
         success: false,
         exitCode: 1,
         stdout: '',
-        stderr: `Execution Provider Error (${provider.name}): ${err.message}`,
+        stderr: `Execution Error (${provider.name}): ${err.message}`,
         compileOutput: '',
         executionTimeMs: 0,
         memoryKb: 0,

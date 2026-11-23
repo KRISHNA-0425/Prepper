@@ -162,6 +162,13 @@ export class TestCaseService {
           isHidden,
         });
       } catch (err) {
+        // Critical: If the execution provider itself is down or unavailable (503),
+        // rethrow immediately so the system does NOT treat infrastructure outages as candidate test failures
+        // and does NOT silently fall back to mock.
+        if (err.statusCode === 503 || err.code === 'EXECUTION_PROVIDER_UNAVAILABLE') {
+          throw err;
+        }
+
         results.push({
           testCaseIndex: i + 1,
           passed: false,
