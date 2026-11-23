@@ -32,13 +32,16 @@ import TestCaseRunner from '../services/codeExecution/testCaseRunner.js';
 import executionAdapter from '../services/coding/executionAdapter.service.js';
 
 test('Prepper AI — Simplified In-Backend Code Execution Engine Suite', async (t) => {
-  // Ensure local provider is configured
+  // Ensure local provider and development environment are configured
   const origProvider = process.env.CODE_EXECUTION_PROVIDER;
+  const origNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'development';
   process.env.CODE_EXECUTION_PROVIDER = 'local';
   process.env.CODE_EXECUTION_ENABLED = 'true';
 
   t.after(() => {
     process.env.CODE_EXECUTION_PROVIDER = origProvider;
+    process.env.NODE_ENV = origNodeEnv;
   });
 
   // 1. Language Registry Availability
@@ -398,6 +401,8 @@ int main() {
 
   // 15. Execution Adapter Integration with Local Provider
   await t.test('15. ExecutionAdapter successfully dispatches to local provider', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.CODE_EXECUTION_PROVIDER = 'local';
     const adapterResult = await executionAdapter.execute({
       language: 'javascript',
       sourceCode: 'console.log("Adapter Local Integration OK");',
