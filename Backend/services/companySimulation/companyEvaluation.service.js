@@ -120,10 +120,12 @@ RETURN STRICT JSON:
       readinessResult = {
         readinessScore: typeof data.readinessScore === 'number' ? Math.min(100, Math.max(0, Math.round(data.readinessScore))) : avgScore,
         verdict: ['Strong Hire', 'Hire', 'Leaning Hire', 'Leaning No Hire', 'No Hire'].includes(data.verdict) ? data.verdict : defaultVerdict,
+        hireVerdict: ['Strong Hire', 'Hire', 'Leaning Hire', 'Leaning No Hire', 'No Hire'].includes(data.verdict) ? data.verdict : defaultVerdict,
         fitLevel: ['Exceeds Expectations', 'Meets Expectations', 'Needs Further Preparation'].includes(data.fitLevel) ? data.fitLevel : defaultFitLevel,
         companyCultureFit: data.companyCultureFit || readinessResult.companyCultureFit,
         strengths: data.strengths.slice(0, 5),
         criticalGaps: Array.isArray(data.criticalGaps) ? data.criticalGaps.slice(0, 5) : readinessResult.criticalGaps,
+        gaps: Array.isArray(data.criticalGaps) ? data.criticalGaps.slice(0, 5) : (readinessResult.gaps || readinessResult.criticalGaps),
         recommendedTopics: Array.isArray(data.recommendedTopics) ? data.recommendedTopics.slice(0, 5) : readinessResult.recommendedTopics,
         nextRoundRecommendation: data.nextRoundRecommendation || readinessResult.nextRoundRecommendation,
       };
@@ -132,5 +134,7 @@ RETURN STRICT JSON:
     // Retain deterministic readiness result
   }
 
+  readinessResult.hireVerdict = readinessResult.hireVerdict || readinessResult.verdict;
+  readinessResult.gaps = readinessResult.gaps || readinessResult.criticalGaps;
   return readinessResult;
 };
