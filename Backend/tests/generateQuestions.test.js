@@ -1,7 +1,17 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQuestions } from '../controllers/interview.controller.js';
-import { askAI } from '../services/openRouter.service.js';
+import {
+    askAI,
+    validateOpenRouterConfig,
+    DEFAULT_OPENROUTER_ENDPOINT,
+    DEFAULT_TIMEOUT_MS,
+    DEFAULT_MAX_RETRIES,
+    categorizeError,
+    isTransientError,
+    calculateRetryDelay,
+    isFreeModelDailyQuotaExceeded
+} from '../services/openRouter.service.js';
 
 describe('Interview Question Generation Suite (HOTFIX Verification)', () => {
 
@@ -40,6 +50,42 @@ describe('Interview Question Generation Suite (HOTFIX Verification)', () => {
             await assert.rejects(async () => {
                 await askAI(null);
             }, /No messages provided to askAI/);
+        });
+
+        it('should correctly validate openRouter configuration with nemotron free model and default endpoint', () => {
+            const config = validateOpenRouterConfig({
+                apiKey: 'test-key-12345',
+                model: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+            });
+            assert.strictEqual(config.model, 'nvidia/nemotron-3-ultra-550b-a55b:free');
+            assert.strictEqual(config.endpoint, DEFAULT_OPENROUTER_ENDPOINT);
+            assert.strictEqual(config.apiKey, 'test-key-12345');
+        });
+
+        it('should detect invalid URL scheme when model name is mistakenly passed in URL', () => {
+            assert.throws(() => {
+                validateOpenRouterConfig({
+                    apiKey: 'test-key',
+                    model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                    url: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+                });
+            }, /Invalid OpenRouter endpoint URL.*model name was provided/);
+        });
+
+        it('should throw when OpenRouter API key is missing without leaking keys', () => {
+            assert.throws(() => {
+                validateOpenRouterConfig({ apiKey: '' });
+            }, (err) => {
+                assert.ok(err.message.includes('API key is missing'));
+                assert.ok(!err.message.includes('sk-'));
+                return true;
+            });
+        });
+
+        it('should throw when OpenRouter model is missing without silently falling back to a paid model', () => {
+            assert.throws(() => {
+                validateOpenRouterConfig({ apiKey: 'key', model: '' });
+            }, /OpenRouter model is missing/);
         });
     });
 
@@ -151,6 +197,283 @@ describe('Interview Question Generation Suite (HOTFIX Verification)', () => {
 
             assert.ok(step1Content.includes('toast.error'),
                 'Step1Setup.jsx handleStart must invoke toast.error with backend error message');
+        });
+    });
+
+    // ==========================================
+    // 4. openRouter.service Timeout, Retries & Error Categorization
+    // ==========================================
+    describe('4. openRouter.service Timeout, Retries & Error Categorization', () => {
+
+        it('should verify DEFAULT_TIMEOUT_MS is 120000ms (120s) and DEFAULT_MAX_RETRIES is 2', () => {
+            assert.strictEqual(DEFAULT_TIMEOUT_MS, 120000);
+            assert.strictEqual(DEFAULT_MAX_RETRIES, 2);
+        });
+
+        it('should correctly categorize errors into operational buckets', () => {
+            assert.strictEqual(categorizeError({ code: 'ECONNABORTED' }), 'TIMEOUT');
+            assert.strictEqual(categorizeError({ message: 'timeout of 30000ms exceeded' }), 'TIMEOUT');
+            assert.strictEqual(categorizeError({ response: { status: 429 } }), 'RATE_LIMIT');
+            assert.strictEqual(categorizeError({ response: { status: 500 } }), 'SERVER_ERROR');
+            assert.strictEqual(categorizeError({ response: { status: 503 } }), 'SERVER_ERROR');
+            assert.strictEqual(categorizeError({ response: { status: 401 } }), 'CLIENT_ERROR');
+            assert.strictEqual(categorizeError({ response: { status: 404 } }), 'CLIENT_ERROR');
+            assert.strictEqual(categorizeError({ code: 'ENOTFOUND' }), 'NETWORK_ERROR');
+            assert.strictEqual(categorizeError({ code: 'ECONNRESET' }), 'NETWORK_ERROR');
+        });
+
+        it('should classify transient errors as retryable and permanent errors as non-retryable', () => {
+            // Transient errors (retryable)
+            assert.strictEqual(isTransientError({ code: 'ECONNABORTED' }), true);
+            assert.strictEqual(isTransientError({ message: 'timeout of 30000ms exceeded' }), true);
+            assert.strictEqual(isTransientError({ response: { status: 429 } }), true);
+            assert.strictEqual(isTransientError({ response: { status: 503 } }), true);
+            assert.strictEqual(isTransientError({ code: 'ENOTFOUND' }), true);
+
+            // Permanent errors (not retryable)
+            assert.strictEqual(isTransientError({ response: { status: 400 } }), false);
+            assert.strictEqual(isTransientError({ response: { status: 401 } }), false);
+            assert.strictEqual(isTransientError({ response: { status: 403 } }), false);
+            assert.strictEqual(isTransientError({ response: { status: 404 } }), false);
+            assert.strictEqual(isTransientError({ response: { status: 422 } }), false);
+        });
+
+        it('should calculate exponential backoff and respect 429 Retry-After', () => {
+            // Default exponential backoff
+            const delay1 = calculateRetryDelay(1, new Error('timeout'), 100);
+            const delay2 = calculateRetryDelay(2, new Error('timeout'), 100);
+            assert.strictEqual(delay1, 100);
+            assert.strictEqual(delay2, 200);
+
+            // 429 with Retry-After header
+            const err429 = { response: { status: 429, headers: { 'retry-after': '3' } } };
+            const delay429 = calculateRetryDelay(1, err429, 100);
+            assert.strictEqual(delay429, 3000);
+        });
+
+        it('should retry transient timeout errors and succeed when a subsequent attempt succeeds', async () => {
+            let callCount = 0;
+            const mockAxios = {
+                post: async () => {
+                    callCount++;
+                    if (callCount < 2) {
+                        const timeoutErr = new Error('timeout of 30000ms exceeded');
+                        timeoutErr.code = 'ECONNABORTED';
+                        throw timeoutErr;
+                    }
+                    return {
+                        data: {
+                            choices: [{ message: { content: 'Generated question after timeout retry' } }]
+                        }
+                    };
+                }
+            };
+
+            const result = await askAI([{ role: 'user', content: 'test' }], {
+                apiKey: 'test-key',
+                model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                axiosInstance: mockAxios,
+                retryDelayMs: 1,
+                maxRetries: 2,
+            });
+
+            assert.strictEqual(callCount, 2);
+            assert.strictEqual(result, 'Generated question after timeout retry');
+        });
+
+        it('should NOT retry permanent 401/404 errors and fail on attempt 1 immediately', async () => {
+            let callCount = 0;
+            const mockAxios = {
+                post: async () => {
+                    callCount++;
+                    const authErr = new Error('Unauthorized');
+                    authErr.response = { status: 401, data: { error: { message: 'Invalid API key provided' } } };
+                    throw authErr;
+                }
+            };
+
+            await assert.rejects(async () => {
+                await askAI([{ role: 'user', content: 'test' }], {
+                    apiKey: 'invalid-key',
+                    model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                    axiosInstance: mockAxios,
+                    retryDelayMs: 1,
+                    maxRetries: 2,
+                });
+            }, /Invalid API key provided/);
+
+            assert.strictEqual(callCount, 1, 'Permanent 401 error must not be retried');
+        });
+
+        it('should exhaust retries on persistent timeouts and throw the wrapped error', async () => {
+            let callCount = 0;
+            const mockAxios = {
+                post: async () => {
+                    callCount++;
+                    const timeoutErr = new Error('timeout of 120000ms exceeded');
+                    timeoutErr.code = 'ECONNABORTED';
+                    throw timeoutErr;
+                }
+            };
+
+            await assert.rejects(async () => {
+                await askAI([{ role: 'user', content: 'test' }], {
+                    apiKey: 'test-key',
+                    model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                    axiosInstance: mockAxios,
+                    retryDelayMs: 1,
+                    maxRetries: 2,
+                });
+            }, /timeout of 120000ms exceeded/);
+
+            assert.strictEqual(callCount, 3, 'Initial call + 2 retries = 3 calls total');
+        });
+
+        it('should verify credit refund safety in interview.controller.js source', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const controllerContent = fs.readFileSync(path.resolve('controllers/interview.controller.js'), 'utf8');
+
+            assert.ok(controllerContent.includes('creditsDeductedAmount = 0; // prevent duplicate refund'),
+                'safeRefund must disarm creditsDeductedAmount immediately to prevent double refunds');
+            assert.ok(controllerContent.includes('creditsDeductedAmount = 0;') &&
+                      controllerContent.includes('interview = await Interview.create('),
+                'controller must disarm creditsDeductedAmount upon successful interview creation');
+        });
+    });
+
+    // ==========================================
+    // 5. OpenRouter Free-Model Daily Quota Handling & Refund Lifecycle
+    // ==========================================
+    describe('5. OpenRouter Free-Model Daily Quota Handling & Refund Lifecycle', () => {
+
+        it('should accurately detect free-models-per-day quota exhaustion', () => {
+            const err1 = { response: { data: { error: { message: 'Rate limit exceeded: free-models-per-day' } } } };
+            assert.strictEqual(isFreeModelDailyQuotaExceeded(err1), true);
+
+            const err2 = new Error('Rate limit exceeded: free-models-per-day');
+            assert.strictEqual(isFreeModelDailyQuotaExceeded(err2), true);
+
+            const err3 = { message: 'Provider returned: daily free-model limit reached' };
+            assert.strictEqual(isFreeModelDailyQuotaExceeded(err3), true);
+
+            // Genuinely temporary rate limits should NOT be classified as daily quota exhaustion
+            const temp429 = { response: { status: 429, data: { error: { message: 'Rate limit: 20 req/min exceeded' } } } };
+            assert.strictEqual(isFreeModelDailyQuotaExceeded(temp429), false);
+
+            const normalErr = new Error('Connection reset');
+            assert.strictEqual(isFreeModelDailyQuotaExceeded(normalErr), false);
+        });
+
+        it('should categorize free-models-per-day as FREE_MODEL_DAILY_LIMIT_EXCEEDED and mark as non-transient', () => {
+            const quotaErr = { response: { status: 429, data: { error: { message: 'Rate limit exceeded: free-models-per-day' } } } };
+            assert.strictEqual(categorizeError(quotaErr), 'FREE_MODEL_DAILY_LIMIT_EXCEEDED');
+            assert.strictEqual(isTransientError(quotaErr), false, 'Daily quota exhaustion must never be marked transient');
+
+            // Standard 429 should still be transient
+            const tempErr = { response: { status: 429, data: { error: { message: 'Too many requests' } } } };
+            assert.strictEqual(categorizeError(tempErr), 'RATE_LIMIT');
+            assert.strictEqual(isTransientError(tempErr), true);
+        });
+
+        it('should fail immediately on attempt 1 without retries when free-models-per-day is encountered', async () => {
+            let callCount = 0;
+            const mockAxios = {
+                post: async () => {
+                    callCount++;
+                    const quotaErr = new Error('Rate limit exceeded: free-models-per-day');
+                    quotaErr.response = {
+                        status: 429,
+                        data: {
+                            error: {
+                                message: 'Rate limit exceeded: free-models-per-day',
+                                code: 429
+                            }
+                        }
+                    };
+                    throw quotaErr;
+                }
+            };
+
+            await assert.rejects(async () => {
+                await askAI([{ role: 'user', content: 'test' }], {
+                    apiKey: 'test-key',
+                    model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                    axiosInstance: mockAxios,
+                    retryDelayMs: 1,
+                    maxRetries: 2,
+                });
+            }, (err) => {
+                assert.strictEqual(err.code, 'FREE_MODEL_DAILY_LIMIT_EXCEEDED');
+                assert.strictEqual(err.status, 429);
+                assert.ok(err.message.includes('free-models-per-day'));
+                return true;
+            });
+
+            assert.strictEqual(callCount, 1, 'Daily quota exhaustion must bail out on attempt 1 with 0 retries');
+        });
+
+        it('should retry genuinely temporary 429 rate limits and succeed', async () => {
+            let callCount = 0;
+            const mockAxios = {
+                post: async () => {
+                    callCount++;
+                    if (callCount < 2) {
+                        const tempErr = new Error('Rate limit exceeded');
+                        tempErr.response = {
+                            status: 429,
+                            headers: { 'retry-after': '0' },
+                            data: { error: { message: 'Too many requests per minute' } }
+                        };
+                        throw tempErr;
+                    }
+                    return {
+                        data: {
+                            choices: [{ message: { content: 'Success after temporary 429' } }]
+                        }
+                    };
+                }
+            };
+
+            const result = await askAI([{ role: 'user', content: 'test' }], {
+                apiKey: 'test-key',
+                model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+                axiosInstance: mockAxios,
+                retryDelayMs: 1,
+                maxRetries: 2,
+            });
+
+            assert.strictEqual(callCount, 2, 'Temporary rate limit should retry and succeed on attempt 2');
+            assert.strictEqual(result, 'Success after temporary 429');
+        });
+
+        it('should verify generateQuestions handles FREE_MODEL_DAILY_LIMIT_EXCEEDED and returns HTTP 429 with refreshed creditsLeft', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const controllerContent = fs.readFileSync(path.resolve('controllers/interview.controller.js'), 'utf8');
+
+            assert.ok(controllerContent.includes("isDailyQuota = aiErr.code === 'FREE_MODEL_DAILY_LIMIT_EXCEEDED'"),
+                'interview.controller.js must detect FREE_MODEL_DAILY_LIMIT_EXCEEDED');
+            assert.ok(controllerContent.includes("return res.status(429).json({") &&
+                      controllerContent.includes("errorCode: 'FREE_MODEL_DAILY_LIMIT_EXCEEDED'") &&
+                      controllerContent.includes("creditsLeft"),
+                'interview.controller.js must return HTTP 429 with FREE_MODEL_DAILY_LIMIT_EXCEEDED and creditsLeft');
+            assert.ok(controllerContent.includes('await safeRefund()'),
+                'interview.controller.js must invoke safeRefund before returning 429 response');
+        });
+
+        it('should verify Step1Setup.jsx prevents rapid double-clicks and synchronizes creditsLeft in Redux', async () => {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const frontendContent = fs.readFileSync(path.resolve('../Frontend/src/pages/Step1Setup.jsx'), 'utf8');
+
+            assert.ok(frontendContent.includes('isSubmittingRef.current = true') &&
+                      frontendContent.includes('if (loading || isSubmittingRef.current) return;'),
+                'Step1Setup.jsx must use isSubmittingRef to lock against rapid double-clicks');
+            assert.ok(frontendContent.includes("data?.errorCode === 'FREE_MODEL_DAILY_LIMIT_EXCEEDED'"),
+                'Step1Setup.jsx must check for FREE_MODEL_DAILY_LIMIT_EXCEEDED error code');
+            assert.ok(frontendContent.includes('dispatch(setUserData({ ...userData, credits: data.creditsLeft }))'),
+                'Step1Setup.jsx must immediately resynchronize Redux user credits upon receiving creditsLeft in catch');
         });
     });
 });
