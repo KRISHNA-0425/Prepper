@@ -186,23 +186,23 @@ function Step3Report({ report }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-poppins p-4 sm:p-6 md:p-12 overflow-x-hidden selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-poppins p-4 sm:p-6 md:p-12 overflow-x-hidden selection:bg-yellow-400 selection:text-slate-950 transition-colors duration-200">
       <div className="max-w-6xl mx-auto space-y-10">
         {/* Header Navigation */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
           <motion.button
             whileHover={{ x: -4 }}
             onClick={() => navigate('/history')}
-            className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors group cursor-pointer w-fit"
+            className="flex items-center gap-2 text-slate-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors group cursor-pointer w-fit"
           >
             <HiOutlineArrowLeft className="group-hover:-translate-x-1 transition-transform" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Back to Archive</span>
           </motion.button>
 
           <div className="flex items-center gap-2">
-            <HiOutlineShieldCheck className="text-yellow-400 text-xl" />
-            <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter">
-              Interview <span className="text-yellow-400">Analysis</span>
+            <HiOutlineShieldCheck className="text-yellow-500 dark:text-yellow-400 text-xl" />
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+              Interview <span className="text-yellow-500 dark:text-yellow-400">Analysis</span>
             </h1>
           </div>
         </header>
@@ -278,17 +278,17 @@ function Step3Report({ report }) {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 text-center relative overflow-hidden flex flex-col justify-center items-center shadow-xl"
+            className="bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-8 text-center relative overflow-hidden flex flex-col justify-center items-center shadow-sm dark:shadow-xl"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400 shadow-[0_0_15px_rgba(251,191,36,0.6)]" />
-            <h2 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.25em] mb-3">
+            <h2 className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.25em] mb-3">
               Overall Performance
             </h2>
-            <div className="text-7xl sm:text-8xl font-black text-white leading-none tracking-tighter mb-2">
+            <div className="text-7xl sm:text-8xl font-black text-slate-900 dark:text-white leading-none tracking-tighter mb-2">
               {overallPercent}
-              <span className="text-yellow-400 text-3xl sm:text-4xl ml-1">%</span>
+              <span className="text-yellow-500 dark:text-yellow-400 text-3xl sm:text-4xl ml-1">%</span>
             </div>
-            <p className="text-xs font-semibold text-slate-400 mt-2">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-2">
               {overallPercent >= 80
                 ? 'High Proficiency — Outstanding evidence demonstration'
                 : overallPercent >= 60
@@ -302,9 +302,9 @@ function Step3Report({ report }) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-slate-900/60 border border-slate-800 rounded-3xl p-4 flex flex-col items-center justify-center min-h-[260px] shadow-xl"
+            className="bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-4 flex flex-col items-center justify-center min-h-[260px] shadow-sm dark:shadow-xl"
           >
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">
               Competency Radar
             </span>
             <div className="w-full h-56">
@@ -323,7 +323,7 @@ function Step3Report({ report }) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between shadow-xl space-y-4"
+            className="bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 flex flex-col justify-between shadow-sm dark:shadow-xl space-y-4"
           >
             <div>
               <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-2">
@@ -356,19 +356,19 @@ function Step3Report({ report }) {
         </div>
 
         {/* SECTION B: Evaluation Breakdown (6 Core Criteria Matrix) */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800/80">
+        <section className="bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800/80">
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <HiOutlineAcademicCap className="text-yellow-400 text-xl" />
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <HiOutlineAcademicCap className="text-yellow-500 dark:text-yellow-400 text-xl" />
                 Six-Criterion Evaluation Breakdown
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Evaluated against category-weighted rubrics with evidence-grounded scoring.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-800/50 text-emerald-400 font-bold">
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-400 font-bold">
                 Top: {analytics?.strongestCompetencies?.join(', ') || 'Technical Accuracy'}
               </span>
             </div>
@@ -382,16 +382,16 @@ function Step3Report({ report }) {
               return (
                 <div
                   key={idx}
-                  className={`bg-slate-950/60 border rounded-2xl p-4 flex flex-col justify-between transition-all ${
+                  className={`bg-slate-50 dark:bg-slate-950/60 border rounded-2xl p-4 flex flex-col justify-between transition-all ${
                     isStrong
-                      ? 'border-emerald-500/40 bg-emerald-950/10'
+                      ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/10'
                       : isWeak
                       ? 'border-amber-500/30'
-                      : 'border-slate-800'
+                      : 'border-slate-200 dark:border-slate-800'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-xs font-black text-slate-200">{crit.name}</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">{crit.name}</span>
                     <span
                       className={`text-xs font-mono font-black px-2 py-0.5 rounded-md ${
                         crit.score >= 8
@@ -406,7 +406,7 @@ function Step3Report({ report }) {
                   </div>
 
                   <div className="space-y-1.5 mt-2">
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${
                           crit.score >= 8
@@ -431,14 +431,14 @@ function Step3Report({ report }) {
         </section>
 
         {/* SECTION C: Evidence Explorer */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+        <section className="bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800/80">
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <HiOutlineCodeBracket className="text-yellow-400 text-xl" />
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <HiOutlineCodeBracket className="text-yellow-500 dark:text-yellow-400 text-xl" />
                 Evidence Explorer
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Every awarded score mapped to exact transcripts and verified candidate citations.
               </p>
             </div>
@@ -459,7 +459,7 @@ function Step3Report({ report }) {
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     evidenceFilter === tab.id
                       ? 'bg-yellow-400 text-slate-950 font-black shadow-xs'
-                      : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   {tab.label}
@@ -469,7 +469,7 @@ function Step3Report({ report }) {
           </div>
 
           {filteredEvidence.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-xs italic">
+            <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs italic">
               No evidence items matching the selected filter.
             </div>
           ) : (
@@ -481,20 +481,20 @@ function Step3Report({ report }) {
                 return (
                   <div
                     key={i}
-                    className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between space-y-3"
+                    className="bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between space-y-3"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[10px] font-black uppercase text-slate-400">
+                        <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
                           Q{ev.questionIndex} • {ev.criterionName}
                         </span>
                         <span
                           className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                             isCorrect
-                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/50'
                               : isPartial
-                              ? 'bg-yellow-950 text-yellow-400 border border-yellow-800/50'
-                              : 'bg-red-950 text-red-400 border border-red-800/50'
+                              ? 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-800/50'
+                              : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-400 border border-red-300 dark:border-red-800/50'
                           }`}
                         >
                           {ev.classification.replace('_', ' ')}
@@ -502,12 +502,12 @@ function Step3Report({ report }) {
                       </div>
 
                       {ev.text && (
-                        <div className="bg-slate-900/90 rounded-xl p-2.5 border-l-2 border-yellow-400 text-xs font-mono text-slate-200 italic mb-2">
+                        <div className="bg-amber-50/70 dark:bg-slate-900/90 rounded-xl p-2.5 border-l-2 border-yellow-400 text-xs font-mono text-slate-800 dark:text-slate-200 italic mb-2">
                           "{ev.text}"
                         </div>
                       )}
 
-                      <p className="text-xs text-slate-300 leading-relaxed">{ev.explanation}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{ev.explanation}</p>
                     </div>
                   </div>
                 );
@@ -517,10 +517,10 @@ function Step3Report({ report }) {
         </section>
 
         {/* SECTION D: Actionable Study Recommendations & Technical Gap Roadmap */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
-            <HiOutlineLightBulb className="text-yellow-400 text-xl" />
-            <h3 className="text-lg font-black text-white uppercase tracking-tight">
+        <section className="bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800/80">
+            <HiOutlineLightBulb className="text-yellow-500 dark:text-yellow-400 text-xl" />
+            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
               Actionable Study Recommendations
             </h3>
           </div>
@@ -529,12 +529,12 @@ function Step3Report({ report }) {
             {(analytics?.studyRecommendations || []).map((rec, i) => (
               <div
                 key={i}
-                className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex items-start gap-3"
+                className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-3"
               >
-                <div className="w-6 h-6 rounded-lg bg-yellow-400/20 text-yellow-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-lg bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                   {i + 1}
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed font-medium">{rec}</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{rec}</p>
               </div>
             ))}
           </div>
@@ -547,16 +547,16 @@ function Step3Report({ report }) {
         <section className="space-y-4">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2">
-              <HiSparkles className="text-yellow-400" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-300">
+              <HiSparkles className="text-yellow-500 dark:text-yellow-400" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
                 Question-Wise Analysis ({report.questions?.length || 0})
               </h3>
             </div>
           </div>
 
           {/* Efficiency Bar Chart per Question */}
-          <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 mb-6">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
+          <div className="bg-white dark:bg-slate-900/30 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 mb-6 shadow-sm">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-4">
               Efficiency per Question
             </h4>
             <div className="h-44 w-full">
@@ -595,69 +595,69 @@ function Step3Report({ report }) {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-slate-900/40 border border-slate-800 hover:border-slate-700/80 rounded-3xl p-6 sm:p-7 transition-all space-y-4 shadow-sm"
+                  className="bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700/80 rounded-3xl p-6 sm:p-7 transition-all space-y-4 shadow-sm"
                 >
                   {/* Card Header */}
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex gap-3 sm:gap-4 items-start">
-                      <span className="text-yellow-400 font-black text-lg sm:text-xl italic shrink-0">
+                      <span className="text-yellow-500 dark:text-yellow-400 font-black text-lg sm:text-xl italic shrink-0">
                         {String(index + 1).padStart(2, '0')}
                       </span>
                       <div>
-                        <h4 className="text-slate-100 font-bold text-base sm:text-lg leading-snug">
+                        <h4 className="text-slate-900 dark:text-slate-100 font-bold text-base sm:text-lg leading-snug">
                           {q.question}
                         </h4>
                         {ev?.category && (
-                          <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/50">
+                          <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
                             Category: {ev.category}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-2xl">
-                      <span className="text-xl sm:text-2xl font-black text-white">{qScore}</span>
-                      <span className="text-slate-500 font-bold text-xs">/10</span>
+                    <div className="text-right shrink-0 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3.5 py-1.5 rounded-2xl">
+                      <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{qScore}</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-bold text-xs">/10</span>
                     </div>
                   </div>
 
                   {/* Candidate Transcript */}
-                  <div className="bg-slate-950/60 rounded-2xl p-4 border-l-4 border-slate-600">
-                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase mb-1.5 tracking-wider">
+                  <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-4 border-l-4 border-slate-400 dark:border-slate-600">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase mb-1.5 tracking-wider">
                       <HiUserCircle className="text-sm" /> Candidate Transcript
                     </div>
-                    <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed italic">
+                    <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-medium leading-relaxed italic">
                       {q.answer ? `"${q.answer}"` : 'No response recorded.'}
                     </p>
                   </div>
 
                   {/* AI Feedback & Quick Diagnostics */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5">
-                      <div className="flex items-center gap-1.5 text-yellow-400 text-[10px] font-black uppercase mb-2 tracking-wider">
+                    <div className="bg-slate-50 dark:bg-slate-950/40 rounded-2xl p-4 border border-slate-200 dark:border-white/5">
+                      <div className="flex items-center gap-1.5 text-yellow-600 dark:text-yellow-400 text-[10px] font-black uppercase mb-2 tracking-wider">
                         <HiChatBubbleLeftRight className="text-sm" /> Evaluator Feedback
                       </div>
-                      <p className="text-slate-300 text-xs leading-relaxed italic">
+                      <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed italic">
                         "{q.feedback || ev?.summaryFeedback || 'Evaluation recorded.'}"
                       </p>
                     </div>
 
-                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5 flex flex-col justify-center">
-                      <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase mb-2 tracking-wider">
+                    <div className="bg-slate-50 dark:bg-slate-950/40 rounded-2xl p-4 border border-slate-200 dark:border-white/5 flex flex-col justify-center">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase mb-2 tracking-wider">
                         <HiOutlineCheckCircle className="text-sm" /> Dimension Snapshot
                       </div>
                       <div className="grid grid-cols-3 text-center gap-2">
                         <div>
                           <p className="text-[9px] text-slate-500 font-bold uppercase">Accuracy</p>
-                          <p className="text-sm text-white font-black">{q.correctness || qScore}</p>
+                          <p className="text-sm text-slate-900 dark:text-white font-black">{q.correctness || qScore}</p>
                         </div>
                         <div>
                           <p className="text-[9px] text-slate-500 font-bold uppercase">Comms</p>
-                          <p className="text-sm text-white font-black">{q.communication || qScore}</p>
+                          <p className="text-sm text-slate-900 dark:text-white font-black">{q.communication || qScore}</p>
                         </div>
                         <div>
                           <p className="text-[9px] text-slate-500 font-bold uppercase">Confidence</p>
-                          <p className="text-sm text-white font-black">
+                          <p className="text-sm text-slate-900 dark:text-white font-black">
                             {ev?.evaluationConfidence ? `${Math.round(ev.evaluationConfidence * 100)}%` : `${q.confidence || 7}/10`}
                           </p>
                         </div>
@@ -671,10 +671,10 @@ function Step3Report({ report }) {
                       <button
                         type="button"
                         onClick={() => toggleQuestion(index)}
-                        className="w-full py-2.5 px-4 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 text-xs font-bold text-slate-300 hover:text-yellow-400 transition-colors flex items-center justify-between cursor-pointer"
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors flex items-center justify-between cursor-pointer"
                       >
                         <span className="flex items-center gap-2">
-                          <HiOutlineInformationCircle className="text-yellow-400 text-sm" />
+                          <HiOutlineInformationCircle className="text-yellow-500 dark:text-yellow-400 text-sm" />
                           {isExpanded ? 'Hide Evidence Breakdown' : 'Explore Supporting Answer Evidence'}
                         </span>
                         {isExpanded ? <HiOutlineChevronUp /> : <HiOutlineChevronDown />}
@@ -686,29 +686,29 @@ function Step3Report({ report }) {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="mt-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-4"
+                            className="mt-3 p-4 bg-slate-50 dark:bg-slate-950/80 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4"
                           >
-                            <h5 className="text-xs font-black uppercase tracking-wider text-yellow-400">
+                            <h5 className="text-xs font-black uppercase tracking-wider text-yellow-600 dark:text-yellow-400">
                               Criterion Evidence & Citations
                             </h5>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {ev.criteria.map((c, cIdx) => (
-                                <div key={cIdx} className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 space-y-2">
+                                <div key={cIdx} className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800/80 rounded-xl p-3 space-y-2">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-200">{c.name}</span>
-                                    <span className="text-xs font-mono font-bold text-yellow-400">{c.score}/10</span>
+                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{c.name}</span>
+                                    <span className="text-xs font-mono font-bold text-yellow-600 dark:text-yellow-400">{c.score}/10</span>
                                   </div>
-                                  <p className="text-[11px] text-slate-400">{c.reasoning}</p>
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-400">{c.reasoning}</p>
 
                                   {Array.isArray(c.evidence) && c.evidence.length > 0 && (
                                     <div className="space-y-1.5 pt-1">
                                       {c.evidence.map((eItem, eIdx) => (
-                                        <div key={eIdx} className="text-[10px] bg-slate-950 p-2 rounded-lg border-l-2 border-emerald-400">
+                                        <div key={eIdx} className="text-[10px] bg-slate-100 dark:bg-slate-950 p-2 rounded-lg border-l-2 border-emerald-500 dark:border-emerald-400">
                                           {eItem.text && (
-                                            <p className="font-mono text-slate-300 italic mb-0.5">"{eItem.text}"</p>
+                                            <p className="font-mono text-slate-700 dark:text-slate-300 italic mb-0.5">"{eItem.text}"</p>
                                           )}
-                                          <p className="text-slate-400">{eItem.explanation}</p>
+                                          <p className="text-slate-500 dark:text-slate-400">{eItem.explanation}</p>
                                         </div>
                                       ))}
                                     </div>
@@ -728,27 +728,27 @@ function Step3Report({ report }) {
         </section>
 
         {/* SECTION F: Real-Time Adaptive Trajectory & Topic Performance */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 lg:p-8 space-y-6">
+        <section className="bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 lg:p-8 space-y-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-1.5 rounded-lg bg-yellow-400/10 text-yellow-400">
+                <span className="p-1.5 rounded-lg bg-yellow-400/20 text-yellow-600 dark:text-yellow-400">
                   <HiOutlineAcademicCap className="text-lg" />
                 </span>
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-300">
                   Adaptive Trajectory & Competency Steering
                 </h3>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Traceable log of real-time difficulty adaptation, topic pivots, and knowledge-gap diagnostics throughout the interview.
               </p>
             </div>
             {report.adaptiveState?.currentDifficulty && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Final Difficulty Tier:</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 text-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Final Difficulty Tier:</span>
                 <span className={`font-black uppercase tracking-wider ${
-                  report.adaptiveState.currentDifficulty === 'advanced' ? 'text-purple-400' :
-                  report.adaptiveState.currentDifficulty === 'beginner' ? 'text-emerald-400' : 'text-yellow-400'
+                  report.adaptiveState.currentDifficulty === 'advanced' ? 'text-purple-600 dark:text-purple-400' :
+                  report.adaptiveState.currentDifficulty === 'beginner' ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-400'
                 }`}>
                   {report.adaptiveState.currentDifficulty}
                 </span>
@@ -758,28 +758,28 @@ function Step3Report({ report }) {
 
           {/* Difficulty Trajectory Step Graph */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Question-by-Question Difficulty Progression
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {(report.questions || []).map((q, idx) => {
                 const diff = (q.difficulty || 'intermediate').toLowerCase();
                 const score = typeof q.score === 'number' ? q.score : 0;
-                let colorClass = 'border-yellow-400/30 bg-yellow-400/5 text-yellow-400';
+                let colorClass = 'border-yellow-400/30 bg-yellow-400/10 dark:bg-yellow-400/5 text-yellow-700 dark:text-yellow-400';
                 if (diff === 'beginner' || diff === 'easy') {
-                  colorClass = 'border-emerald-400/30 bg-emerald-400/5 text-emerald-400';
+                  colorClass = 'border-emerald-400/30 bg-emerald-400/10 dark:bg-emerald-400/5 text-emerald-700 dark:text-emerald-400';
                 } else if (diff === 'advanced' || diff === 'hard') {
-                  colorClass = 'border-purple-400/30 bg-purple-400/5 text-purple-400';
+                  colorClass = 'border-purple-400/30 bg-purple-400/10 dark:bg-purple-400/5 text-purple-700 dark:text-purple-400';
                 }
 
                 return (
                   <div key={idx} className={`p-3 rounded-2xl border ${colorClass} space-y-1.5`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400">Q{idx + 1}</span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Q{idx + 1}</span>
                       <span className="text-xs font-mono font-black">{score}/10</span>
                     </div>
                     <p className="text-[11px] font-black uppercase tracking-wider">{diff}</p>
-                    <p className="text-[10px] text-slate-400 truncate" title={q.topic || 'General'}>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate" title={q.topic || 'General'}>
                       {q.topic || 'General'}
                     </p>
                   </div>
@@ -791,26 +791,26 @@ function Step3Report({ report }) {
           {/* Topic Performance Grid */}
           {Array.isArray(report.adaptiveState?.topicPerformance) && report.adaptiveState.topicPerformance.length > 0 && (
             <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Topic Mastery & Knowledge Breakdown
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {report.adaptiveState.topicPerformance.map((tp, idx) => {
-                  let statusBg = 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20';
-                  if (tp.status === 'strong') statusBg = 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
-                  else if (tp.status === 'weak') statusBg = 'bg-rose-400/10 text-rose-400 border-rose-400/20';
+                  let statusBg = 'bg-yellow-400/15 text-yellow-700 dark:text-yellow-400 border-yellow-400/30';
+                  if (tp.status === 'strong') statusBg = 'bg-emerald-400/15 text-emerald-700 dark:text-emerald-400 border-emerald-400/30';
+                  else if (tp.status === 'weak') statusBg = 'bg-rose-400/15 text-rose-700 dark:text-rose-400 border-rose-400/30';
 
                   return (
-                    <div key={idx} className="p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+                    <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-slate-200">{tp.topic}</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{tp.topic}</p>
                         <p className="text-[10px] text-slate-500">{tp.totalQuestions} question{tp.totalQuestions > 1 ? 's' : ''} evaluated</p>
                       </div>
                       <div className="text-right space-y-1">
                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusBg}`}>
                           {tp.status}
                         </span>
-                        <p className="text-xs font-mono font-bold text-slate-300">{tp.avgScore}/10</p>
+                        <p className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">{tp.avgScore}/10</p>
                       </div>
                     </div>
                   );
@@ -822,23 +822,23 @@ function Step3Report({ report }) {
           {/* Steering Decision History */}
           {Array.isArray(report.adaptiveState?.decisionHistory) && report.adaptiveState.decisionHistory.length > 0 && (
             <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Interviewer Steering Decision Trail
               </h4>
               <div className="space-y-2">
                 {report.adaptiveState.decisionHistory.map((d, idx) => (
-                  <div key={idx} className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+                  <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800/60 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-yellow-400">
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-yellow-700 dark:text-yellow-400">
                         Q{d.questionIndex + 1}
                       </span>
-                      <span className="font-bold text-slate-200 uppercase tracking-wider text-[11px]">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">
                         {d.action ? d.action.replace(/_/g, ' ') : 'Steering Action'}
                       </span>
-                      <span className="text-slate-400">• {d.reason}</span>
+                      <span className="text-slate-500 dark:text-slate-400">• {d.reason}</span>
                     </div>
                     {d.targetTopic && (
-                      <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
                         Target: {d.targetTopic}
                       </span>
                     )}
