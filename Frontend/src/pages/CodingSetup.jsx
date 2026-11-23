@@ -191,7 +191,7 @@ export default function CodingSetup() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F5EC5A] font-poppins flex flex-col justify-between">
+    <div className="min-h-screen w-full bg-[#fbf9f4] dark:bg-slate-950 font-poppins flex flex-col justify-between transition-colors duration-200">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
@@ -199,33 +199,33 @@ export default function CodingSetup() {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-4xl bg-white/85 backdrop-blur-xl rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.08)] border border-white p-6 sm:p-10 space-y-8"
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-[2.5rem] shadow-xl p-6 sm:p-10 space-y-8 transition-colors duration-200"
         >
           {/* Header & Back Action */}
-          <div className="flex items-center justify-between border-b border-slate-200/80 pb-6">
+          <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-6">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 transition-colors cursor-pointer group"
+              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer group"
             >
               <IoArrowBackOutline className="text-base group-hover:-translate-x-1 transition-transform" />
               <span>Back to Home</span>
             </button>
 
-            <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200/80 rounded-full text-indigo-900 text-xs font-black">
-              <RiCodeSSlashLine className="text-indigo-600 text-sm" />
+            <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800 rounded-full text-indigo-900 dark:text-indigo-300 text-xs font-black">
+              <RiCodeSSlashLine className="text-indigo-600 dark:text-indigo-400 text-sm" />
               <span>Live Monaco IDE Sandbox</span>
             </div>
           </div>
 
           {/* Title Hero */}
           <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
               <span>Live Coding Interview</span>
               <span className="text-xs px-2.5 py-0.5 bg-yellow-400 text-slate-950 font-black rounded-md tracking-wider uppercase">
                 Module 4
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl">
               Compile, execute, and debug genuine code in C, C++, Python, Java, or JavaScript with custom input,
               automated test cases, and AI algorithmic feedback.
             </p>
@@ -235,7 +235,7 @@ export default function CodingSetup() {
             {/* Grid 1: Role & Experience */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                   <HiBriefcase className="text-slate-400 text-xs" /> Target Role / Track
                 </label>
                 <input
@@ -244,7 +244,7 @@ export default function CodingSetup() {
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   placeholder="e.g. Backend Software Engineer"
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                  className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all"
                 />
 
                 {/* Role Quick Presets */}
@@ -256,8 +256,8 @@ export default function CodingSetup() {
                       onClick={() => setRole(preset)}
                       className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
                         role === preset
-                          ? 'bg-slate-900 text-yellow-400'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-slate-900 text-yellow-400 dark:bg-yellow-400 dark:text-slate-950'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
                       {preset}
@@ -267,13 +267,13 @@ export default function CodingSetup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                   <HiTrendingUp className="text-slate-400 text-xs" /> Experience Level
                 </label>
                 <select
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
+                  className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all cursor-pointer"
                 >
                   <option value="Fresher (0-1 years)">Fresher (0-1 years)</option>
                   <option value="Intermediate (1-3 years)">Intermediate (1-3 years)</option>
@@ -286,16 +286,16 @@ export default function CodingSetup() {
             {/* Grid 2: Language, Topic, Difficulty */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                   <HiCode className="text-indigo-500 text-xs" /> Primary Language
                 </label>
                 <select
                   value={codingLanguage}
                   onChange={(e) => setCodingLanguage(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
+                  className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all cursor-pointer"
                 >
                   {languageOptions.map((lang) => (
-                    <option key={lang.slug} value={lang.slug}>
+                    <option key={lang.slug} value={lang.slug} className="dark:bg-slate-900">
                       {lang.name}
                     </option>
                   ))}
@@ -303,16 +303,16 @@ export default function CodingSetup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                   <HiCollection className="text-indigo-500 text-xs" /> Problem Category
                 </label>
                 <select
                   value={codingCategory}
                   onChange={(e) => setCodingCategory(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
+                  className="h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all cursor-pointer"
                 >
                   {CATEGORY_OPTIONS.map((cat) => (
-                    <option key={cat} value={cat}>
+                    <option key={cat} value={cat} className="dark:bg-slate-900">
                       {cat}
                     </option>
                   ))}
@@ -320,23 +320,23 @@ export default function CodingSetup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                   <HiShieldCheck className="text-indigo-500 text-xs" /> Difficulty Level
                 </label>
-                <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl h-11 items-center">
                   {['easy', 'medium', 'hard'].map((diff) => (
                     <button
                       key={diff}
                       type="button"
                       onClick={() => setCodingDifficulty(diff)}
-                      className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`h-9 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                         codingDifficulty === diff
                           ? diff === 'easy'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : diff === 'hard'
                             ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-slate-900 text-yellow-400 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                            : 'bg-slate-900 dark:bg-yellow-400 text-yellow-400 dark:text-slate-950 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       {diff}
@@ -347,17 +347,17 @@ export default function CodingSetup() {
             </div>
 
             {/* Feature 1: Question Count Selector (1 to 5 questions) */}
-            <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl space-y-3">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black text-slate-800 block">Number of Coding Problems</span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 block">Number of Coding Problems</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
                     Choose how many coding challenges you want to solve (1 to 5)
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-indigo-600">{questionCount}</span>
-                  <span className="text-xs font-bold text-slate-500">
+                  <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{questionCount}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                     {questionCount === 1 ? 'Problem' : 'Problems'}
                   </span>
                 </div>
@@ -373,7 +373,7 @@ export default function CodingSetup() {
                     className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
                       questionCount === cnt
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400/30'
-                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     {cnt} {cnt === 1 ? 'Q' : 'Qs'}
@@ -383,15 +383,15 @@ export default function CodingSetup() {
             </div>
 
             {/* Feature 2: Time Limit / Duration Selector */}
-            <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl space-y-3">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-black text-slate-800 block">Session Time Limit</span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 block">Session Time Limit</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
                     Choose session countdown duration or practice self-paced
                   </span>
                 </div>
-                <span className="text-xs font-bold text-slate-700">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   {durationMinutes === 'untimed' ? 'Untimed' : `${durationMinutes} Minutes`}
                 </span>
               </div>
@@ -406,11 +406,11 @@ export default function CodingSetup() {
                       onClick={() => setDurationMinutes(opt.value)}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                         isSelected
-                          ? 'bg-slate-900 text-white border-yellow-400 shadow-md'
-                          : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                          ? 'bg-slate-900 text-white border-yellow-400 shadow-md ring-1 ring-yellow-400/40'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <span className={`text-xs font-black ${isSelected ? 'text-yellow-400' : 'text-slate-900'}`}>
+                      <span className={`text-xs font-black ${isSelected ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                         {opt.label}
                       </span>
                       <span className={`text-[9px] font-medium block mt-1 ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
@@ -424,10 +424,10 @@ export default function CodingSetup() {
 
             {/* Feature 3: Credit System & Balance Summary */}
             <div
-              className={`p-4 rounded-2xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                 hasSufficientCredits
                   ? 'bg-indigo-950 text-white border-indigo-900 shadow-lg'
-                  : 'bg-red-50 text-slate-900 border-red-300'
+                  : 'bg-red-50 dark:bg-red-950/30 text-slate-900 dark:text-slate-100 border-red-300 dark:border-red-800'
               }`}
             >
               <div className="space-y-1">
@@ -465,17 +465,17 @@ export default function CodingSetup() {
               whileTap={{ scale: 0.99 }}
               type="submit"
               disabled={loading || !hasSufficientCredits}
-              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-yellow-400 font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full h-12 bg-[#F7D63A] hover:bg-[#ffe04d] disabled:opacity-50 text-slate-950 font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl flex items-center justify-center gap-2 transition cursor-pointer border border-yellow-400/80"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                   <span>Preparing Workspace...</span>
                 </>
               ) : (
                 <>
                   <span>Launch Live Coding Session</span>
-                  <HiArrowRight className="text-base" />
+                  <HiArrowRight className="text-base text-slate-950" />
                 </>
               )}
             </motion.button>
