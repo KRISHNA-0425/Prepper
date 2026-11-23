@@ -37,6 +37,10 @@ const questionSchema = new mongoose.Schema({
         type: Number, 
         default: 0 
     },
+    evidenceEvaluation: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
+    },
 });
 
 const interviewSchema = new mongoose.Schema({
@@ -135,6 +139,10 @@ const interviewSchema = new mongoose.Schema({
     isEvaluating: {
         type: Boolean,
         default: false
+    },
+    analytics: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
     }
 }, { timestamps: true });
 

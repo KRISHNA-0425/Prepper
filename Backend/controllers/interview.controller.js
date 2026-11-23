@@ -21,6 +21,13 @@ import {
     ANSWER_TIME_LIMIT_SECONDS,
     TIME_PACKAGES
 } from '../services/interviewPricing.service.js';
+import {
+    evaluateAnswerWithEvidence,
+    createEmptyAnswerEvaluation,
+    buildSafeFallbackEvaluation,
+    aggregateInterviewAnalytics,
+    detectQuestionCategory
+} from '../services/evidenceEvaluation.service.js';
 
 export { INTERVIEW_CREDIT_COST, STANDARDIZED_DIFFICULTY, ANSWER_TIME_LIMIT_SECONDS, TIME_PACKAGES };
 
@@ -622,6 +629,13 @@ export const submitAnswer = async (req, res) => {
 
         // 6. Handle Empty Answer or Timeout Submission
         if (!answer || answer.trim() === "") {
+            const category = detectQuestionCategory(currentQuestion.question, lockedDoc.mode);
+            const emptyEval = createEmptyAnswerEvaluation({
+                questionText: currentQuestion.question,
+                category,
+                isTimedOut: deadlineCheck.isTimedOut
+            });
+
             currentQuestion.score = 0;
             currentQuestion.confidence = 0;
             currentQuestion.communication = 0;
@@ -630,6 +644,7 @@ export const submitAnswer = async (req, res) => {
                 ? "Time expired. No answer was submitted."
                 : "You didn't submit an answer for this question.";
             currentQuestion.answer = "";
+            currentQuestion.evidenceEvaluation = emptyEval;
 
             lockedDoc.currentQuestionIndex = expectedIndex + 1;
             lockedDoc.currentQuestionStartedAt = new Date();
@@ -649,6 +664,7 @@ export const submitAnswer = async (req, res) => {
             return res.json({
                 feedback: currentQuestion.feedback,
                 score: 0,
+                evidenceEvaluation: emptyEval,
                 questions: lockedDoc.questions,
                 currentQuestionIndex: lockedDoc.currentQuestionIndex,
                 currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
@@ -659,67 +675,46 @@ export const submitAnswer = async (req, res) => {
             });
         }
 
-        // 7. Non-Empty Answer: Evaluate Response with AI
-        const messages = [
-            {
-                role: "system",
-                content: `
-You are a professional human interviewer evaluating a candidate's answer in a real interview.
-Evaluate naturally and fairly, like a real person would.
-Score the answer in these areas (0 to 10):
-1. Confidence – Does the answer sound clear, confident, and well-presented?
-2. Communication – Is the language simple, clear, and easy to understand?
-3. Correctness – Is the answer accurate, relevant, and complete?
-
-Calculate finalScore as average of confidence, communication, and correctness (rounded to nearest whole number).
-Feedback Rules:
-- Write natural human feedback (10 to 15 words only).
-- Do NOT repeat the question or explain scoring.
-Return ONLY valid JSON in format:
-{
-  "confidence": number,
-  "communication": number,
-  "correctness": number,
-  "finalScore": number,
-  "feedback": "short human feedback"
-}
-`
-            },
-            {
-                role: "user",
-                content: `Question: ${currentQuestion.question}\nAnswer: ${answer}`
-            }
-        ];
-
-        let parsed = { confidence: 6, communication: 6, correctness: 6, finalScore: 6, feedback: "Response recorded and evaluated." };
+        // 7. Non-Empty Answer: Evidence-Based Evaluation
+        let evidenceEval;
         try {
-            const aiResponse = await askAI(messages);
-            const { data, error: parseError } = safeParseJson(aiResponse);
-            if (!parseError && data && typeof data === 'object') {
-                parsed = {
-                    confidence: Number(data.confidence) || 6,
-                    communication: Number(data.communication) || 6,
-                    correctness: Number(data.correctness) || 6,
-                    finalScore: Number(data.finalScore) || 6,
-                    feedback: String(data.feedback || "Response recorded and evaluated.").trim()
-                };
-            }
+            evidenceEval = await evaluateAnswerWithEvidence({
+                question: currentQuestion.question,
+                answer: answer.trim(),
+                role: lockedDoc.role,
+                experience: lockedDoc.experience,
+                mode: lockedDoc.mode,
+                difficulty: lockedDoc.difficulty || 'medium',
+                askAIFn: askAI
+            });
         } catch (evalErr) {
-            console.warn("[submitAnswer] AI evaluation fallback triggered:", evalErr.message);
+            console.warn("[submitAnswer] Evidence evaluation fallback triggered:", evalErr.message);
+            const category = detectQuestionCategory(currentQuestion.question, lockedDoc.mode);
+            evidenceEval = buildSafeFallbackEvaluation({
+                question: currentQuestion.question,
+                answer: answer.trim(),
+                category,
+                role: lockedDoc.role
+            });
         }
 
         // If submitted after deadline + grace period, apply late-submission penalty
         if (deadlineCheck.isTimedOut) {
-            parsed.finalScore = Math.min(parsed.finalScore, 4);
-            parsed.feedback = `[Time Expired] ${parsed.feedback}`;
+            evidenceEval.overallScore = Math.min(evidenceEval.overallScore, 4);
+            evidenceEval.summaryFeedback = `[Time Expired] ${evidenceEval.summaryFeedback}`;
         }
 
+        const techAccuracyCrit = evidenceEval.criteria?.find(c => c.name === 'Technical Accuracy');
+        const commsCrit = evidenceEval.criteria?.find(c => c.name === 'Communication Clarity');
+        const finalScore = Math.round(evidenceEval.overallScore);
+
         currentQuestion.answer = answer.trim();
-        currentQuestion.confidence = parsed.confidence;
-        currentQuestion.communication = parsed.communication;
-        currentQuestion.correctness = parsed.correctness;
-        currentQuestion.score = parsed.finalScore;
-        currentQuestion.feedback = parsed.feedback;
+        currentQuestion.confidence = Math.round((evidenceEval.evaluationConfidence || 0.8) * 10);
+        currentQuestion.communication = Math.round(commsCrit?.score || finalScore);
+        currentQuestion.correctness = Math.round(techAccuracyCrit?.score || finalScore);
+        currentQuestion.score = finalScore;
+        currentQuestion.feedback = evidenceEval.summaryFeedback;
+        currentQuestion.evidenceEvaluation = evidenceEval;
 
         // 8. Adaptive Cross-Questioning (Phase 4: Follow-up replaces unasked primary question, allocation strictly capped)
         let followUpQuestion = null;
@@ -829,8 +824,9 @@ Return ONLY valid JSON:
         const isAllocationExhausted = lockedDoc.currentQuestionIndex >= targetAllocation || lockedDoc.currentQuestionIndex >= lockedDoc.questions.length;
 
         return res.status(200).json({ 
-            feedback: parsed.feedback,
-            score: parsed.finalScore,
+            feedback: currentQuestion.feedback,
+            score: currentQuestion.score,
+            evidenceEvaluation: currentQuestion.evidenceEvaluation,
             followUpQuestion,
             questions: lockedDoc.questions,
             currentQuestionIndex: lockedDoc.currentQuestionIndex,
@@ -890,11 +886,20 @@ export const finishInterview = async (req, res) => {
             totalCommunication += q.communication || 0;
         });
 
+        // Compute authoritative interview-level analytics
+        const analytics = aggregateInterviewAnalytics(interview.questions, {
+            role: interview.role,
+            mode: interview.mode,
+            experience: interview.experience,
+        });
+        interview.analytics = analytics;
+
         const data = {
             finalScore: totalQuestions ? Math.round(totalScore / totalQuestions) : 0,
             confidence: totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0,
             communication: totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0,
             correctness: totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0,
+            analytics,
             questions: interview.questions,
             role: interview.role,
             experience: interview.experience,
@@ -940,6 +945,7 @@ export const normalizeStandardInterview = (doc) => {
         rawStatus: doc.status || 'Completed',
         enableCrossQuestioning: isCross,
         crossQuestioningType: isCross ? (doc.crossQuestioningType || 'Technical') : null,
+        analytics: doc.analytics || null,
         questions: Array.isArray(doc.questions) ? doc.questions : [],
         totalQuestions: Array.isArray(doc.questions) ? doc.questions.length : 0,
         interviewMode: doc.interviewMode || 'question_based',
@@ -1137,6 +1143,20 @@ export const getInterviewReport = async (req, res) => {
         const avgCommunication = totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0;
         const avgCorrectness = totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0;
 
+        // Ensure interview-level analytics are present
+        let analytics = interview.analytics;
+        if (!analytics || !Array.isArray(analytics.criterionScores)) {
+            analytics = aggregateInterviewAnalytics(interview.questions, {
+                role: interview.role,
+                mode: interview.mode,
+                experience: interview.experience,
+            });
+            interview.analytics = analytics;
+            if (typeof interview.save === 'function') {
+                await interview.save().catch(() => {});
+            }
+        }
+
         return res.status(200).json({
             role: interview.role,
             experience: interview.experience,
@@ -1145,6 +1165,7 @@ export const getInterviewReport = async (req, res) => {
             confidence: avgConfidence, 
             communication: avgCommunication,
             correctness: avgCorrectness,
+            analytics,
             questions: interview.questions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
             crossQuestioningType: interview.crossQuestioningType || 'Technical',
@@ -1196,6 +1217,7 @@ export const getInterviewSession = async (req, res) => {
             mode: interview.mode,
             status: interview.status,
             isSessionExpired,
+            analytics: interview.analytics || null,
             questions: interview.questions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
             crossQuestioningType: interview.crossQuestioningType || 'Technical',
