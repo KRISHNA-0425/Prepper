@@ -1,14 +1,15 @@
 /**
  * @file coding.controller.js
- * Express controllers for live coding execution, submission evaluation, and status checks.
+ * Express controllers for live coding execution, sample test evaluation,
+ * solution submissions, and status discovery.
  */
 
-import judge0Service from '../services/coding/judge0.service.js';
+import executionAdapter from '../services/coding/executionAdapter.service.js';
 import codingExecutionService from '../services/coding/codingExecution.service.js';
 
 export const getLanguages = async (req, res) => {
   try {
-    const languages = await judge0Service.getLanguages();
+    const languages = executionAdapter.getLanguages();
     return res.status(200).json({
       success: true,
       languages,
@@ -22,9 +23,9 @@ export const getLanguages = async (req, res) => {
   }
 };
 
-export const getJudge0Health = async (req, res) => {
+export const getExecutionHealth = async (req, res) => {
   try {
-    const health = await judge0Service.checkHealth();
+    const health = await executionAdapter.checkHealth();
     return res.status(health.healthy ? 200 : 503).json({
       success: health.healthy,
       health,
@@ -32,23 +33,26 @@ export const getJudge0Health = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: 'Judge0 health check failed',
+      message: 'Execution engine health check failed',
       error: err.message,
     });
   }
 };
 
+/**
+ * Mode 1: Run Code (Custom input or quick run)
+ */
 export const runCode = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id || req.userId;
-    const { interviewId, problemIndex, languageId, language, sourceCode, customInput } = req.body;
+    const { interviewId, problemIndex, language, languageId, sourceCode, customInput } = req.body;
 
     const result = await codingExecutionService.runCode({
       userId,
       interviewId,
       problemIndex: Number(problemIndex),
-      languageId: Number(languageId),
       language,
+      languageId,
       sourceCode,
       customInput,
     });
@@ -63,17 +67,47 @@ export const runCode = async (req, res) => {
   }
 };
 
+/**
+ * Mode 2: Run Sample Tests (Public visible test cases)
+ */
+export const runSampleTests = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id || req.userId;
+    const { interviewId, problemIndex, language, languageId, sourceCode } = req.body;
+
+    const result = await codingExecutionService.runSampleTests({
+      userId,
+      interviewId,
+      problemIndex: Number(problemIndex),
+      language,
+      languageId,
+      sourceCode,
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Error running sample tests',
+    });
+  }
+};
+
+/**
+ * Mode 3: Submit Solution (Full evaluation against hidden test cases)
+ */
 export const submitSolution = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id || req.userId;
-    const { interviewId, problemIndex, languageId, language, sourceCode, candidateExplanation } = req.body;
+    const { interviewId, problemIndex, language, languageId, sourceCode, candidateExplanation } = req.body;
 
     const result = await codingExecutionService.submitSolution({
       userId,
       interviewId,
       problemIndex: Number(problemIndex),
-      languageId: Number(languageId),
       language,
+      languageId,
       sourceCode,
       candidateExplanation,
     });
@@ -99,10 +133,10 @@ export const getSubmissionById = async (req, res) => {
       submission,
     });
   } catch (err) {
-    const statusCode = err.statusCode || 404;
+    const statusCode = err.statusCode || 400;
     return res.status(statusCode).json({
       success: false,
-      message: err.message || 'Error retrieving submission',
+      message: err.message || 'Failed to retrieve submission',
     });
   }
 };
@@ -112,7 +146,7 @@ export const getInterviewSubmissions = async (req, res) => {
     const userId = req.user?._id || req.user?.id || req.userId;
     const { interviewId } = req.params;
 
-    const submissions = await codingExecutionService.getInterviewSubmissions(interviewId, userId);
+    const submissions = await codingExecutionService.getSubmissionsByInterview(interviewId, userId);
     return res.status(200).json({
       success: true,
       submissions,
@@ -121,7 +155,24 @@ export const getInterviewSubmissions = async (req, res) => {
     const statusCode = err.statusCode || 400;
     return res.status(statusCode).json({
       success: false,
-      message: err.message || 'Error retrieving interview submissions',
+      message: err.message || 'Failed to retrieve interview submissions',
+    });
+  }
+};
+
+export const getProblemById = async (req, res) => {
+  try {
+    const { problemId } = req.params;
+    const problem = await codingExecutionService.getProblemById(problemId);
+    return res.status(200).json({
+      success: true,
+      problem,
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 404;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Problem not found',
     });
   }
 };
