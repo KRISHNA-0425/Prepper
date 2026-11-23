@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
@@ -19,6 +19,8 @@ export default function RecoveryPlansListPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const location = useLocation();
+  const atsBridgeData = location.state?.sourceType === 'ats_analysis' ? location.state : null;
 
   const fetchPlans = async () => {
     try {
@@ -71,6 +73,29 @@ export default function RecoveryPlansListPage() {
             Select from Interview History
           </Link>
         </div>
+
+        {/* ATS Bridge Active Banner */}
+        {atsBridgeData && (
+          <div className="mb-8 p-5 rounded-2xl bg-blue-500/10 border border-blue-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block mb-0.5">
+                ATS Analysis Bridge Active
+              </span>
+              <h3 className="font-bold text-sm text-white">
+                Remediating gaps for: {atsBridgeData.prefillRole}
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {atsBridgeData.weaknesses?.length || 0} missing technical requirements identified in your ATS report.
+              </p>
+            </div>
+            <Link
+              to="/history"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white shrink-0 transition"
+            >
+              Select Interview Session to Link
+            </Link>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (

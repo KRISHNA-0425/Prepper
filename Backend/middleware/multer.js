@@ -6,21 +6,22 @@ const storage = multer.memoryStorage();
 
 const resumeFileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  const allowedExtensions = ['.pdf', '.docx', '.doc'];
+  const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt'];
   const allowedMimeTypes = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/msword',
+    'text/plain',
     'application/octet-stream', // Fallback for some browsers on mobile/desktop
   ];
 
   const hasAllowedExt = allowedExtensions.includes(ext);
-  const hasAllowedMime = allowedMimeTypes.includes(file.mimetype);
+  const hasAllowedMime = allowedMimeTypes.includes(file.mimetype) || ext === '.txt';
 
   if (hasAllowedExt && hasAllowedMime) {
     cb(null, true);
   } else {
-    const err = new Error('Only PDF (.pdf) and Word (.docx) documents are supported');
+    const err = new Error('Only PDF (.pdf), Word (.docx), and Text (.txt) documents are supported');
     err.code = 'INVALID_FILE_TYPE';
     cb(err, false);
   }
@@ -43,10 +44,39 @@ export const handleResumeUpload = (req, res, next) => {
         return res.status(400).json({ message: 'File is too large. Maximum file size is 10MB.' });
       }
       if (err.code === 'INVALID_FILE_TYPE') {
-        return res.status(400).json({ message: err.message || 'Only PDF and Word documents are supported' });
+        return res.status(400).json({ message: err.message || 'Only PDF, Word, and Text documents are supported' });
       }
       return res.status(400).json({ message: err.message || 'Error uploading file' });
     }
+    next();
+  });
+};
+
+/**
+ * Express middleware wrapper for ATS uploads accepting 'resume' or 'file' fields.
+ */
+export const handleAtsResumeUpload = (req, res, next) => {
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, message: 'File is too large. Maximum file size is 10MB.' });
+      }
+      if (err.code === 'INVALID_FILE_TYPE') {
+        return res.status(400).json({ success: false, message: err.message || 'Only PDF, Word, and Text documents are supported' });
+      }
+      return res.status(400).json({ success: false, message: err.message || 'Error uploading file' });
+    }
+
+    if (!req.file) {
+      // Try 'file' field
+      return upload.single('file')(req, res, (err2) => {
+        if (err2) {
+          return res.status(400).json({ success: false, message: err2.message || 'Error uploading file' });
+        }
+        next();
+      });
+    }
+
     next();
   });
 };

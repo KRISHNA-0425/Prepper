@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -44,6 +44,30 @@ export default function CompanyInterviewSetup() {
   const [recommendedRoundId, setRecommendedRoundId] = useState('technical_round_1');
 
   const [isStarting, setIsStarting] = useState(false);
+
+  const location = useLocation();
+
+  // Cross-module bridge integration (Module 7 ATS -> Module 6 Company Simulation prefill)
+  useEffect(() => {
+    if (location.state?.prefillRole) {
+      setTargetDesignation(location.state.prefillRole);
+    }
+    if (location.state?.prefillSkills) {
+      if (Array.isArray(location.state.prefillSkills)) {
+        setRequiredSkills(location.state.prefillSkills.join(', '));
+      } else if (typeof location.state.prefillSkills === 'string') {
+        setRequiredSkills(location.state.prefillSkills);
+      }
+    }
+    if (location.state?.prefillCompany && companies.length > 0) {
+      const match = companies.find(
+        (c) => c.name?.toLowerCase() === location.state.prefillCompany.toLowerCase()
+      );
+      if (match) {
+        handleSelectCompany(match);
+      }
+    }
+  }, [location.state, companies]);
 
   // Fetch premier companies on mount
   useEffect(() => {

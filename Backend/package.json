@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/**/*.test.js",
+    "test": "node --test tests/*.test.js",
+    "test:ats": "node --test tests/atsIntelligence.test.js",
+    "test:company": "node --test tests/companyInterview.test.js tests/companyInterviewIntegration.e2e.test.js",
+    "test:e2e": "node --test tests/companyInterviewIntegration.e2e.test.js",
     "dev": "npx nodemon server.js"
   },
   "keywords": [],
@@ -23,6 +26,7 @@
     "firebase": "^12.10.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.13.0",
     "mongoose": "^9.3.0",
     "multer": "^2.1.1",
     "nodemon": "^3.1.14",

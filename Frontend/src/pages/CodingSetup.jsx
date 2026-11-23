@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -70,6 +70,21 @@ export default function CodingSetup() {
   const [codingDifficulty, setCodingDifficulty] = useState('medium');
   const [questionCount, setQuestionCount] = useState(2); // 1 to 5
   const [durationMinutes, setDurationMinutes] = useState('45'); // '30' | '45' | '60' | '90' | 'untimed'
+
+  const location = useLocation();
+
+  // Cross-module bridge integration (Module 7 ATS -> Module 4 Live Coding prefill)
+  useEffect(() => {
+    if (location.state?.prefillRole) {
+      setRole(location.state.prefillRole);
+    }
+    if (location.state?.prefillCategory) {
+      setCodingCategory(location.state.prefillCategory);
+    }
+    if (location.state?.prefillLanguage) {
+      setCodingLanguage(location.state.prefillLanguage);
+    }
+  }, [location.state]);
 
   // Fetch dynamically available languages from backend
   useEffect(() => {

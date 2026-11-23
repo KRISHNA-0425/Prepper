@@ -35,3 +35,10 @@ export { default as CompanyInterviewSession } from './CompanyInterviewSession';
 export { default as CompanyInterviewReport } from './CompanyInterviewReport';
 export { default as CompanyInterviewHistory } from './CompanyInterviewHistory';
 
+// 7. Module 7: AI Resume-to-Job ATS & Application Intelligence
+export { default as AtsDashboard } from './AtsDashboard';
+export { default as AtsSetupPage } from './AtsSetupPage';
+export { default as AtsAnalysisReport } from './AtsAnalysisReport';
+export { default as AtsHistoryPage } from './AtsHistoryPage';
+
+

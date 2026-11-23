@@ -46,13 +46,14 @@ flowchart TD
             V_Report["Analytics & Scorecard (/report/:id)"]
             V_Recovery["Module 5: Recovery Dashboard & Roadmap (/recovery-plans/:id)"]
             V_Company["Module 6: Company Simulation Workspace (/company-interview)"]
+            V_ATS["Module 7: ATS & Resume Intelligence (/ats)"]
         end
     end
 
     subgraph BackendAPI["Backend Application (Node.js + Express)"]
         MW_Auth["Auth Middleware (JWT Verify)"]
         MW_Rate["Rate Limiter (express-rate-limit)"]
-        MW_Upload["Multer PDF Processor (pdfjs-dist)"]
+        MW_Upload["Multer Multi-Format Processor (pdfjs-dist + mammoth)"]
         
         subgraph Controllers["API Controllers"]
             C_Auth["auth.controller.js"]
@@ -61,6 +62,7 @@ flowchart TD
             C_Coding["coding.controller.js"]
             C_Recovery["recoveryPlan.controller.js (Module 5)"]
             C_Company["companyInterview.controller.js (Module 6)"]
+            C_ATS["ats.controller.js (Module 7)"]
             C_Payment["payment.controller.js"]
         end
 
@@ -72,6 +74,8 @@ flowchart TD
             S_Evaluation["answerEvaluation.service.js (Evidence Scoring)"]
             S_Recovery["recoveryPlan.service.js (Module 5)"]
             S_Company["companyInterview.service.js (Module 6)"]
+            S_ATS["atsReport.service.js & atsMatcher.service.js (Module 7)"]
+            S_Parser["atsDocumentParser.service.js (DOCX, PDF, TXT)"]
         end
 
         subgraph CodeExecutionEngine["Module 4: Zero-Cost Execution Subsystem"]
@@ -97,6 +101,7 @@ flowchart TD
     MW_Auth --> Controllers
     MW_Upload --> C_Interview
     MW_Upload --> C_Cross
+    MW_Upload --> C_ATS
 
     %% Controllers to Services
     C_Interview --> S_OpenRouter
@@ -123,6 +128,11 @@ flowchart TD
     S_Company --> S_OpenRouter
     S_Company --> S_Evaluation
     S_Company --> S_Pricing
+
+    C_ATS --> S_ATS
+    C_ATS --> S_Parser
+    S_ATS --> S_OpenRouter
+    S_ATS --> S_Pricing
 
     %% Services to External
     Controllers --> DB_Mongo
@@ -151,7 +161,7 @@ flowchart TD
 | **Database** | **MongoDB Atlas** | `v7.0+` | NoSQL document database, ACID transactions, complex aggregations |
 | **ODM** | **Mongoose** | `^8.10.1` | Strict schema validation, pre/post hooks, virtual fields |
 | **AI Orchestration** | **OpenRouter API** | — | Meta Llama 3.3 70B, Nvidia Nemotron, fault-tolerant retry workflows |
-| **PDF Processing** | **`pdfjs-dist` & Multer** | `^4.10.38` / `^1.4.5` | In-memory resume text extraction without disk pollution |
+| **Document Ingestion** | **`mammoth` & `pdfjs-dist`** | `^1.11.0` / `^4.10.38` | Zero-cost DOCX, PDF, and TXT parsing in memory with path-traversal sanitization |
 | **Payment Gateway** | **Razorpay Node SDK** | `^2.9.5` | Webhook verification, order creation, dynamic credit wallet reloads |
 | **Security & Sandbox**| **Child Process (`child_process.spawn`)** | Built-in | Ephemeral compilation, execution timeouts, memory caps, secret masking |
 
@@ -475,6 +485,49 @@ Upon completion, the evaluation engine compiles:
 - **Live Coding Workspace**: Direct execution for Online Assessment rounds (Module 4).
 - **Module 5 Recovery Plan Bridge**: One-click bridge from the Company Readiness Scorecard to generate a personalized remediation program addressing company-specific gaps.
 
+---
+
+## 📄 Deep Dive: Module 7 — AI Resume-to-Job ATS & Application Intelligence
+
+### 7.1 Architecture & Multi-Format Ingestion
+Module 7 empowers candidates with an explainable applicant tracking system (ATS) match engine that maps resumes against job descriptions (JDs) with zero third-party vendor lock-in:
+- **Multi-Format Ingestion**: Supports PDF (`pdfjs-dist`), Word DOCX (`mammoth`), and plaintext (`.txt`) documents up to 10MB with SHA-256 content hashing.
+- **Sanitized Upload Pipeline**: Path-traversal sanitization strips illegal characters (`replace(/[^a-zA-Z0-9._-]/g, '_')`); dangerous file extensions (`.exe`, `.sh`, `.zip`) fail closed immediately.
+
+### 7.2 Canonical Skill Normalization
+A high-precision alias resolution engine prevents false negatives by normalizing synonyms and variants into canonical engineering standards:
+- Aliases: `react.js` / `reactjs` $\rightarrow$ `React`, `k8s` $\rightarrow$ `Kubernetes`, `golang` $\rightarrow$ `Go`, `postgres` $\rightarrow$ `PostgreSQL`, `mongo` $\rightarrow$ `MongoDB`, `aws` $\rightarrow$ `Amazon Web Services`.
+- Boundary Protection: Employs word-boundary regex (`\b`) to prevent false positive matches (e.g. matching `Java` inside `JavaScript`).
+
+### 7.3 Explainable 7-Dimension Matching Engine
+Composite ATS match scores are calculated deterministically across seven independently weighted dimensions summing strictly to 100%:
+
+| Dimension | Weight | Focus & Verification Standard |
+| :--- | :---: | :--- |
+| **Required Skills** | **30%** | Normalized ratio of candidate's verified skills against all mandatory job requirements. |
+| **Experience Depth** | **20%** | Compares candidate's career duration against required minimum years. |
+| **Project Relevance** | **15%** | Evaluates overlap between project tech stacks, complexity, and target job domain. |
+| **Preferred Skills** | **10%** | Coverage of nice-to-have bonus technologies and frameworks. |
+| **Responsibilities Alignment** | **10%** | Semantic alignment between past engineering duties and target role expectations. |
+| **ATS Keyword Coverage** | **10%** | Frequency and contextual density of target industry keywords. |
+| **Education & Certifications** | **5%** | Degree level, field relevance (STEM/CS), and professional certifications. |
+| **Total Weight** | **100%** | **Rigorous, explainable mathematical composite.** |
+
+$$\text{ATS Score} = \sum_{i=1}^{7} w_i \times S_i$$
+
+### 7.4 Grounded Non-Hallucination Resume Improvement Engine
+To protect candidate integrity, the rewrite engine strictly enforces **grounded factual consistency**:
+- **Metric Placeholders**: Never invents unearned metrics or percentages. Uses explicit bracketed placeholders (e.g. `improved query latency by [X]% across [Y] endpoints`) to guide candidate input.
+- **Authoritative Action Verbs**: Restructures bullets using high-impact technical verbs (`Architected`, `Spearheaded`, `Refactored`, `Orchestrated`, `Implemented`).
+- **STAR Framework**: Reformulates statements into Situation/Task $\rightarrow$ Action $\rightarrow$ Quantified Result.
+- **Copy & Diff Workspace**: Interactive multi-tab UI allows candidates to inspect side-by-side diffs and copy improved snippets directly to the clipboard.
+
+### 7.5 Cross-Module Synergy
+- **Bridge to Module 1**: Launches conversational technical interview pre-loaded with identified skill gaps.
+- **Bridge to Module 4**: Auto-configures live coding rounds addressing algorithmic deficiencies.
+- **Bridge to Module 5**: Feeds ATS weaknesses directly into a structured recovery study plan.
+- **Bridge to Module 6**: Initiates company-specific interview simulation targeting the employer extracted from the JD.
+
 
 ---
 
@@ -494,6 +547,11 @@ erDiagram
     Interview ||--o{ CodingProblem : references
     Interview ||--o{ RecoveryPlan : remediates
     CodingProblem ||--o{ CodingSubmission : receives
+    User ||--o{ Resume : uploads
+    User ||--o{ AtsAnalysis : performs
+    Resume ||--o{ AtsAnalysis : analyzed_by
+    AtsAnalysis ||--o{ Interview : bridges_to
+    AtsAnalysis ||--o{ RecoveryPlan : feeds_into
 
     User {
         ObjectId _id PK
@@ -597,6 +655,36 @@ erDiagram
         object progress "completedTasks and completionPercentage"
         object reassessment "scores and scoreDelta"
     }
+
+    Resume {
+        ObjectId _id PK
+        ObjectId userId FK
+        string fileName
+        string fileType "pdf or docx or txt"
+        number fileSize
+        string contentHash
+        object contactInfo "name email phone links"
+        array skills
+        number experienceYears
+        array workExperience
+        array projects
+        array education
+    }
+
+    AtsAnalysis {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId resumeId FK
+        string jobTitle
+        string companyName
+        number overallScore "0 to 100"
+        string matchCategory "Exceptional Strong Moderate Weak Low"
+        object dimensionScores "7 explainable dimensions"
+        array skillGaps "mandatory and preferred gaps"
+        array strengths
+        array improvements "summary bullets projects keywords"
+        object bridgeRecords "Module 1 4 5 6 references"
+    }
 ```
 
 ---
@@ -670,6 +758,18 @@ erDiagram
 | `POST` | `/api/company-interview/finish` | Finalize simulation and compute Role Readiness Scorecard & Verdict | Yes |
 | `GET`  | `/api/company-interview/history` | Retrieve candidate's historical company interview simulations | Yes |
 
+### 📄 AI Resume-to-Job ATS & Application Intelligence (`/api/ats`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/ats/upload` | Upload resume (PDF, DOCX, TXT), extract profile & compute hash (0 credits) | Yes |
+| `POST` | `/api/ats/analyze` | Run 7-dimension ATS match analysis against job description (10 credits) | Yes |
+| `POST` | `/api/ats/direct-analyze` | Single-step multipart resume upload + JD analysis workflow (10 credits) | Yes |
+| `GET`  | `/api/ats/analysis/:id` | Fetch full ATS scorecard, gaps, and improvements with anti-IDOR check | Yes |
+| `GET`  | `/api/ats/history` | Retrieve paginated history of candidate ATS match reports | Yes |
+| `DELETE`| `/api/ats/analysis/:id` | Delete ATS analysis report (owner only) | Yes |
+| `PATCH`| `/api/ats/analysis/:id/improvement/:itemId` | Update candidate adoption status for suggested resume improvement | Yes |
+| `POST` | `/api/ats/analysis/:id/bridge/:module` | Launch cross-module bridge session (Module 1, 4, 5, or 6) | Yes |
+
 ---
 
 ## 💰 Credit Economics & Pricing Policy
@@ -681,6 +781,7 @@ To maintain fair platform economics and prevent resource starvation:
   $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
 - **Module 5 (Personalized Recovery Plan)**: `0 Credits` (Included with every completed interview evaluation).
 - **Module 6 (Company Simulation)**: `50 Credits` (Full corporate persona, 7-round options, readiness scorecard, and automatic refund on failure).
+- **Module 7 (ATS Resume Intelligence)**: `0 Credits` for multi-format upload & parsing; `10 Credits` for full 7-dimension ATS match analysis and improvement workspace with atomic refund rollback on failure.
 - **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
 
 
@@ -781,14 +882,20 @@ node --test Backend/tests/recoveryPlan.test.js
 
 # Run cross-examination tests
 node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnalysis.service.test.js
+
+# Run Module 7 ATS Intelligence tests
+node --test Backend/tests/atsIntelligence.test.js
+node --test Frontend/tests/atsIntelligenceFrontend.test.js
 ```
 
 ### Verification Matrix Summary
-- **E2E Cross-Module Integration Suite**: **11 / 11 tests passing** (Modules 1–5 end-to-end verification, credit deduction & atomic refund rollback, anti-IDOR security).
-- **Backend Test Suites**: **123 / 123 tests passing** (Company simulation, recovery plans, live coding, adaptive steering, evidence evaluation, pricing math).
-- **Frontend Regression Suite**: **215 / 215 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, company simulation, recovery plan roadmaps, 503 error handling).
-- **Total Test Coverage**: **338 / 338 automated tests passing** across entire platform.
-- **Vite Production Bundler**: **Passed cleanly in 13.9s** with 0 errors.
+- **E2E Cross-Module Integration Suite**: **11 / 11 tests passing** (Modules 1–6 cross-module verification, credit deduction & atomic refund rollback, anti-IDOR security).
+- **Module 7 ATS Intelligence Backend Suite**: **15 / 15 tests passing** (Multi-format parsing, canonical skill normalization, 7-dimension scoring, non-hallucination rewrites, credit rollback).
+- **Module 7 ATS Intelligence Frontend Suite**: **11 / 11 tests passing** (Dropzone, score gauge, 7-dimension breakdown, skill gaps, diff workspace, bridges).
+- **Backend Test Suites**: **138 / 138 tests passing** (ATS intelligence, company simulation, recovery plans, live coding, adaptive steering, evidence evaluation, pricing math).
+- **Frontend Regression Suite**: **226 / 226 tests passing** (All 10 suites passing across route separation, Monaco editor, recovery plan roadmaps, ATS workspaces).
+- **Total Test Coverage**: **364 / 364 automated tests passing** across entire platform.
+- **Vite Production Bundler**: **Passed cleanly in 12.55s** (1230 modules transformed, 0 errors).
 
 ---
 
@@ -806,12 +913,15 @@ Prepper/
 │   │   ├── coding.controller.js         # Module 4 live coding endpoints
 │   │   ├── recoveryPlan.controller.js   # Module 5 personalized recovery plans
 │   │   ├── companyInterview.controller.js # Module 6 company simulation endpoints
+│   │   ├── ats.controller.js            # Module 7 ATS & resume intelligence endpoints
 │   │   ├── payment.controller.js        # Razorpay payment verification
 │   │   └── user.controller.js           # Candidate profile & credit balance
 │   ├── middleware/                      # Auth verification, rate limiting, and uploads
 │   ├── models/                          # Mongoose data models
 │   │   ├── user.model.js                # Candidate accounts & credit wallet
 │   │   ├── interview.model.js           # Unified interview state, answers & trajectory
+│   │   ├── resume.model.js              # Module 7 parsed candidate profiles & content hashes
+│   │   ├── atsAnalysis.model.js         # Module 7 7-dimension scorecards & skill gaps
 │   │   ├── companyProfile.model.js      # Module 6 company intelligence & culture profiles
 │   │   ├── crossExaminationSession.model.js # High-pressure project defense sessions
 │   │   ├── codingProblem.model.js       # Algorithmic problem bank & driver code
@@ -825,6 +935,7 @@ Prepper/
 │   │   ├── coding.routes.js             # /api/coding routes
 │   │   ├── recoveryPlan.routes.js       # /api/recovery-plans routes
 │   │   ├── companyInterview.routes.js   # /api/company-interview routes
+│   │   ├── ats.routes.js                # /api/ats routes (Module 7)
 │   │   └── payment.routes.js            # /api/payment routes
 │   ├── services/                        # Domain logic services & registries
 │   │   ├── index.js                     # Domain-driven unified service export barrel
@@ -840,6 +951,14 @@ Prepper/
 │   │   ├── resumeIntelligence.service.js# In-memory PDF parsing via pdfjs-dist
 │   │   ├── evidenceEvaluation.service.js# 6-criterion evidence grounding
 │   │   ├── reportGeneration.service.js  # Executive scorecard & roadmap compiler
+│   │   ├── ats/                         # Module 7 ATS & resume intelligence services
+│   │   │   ├── atsDocumentParser.service.js # PDF, DOCX, TXT zero-cost local parser
+│   │   │   ├── atsSkillNormalizer.js    # Canonical alias dictionary & boundary matcher
+│   │   │   ├── atsResumeExtractor.service.js # Deterministic regex + AI extraction
+│   │   │   ├── atsJobAnalyzer.service.js # JD mandatory vs preferred requirements analyzer
+│   │   │   ├── atsMatcher.service.js    # 7-dimension explainable scoring engine
+│   │   │   ├── atsResumeImprovement.service.js # Non-hallucinating STAR & verb rewriter
+│   │   │   └── atsReport.service.js     # Master orchestrator & credit safe persistence
 │   │   ├── companySimulation/           # Module 6 company simulation services
 │   │   │   ├── curatedCompanyProfiles.js # 9 Premier corporate intelligence profiles
 │   │   │   ├── companyIntelligence.service.js # Profile retrieval & dynamic crawler
@@ -890,12 +1009,19 @@ Prepper/
 │   │   │   │   ├── AnswerAnalysisCard.jsx # Claim analysis & grounding inspector
 │   │   │   │   ├── SessionProgress.jsx  # Pressure tier & progress indicator
 │   │   │   │   └── SessionSummaryModal.jsx # Interrogation defense summary
-│   │   │   └── recovery/                # Module 5 recovery plan components
-│   │   │       ├── RecoveryPlanSetupModal.jsx # Schedule & time budget selector
-│   │   │       ├── RecoveryPlanOverview.jsx   # Metrics, strengths/weaknesses cards
-│   │   │       ├── DailyTaskList.jsx          # Day selector & task status toggles
-│   │   │       ├── TaskDetailModal.jsx        # Outcomes, checklists & candidate notes
-│   │   │       └── ReassessmentModal.jsx      # Targeted drill & score delta gauge
+│   │   │   ├── recovery/                # Module 5 recovery plan components
+│   │   │   │   ├── RecoveryPlanSetupModal.jsx # Schedule & time budget selector
+│   │   │   │   ├── RecoveryPlanOverview.jsx   # Metrics, strengths/weaknesses cards
+│   │   │   │   ├── DailyTaskList.jsx          # Day selector & task status toggles
+│   │   │   │   ├── TaskDetailModal.jsx        # Outcomes, checklists & candidate notes
+│   │   │   │   └── ReassessmentModal.jsx      # Targeted drill & score delta gauge
+│   │   │   └── ats/                     # Module 7 ATS intelligence components
+│   │   │       ├── ResumeUploadDropzone.jsx   # Drag-and-drop PDF, DOCX, TXT parser
+│   │   │       ├── AtsScoreGauge.jsx          # Circular match score gauge with thresholds
+│   │   │       ├── AtsDimensionBreakdown.jsx  # 7-dimension explainable scoring cards
+│   │   │       ├── SkillGapTable.jsx          # Prioritized mandatory vs preferred gaps
+│   │   │       ├── ResumeImprovementWorkspace.jsx # Grounded STAR & metric diff tabs
+│   │   │       └── CrossModuleBridgeBar.jsx   # One-click bridge into Modules 1, 4, 5, 6
 │   │   ├── pages/                       # Module route pages
 │   │   │   ├── index.js                 # Domain-driven page export registry
 │   │   │   ├── Home.jsx                 # Public landing page
@@ -914,7 +1040,11 @@ Prepper/
 │   │   │   ├── CompanyInterviewSetup.jsx# Module 6 company & round configuration
 │   │   │   ├── CompanyInterviewSession.jsx # Module 6 live voice & question session
 │   │   │   ├── CompanyInterviewReport.jsx # Module 6 readiness scorecard & recovery bridge
-│   │   │   └── CompanyInterviewHistory.jsx # Module 6 simulation history & verdict filters
+│   │   │   ├── CompanyInterviewHistory.jsx # Module 6 simulation history & verdict filters
+│   │   │   ├── AtsDashboard.jsx         # Module 7 ATS overview & recent matches
+│   │   │   ├── AtsSetupPage.jsx         # Module 7 resume selection & JD input
+│   │   │   ├── AtsAnalysisReport.jsx    # Module 7 comprehensive 7-dimension scorecard
+│   │   │   └── AtsHistoryPage.jsx       # Module 7 historical ATS analyses & filtering
 │   │   ├── hooks/                       # Custom React hooks (speech, timer)
 │   │   ├── redux/                       # Redux Toolkit store & user slices
 │   │   ├── utils/                       # API helpers & timer utilities
@@ -929,6 +1059,8 @@ Prepper/
 │   ├── MODULE_3_ADAPTIVE_STEERING.md    # Module 3 dynamic difficulty mechanics
 │   ├── MODULE_4_LIVE_CODING_ENGINE.md   # Module 4 execution sandbox specification
 │   ├── MODULE_5_RECOVERY_PLAN.md        # Module 5 recovery curriculum specification
+│   ├── MODULE_6_COMPANY_SPECIFIC_SIMULATION.md # Module 6 company simulation architecture
+│   ├── MODULE_7_ATS_INTELLIGENCE.md     # Module 7 ATS & resume intelligence architecture
 │   └── SECURITY_HARDENING.md            # Zero-budget security audit & boundaries
 │
 ├── infrastructure/                      # Deployment & Worker Infrastructure
