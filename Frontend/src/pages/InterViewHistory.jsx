@@ -71,7 +71,7 @@ function InterViewHistory() {
     }, [activeTab]);
 
     return (
-        <div className='min-h-screen bg-slate-950 text-slate-200 font-poppins p-4 md:p-12 overflow-x-hidden'>
+        <div className='min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-poppins p-4 md:p-12 overflow-x-hidden transition-colors duration-200'>
             <div className='max-w-5xl mx-auto'>
                 
                 {/* Back Button */}
@@ -80,21 +80,21 @@ function InterViewHistory() {
                     animate={{ opacity: 1, x: 0 }}
                     whileHover={{ x: -5 }}
                     onClick={() => navigate('/')}
-                    className="flex items-center gap-2 text-slate-500 hover:text-yellow-400 transition-colors mb-6 group cursor-pointer"
+                    className="flex items-center gap-2 text-slate-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors mb-6 group cursor-pointer"
                 >
                     <HiOutlineArrowLeft className="text-lg group-hover:scale-110 transition-transform" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Return to Console</span>
                 </motion.button>
 
                 {/* Section Navigation Tabs */}
-                <div className="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800/80 backdrop-blur-md mb-8 w-fit max-w-full overflow-x-auto">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-900/80 p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 backdrop-blur-md mb-8 w-fit max-w-full overflow-x-auto shadow-sm">
                     <button
                         type="button"
                         onClick={() => handleTabChange('normal')}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                             activeTab === 'normal'
                                 ? 'bg-yellow-400 text-slate-950 shadow-md shadow-yellow-400/20'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                         }`}
                     >
                         <HiCpuChip className="text-base" />
@@ -112,7 +112,7 @@ function InterViewHistory() {
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                             activeTab === 'cross'
                                 ? 'bg-yellow-400 text-slate-950 shadow-md shadow-yellow-400/20'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                         }`}
                     >
                         <RiShieldFlashLine className="text-base text-current" />
@@ -120,7 +120,7 @@ function InterViewHistory() {
                         <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-widest ${
                             activeTab === 'cross'
                                 ? 'bg-slate-950 text-yellow-400'
-                                : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20'
+                                : 'bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 border border-yellow-400/20'
                         }`}>
                             Probing
                         </span>
@@ -138,47 +138,47 @@ function InterViewHistory() {
                         <motion.div 
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
-                            className='flex items-center gap-2 text-yellow-400 mb-2'
+                            className='flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-2'
                         >
                             {activeTab === 'cross' ? <RiShieldFlashLine className='text-xl' /> : <HiCpuChip className='text-xl' />}
                             <span className='text-[10px] font-black uppercase tracking-[0.3em]'>
                                 {activeTab === 'cross' ? 'System Archive • Cross-Examination & Probing' : 'System Archive • Standard Interviews'}
                             </span>
                         </motion.div>
-                        <h1 className='text-4xl md:text-5xl font-black text-white tracking-tighter'>
+                        <h1 className='text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter'>
                             {activeTab === 'cross' ? (
-                                <>Cross-Exam <span className='text-yellow-400'>History</span></>
+                                <>Cross-Exam <span className='text-yellow-500 dark:text-yellow-400'>History</span></>
                             ) : (
-                                <>Interview <span className='text-yellow-400'>History</span></>
+                                <>Interview <span className='text-yellow-500 dark:text-yellow-400'>History</span></>
                             )}
                         </h1>
                     </div>
                     {!loading && (
-                        <p className='text-slate-500 text-sm font-medium'>
-                            Total Sessions Logged: <span className='text-white font-bold'>{interviews.length}</span>
+                        <p className='text-slate-500 dark:text-slate-400 text-sm font-medium'>
+                            Total Sessions Logged: <span className='text-slate-900 dark:text-white font-bold'>{interviews.length}</span>
                         </p>
                     )}
                 </header>
 
                 {/* Loading State */}
                 {loading ? (
-                    <div className="py-32 w-full flex flex-col items-center justify-center gap-4 bg-slate-900/20 rounded-3xl border border-slate-800/50">
+                    <div className="py-32 w-full flex flex-col items-center justify-center gap-4 bg-white dark:bg-slate-900/40 rounded-3xl border border-slate-200 dark:border-slate-800/50 shadow-sm">
                         <motion.div 
                             animate={{ rotate: 360 }}
                             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                             className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full"
                         />
-                        <p className="text-yellow-400 font-black tracking-widest text-[10px] uppercase">
+                        <p className="text-yellow-600 dark:text-yellow-400 font-black tracking-widest text-[10px] uppercase">
                             Retrieving {activeTab === 'cross' ? 'Cross-Examination' : 'Standard'} Data...
                         </p>
                     </div>
                 ) : error ? (
-                    <div className="text-center py-20 px-6 bg-red-950/20 rounded-3xl border border-red-900/40">
-                        <p className="text-red-400 font-bold mb-4">{error}</p>
+                    <div className="text-center py-20 px-6 bg-red-50 dark:bg-red-950/20 rounded-3xl border border-red-200 dark:border-red-900/40">
+                        <p className="text-red-600 dark:text-red-400 font-bold mb-4">{error}</p>
                         <button
                             type="button"
                             onClick={() => handleTabChange(activeTab)}
-                            className="px-6 py-2.5 bg-yellow-400 text-slate-950 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                            className="px-6 py-2.5 bg-yellow-400 text-slate-950 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform cursor-pointer"
                         >
                             Retry
                         </button>
@@ -191,13 +191,13 @@ function InterViewHistory() {
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
-                                className="text-center py-28 px-6 bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-800"
+                                className="text-center py-28 px-6 bg-white dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800 shadow-sm"
                             >
                                 {activeTab === 'cross' ? (
                                     <>
-                                        <RiShieldFlashLine className='text-6xl text-slate-700 mx-auto mb-4' />
-                                        <h3 className="text-white font-bold text-lg mb-1">No cross-examination records found</h3>
-                                        <p className="text-slate-500 text-sm max-w-md mx-auto">
+                                        <RiShieldFlashLine className='text-6xl text-slate-400 dark:text-slate-700 mx-auto mb-4' />
+                                        <h3 className="text-slate-900 dark:text-white font-bold text-lg mb-1">No cross-examination records found</h3>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">
                                             Interviews started with &quot;Enable cross-questioning&quot; enabled appear here with deep-dive probing logs.
                                         </p>
                                         <button 
@@ -210,9 +210,9 @@ function InterViewHistory() {
                                     </>
                                 ) : (
                                     <>
-                                        <HiMagnifyingGlass className='text-6xl text-slate-700 mx-auto mb-4' />
-                                        <h3 className="text-white font-bold text-lg mb-1">No standard session records found</h3>
-                                        <p className="text-slate-500 text-sm max-w-md mx-auto">
+                                        <HiMagnifyingGlass className='text-6xl text-slate-400 dark:text-slate-700 mx-auto mb-4' />
+                                        <h3 className="text-slate-900 dark:text-white font-bold text-lg mb-1">No standard session records found</h3>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">
                                             Standard interview sessions without adaptive cross-questioning appear here.
                                         </p>
                                         <button 
@@ -237,7 +237,7 @@ function InterViewHistory() {
                                     <motion.div 
                                         variants={cardVars}
                                         key={item._id}
-                                        whileHover={{ x: 10, backgroundColor: "rgba(30, 41, 59, 0.8)" }}
+                                        whileHover={{ x: 10 }}
                                         onClick={() => {
                                             if (item.sessionType === 'dedicated_cross_exam' || item.isDedicatedCrossExam) {
                                                 navigate(`/cross-examination/${item.sessionId || item._id}`);
@@ -245,34 +245,34 @@ function InterViewHistory() {
                                                 navigate(`/report/${item._id}`);
                                             }
                                         }}
-                                        className='group relative bg-slate-900/40 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-800 hover:border-yellow-400/50 cursor-pointer transition-all duration-300'
+                                        className='group relative bg-white dark:bg-slate-900/40 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-yellow-400/70 dark:hover:border-yellow-400/50 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md'
                                     >
                                         <div className='absolute inset-0 bg-yellow-400/5 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity pointer-events-none' />
                                         
                                         <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10'>
                                             <div className='flex flex-col gap-2.5'>
                                                 <div className='flex flex-wrap items-center gap-2.5'>
-                                                    <h3 className='font-black text-white text-xl md:text-2xl uppercase tracking-tighter group-hover:text-yellow-400 transition-colors'>
+                                                    <h3 className='font-black text-slate-900 dark:text-white text-xl md:text-2xl uppercase tracking-tighter group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors'>
                                                         {item.role}
                                                     </h3>
                                                     <span className={`px-3 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
-                                                        item.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                                        item.status === 'Completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-500 dark:border-emerald-500/20' : 'bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-500 dark:border-yellow-500/20'
                                                     }`}>
                                                         {item.status || 'Completed'}
                                                     </span>
 
                                                     {item.enableCrossQuestioning && (
-                                                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-yellow-400/10 text-yellow-400 border border-yellow-400/30">
+                                                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-yellow-100 text-yellow-900 border border-yellow-300 dark:bg-yellow-400/10 dark:text-yellow-400 dark:border-yellow-400/30">
                                                             <RiShieldFlashLine className="text-[10px]" />
                                                             <span>Cross-Exam ({item.crossQuestioningType || (item.isDedicatedCrossExam ? 'Dedicated' : 'Technical')})</span>
                                                         </span>
                                                     )}
                                                 </div>
                                                 
-                                                <div className='flex flex-wrap items-center gap-4 text-slate-500'>
+                                                <div className='flex flex-wrap items-center gap-4 text-slate-500 dark:text-slate-400'>
                                                     {item.experience && (
                                                         <div className='flex items-center gap-1.5'>
-                                                            <span className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>{item.experience}</span>
+                                                            <span className='text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400'>{item.experience}</span>
                                                         </div>
                                                     )}
                                                     <div className='flex items-center gap-1.5'>
@@ -281,7 +281,7 @@ function InterViewHistory() {
                                                     </div>
                                                     {((item.totalQuestions > 0) || (Array.isArray(item.questions) && item.questions.length > 0)) && (
                                                         <div className='flex items-center gap-1.5'>
-                                                            <span className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>
+                                                            <span className='text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400'>
                                                                 {item.totalQuestions || item.questions.length} {(item.totalQuestions || item.questions.length) === 1 ? 'Question' : 'Questions'}
                                                             </span>
                                                         </div>
@@ -295,14 +295,14 @@ function InterViewHistory() {
                                                 </div>
                                             </div>
 
-                                            <div className='flex items-center gap-8 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-4 md:pt-0'>
+                                            <div className='flex items-center gap-8 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-200 dark:border-slate-800 pt-4 md:pt-0'>
                                                 <div className='text-left md:text-right'>
                                                     <div className='flex items-baseline md:justify-end gap-1'>
-                                                        <span className='text-3xl font-black text-white group-hover:text-yellow-400 transition-colors'>
+                                                        <span className='text-3xl font-black text-slate-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors'>
                                                             {typeof item.finalScore === 'number' ? item.finalScore : (item.status === 'Completed' ? '100' : '--')}
                                                         </span>
                                                         {typeof item.finalScore === 'number' && (
-                                                            <span className='text-sm font-black text-slate-600'>%</span>
+                                                            <span className='text-sm font-black text-slate-400 dark:text-slate-600'>%</span>
                                                         )}
                                                     </div>
                                                     <p className='text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1'>
@@ -310,8 +310,8 @@ function InterViewHistory() {
                                                     </p>
                                                 </div>
                                                 
-                                                <div className='w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:bg-yellow-400 transition-all duration-300 shadow-lg group-hover:shadow-yellow-400/20'>
-                                                    <HiChevronRight className='text-xl text-slate-400 group-hover:text-slate-950 transition-colors' />
+                                                <div className='w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-yellow-400 transition-all duration-300 shadow-sm group-hover:shadow-yellow-400/20'>
+                                                    <HiChevronRight className='text-xl text-slate-500 dark:text-slate-400 group-hover:text-slate-950 transition-colors' />
                                                 </div>
                                             </div>
                                         </div>
@@ -323,7 +323,7 @@ function InterViewHistory() {
                 )}
 
                 {/* Decorative background text */}
-                <div className='fixed -bottom-10 -left-10 text-[180px] font-black text-white/[0.02] pointer-events-none select-none uppercase tracking-tighter'>
+                <div className='fixed -bottom-10 -left-10 text-[180px] font-black text-slate-900/[0.03] dark:text-white/[0.02] pointer-events-none select-none uppercase tracking-tighter'>
                     Archive
                 </div>
             </div>
