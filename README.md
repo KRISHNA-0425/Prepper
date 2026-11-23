@@ -251,3 +251,135 @@ stateDiagram-v2
 To prevent AI hallucination during intense cross-examination, the evaluation engine enforces **transcript substring grounding**:
 - Every identified strength, technical gap, or inconsistency must cite verbatim substrings from the candidate's actual answers.
 - Any critique without direct textual evidence is pruned during schema sanitization.
+
+---
+
+## ⚡ Deep Dive: Module 3 — Adaptive Questioning & Real-Time Steering Engine
+
+### 3.1 Dynamic Difficulty Tiers
+Rather than delivering a static, predetermined list of questions, Prepper AI continuously evaluates candidate mastery after each answer and dynamically recalibrates the interview trajectory across three difficulty tiers:
+
+- **Beginner**: Foundational definitions, syntax, basic APIs, core patterns.
+- **Intermediate**: Real-world application, failure modes, trade-offs, standard architecture.
+- **Advanced**: Internal runtimes, concurrency hazards, distributed failure recovery, high-scale optimization.
+
+### 3.2 Streak Rules & State Transition Mechanics
+The difficulty engine (`adaptiveQuestion.service.js`) tracks consecutive score streaks:
+- **Promotion Threshold**: Two consecutive scores $\ge 80$ automatically elevate the interview to the next difficulty tier.
+- **Demotion Threshold**: Two consecutive scores $< 50$ lower the difficulty to provide scaffolded support and isolate specific knowledge gaps.
+- **Maintenance**: Mixed scores ($50 \le \text{Score} < 80$) sustain the current difficulty level while exploring adjacent technical domains.
+
+```mermaid
+flowchart TD
+    StartQ["Candidate Submits Answer"] --> Eval["Evaluate Answer Score (0-100)"]
+    Eval --> CheckStreak{"Score Streak Analysis"}
+
+    CheckStreak -->|Score >= 80 for 2 consecutive questions| LevelUp["Promote Tier: Beginner -> Intermediate -> Advanced"]
+    CheckStreak -->|Score < 50 for 2 consecutive questions| LevelDown["Demote Tier: Advanced -> Intermediate -> Beginner"]
+    CheckStreak -->|Mixed or Single Outlier| Maintain["Maintain Current Tier"]
+
+    LevelUp --> CheckLoop{"Anti-Loop Guard Check"}
+    LevelDown --> CheckLoop
+    Maintain --> CheckLoop
+
+    CheckLoop -->|Topic Explored >= 2 times| PivotTopic["Pivot to Untested Topic (Cool-Down Activated)"]
+    CheckLoop -->|Topic Explored < 2 times| KeepTopic["Deepen Current Topic or Steer to Sub-Topic"]
+
+    PivotTopic --> Formulate["Generate Contextual Transition Phrase & Next Question"]
+    KeepTopic --> Formulate
+
+    Formulate --> Emit["Send to Candidate with UI Transition Banner"]
+```
+
+### 3.3 Contextual Transition Phrases
+To make steering feel human and natural, the engine selects context-aware transition banners that display live in the candidate's UI:
+- *Level Up*: "Excellent depth on system boundaries! Let's elevate the challenge with an advanced architectural scenario."
+- *Scaffold Down*: "Let's pause and solidify the fundamental mechanics before moving to complex scaling scenarios."
+- *Pivot Topic*: "You've demonstrated consistent mastery here. Let's switch gears and explore concurrency and state synchronization."
+
+### 3.4 Grounded Topic Mastery & Section F Trajectory Report
+At the conclusion of the interview, the report generates **Section F: Adaptive Trajectory & Competency Insights**:
+- Visual question-by-question progression graph showing difficulty changes.
+- Topic mastery radar and weakness heat-map.
+- Full interviewer steering decision audit trail detailing why each question was selected.
+
+---
+
+## 💻 Deep Dive: Module 4 — Secure Isolated Live Coding Execution Engine
+
+### 4.1 Zero-Budget Architecture Constraint
+Module 4 was engineered under strict zero-cost constraints (₹0 infrastructure budget):
+- **No Docker containers** required in production.
+- **No virtual machines (VMs)**.
+- **No external paid execution APIs** (such as Judge0 cloud or RapidAPI).
+- **No separate microservices, Redis, or PostgreSQL instances**.
+- Everything runs seamlessly inside the existing Node.js + Express backend and host environment!
+
+### 4.2 Dynamic Language Registry & Discovery
+The backend dynamically checks host executable availability on startup (`languageRegistry.js`):
+
+| Language | Target Runtime | Command / Compiler Discovery | Sandboxed Execution File |
+| :--- | :--- | :--- | :--- |
+| **JavaScript** | Node.js | `node -v` | `solution.js` |
+| **Python** | Python 3 | `python --version` or `python3 --version` | `solution.py` |
+| **C++** | GCC (G++) | `g++ --version` | `solution.cpp` $\rightarrow$ `solution.exe` / `solution.out` |
+| **C** | GCC | `gcc --version` | `solution.c` $\rightarrow$ `solution.exe` / `solution.out` |
+| **Java** | OpenJDK | `javac -version` & `java -version` | `Main.java` $\rightarrow$ `Main.class` |
+| **TypeScript**| ts-node | `ts-node -v` | `solution.ts` |
+| **Go** | Go Compiler | `go version` | `solution.go` $\rightarrow$ `solution.exe` |
+
+### 4.3 Pluggable Provider Architecture & Fail-Closed Security
+Execution requests are routed through a provider abstraction (`executionAdapter.service.js`):
+1. **Local Provider (`local.provider.js`)**: Executes code on locally verified compilers in development.
+2. **Go-Judge / Piston Providers**: Ready for external workers if infrastructure becomes available.
+3. **Fail-Closed Production Guard**: In production, unverified or insecure local execution is strictly prohibited. If an execution backend is not safely provisioned, the endpoint fails closed with a controlled `HTTP 503 Service Unavailable`, masking all internal errors and keeping Monaco Editor functional for offline editing.
+
+```mermaid
+flowchart TD
+    Req["POST /api/coding/run or /run-tests or /submit"] --> AuthCheck["Auth & IDOR Verification"]
+    AuthCheck --> ValCheck["ExecutionValidator (Max 64KB, Valid Lang)"]
+    ValCheck --> ConcurrencyCheck{"Semaphore Limit (Max 3 Concurrent)"}
+    
+    ConcurrencyCheck -->|Busy| Reject503["HTTP 503: Execution Busy, Retry Later"]
+    ConcurrencyCheck -->|Slot Available| EnvCheck{"Environment Mode"}
+
+    EnvCheck -->|Production without isolate| FailClosed["Fail-Closed HTTP 503 (Safe Notice)"]
+    EnvCheck -->|Development / Local Provider| Dispatch["Dispatch to local.provider.js"]
+
+    Dispatch --> EphemeralDir["Create Temp Directory: /tmp/coding-exec-..."]
+    EphemeralDir --> WriteSrc["Write Solution Source Code & Input"]
+    WriteSrc --> IsolateEnv["Strip process.env (Remove Secrets, DB URIs)"]
+
+    IsolateEnv --> CompileStep{"Is Compiled Language (C++, C, Java)?"}
+    CompileStep -->|Yes| SpawnCompiler["Spawn Compiler with 5000ms Timeout"]
+    SpawnCompiler -->|Compilation Error| ReturnCompileErr["Capture stderr & Cleanup Files"]
+    SpawnCompiler -->|Success| SpawnRunner["Spawn Executable"]
+    CompileStep -->|No| SpawnRunner
+
+    SpawnRunner --> EnforceLimits["Enforce 5000ms Timeout & 64KB Max Output"]
+    EnforceLimits --> Cleanup["Guarantee Immediate Directory & Process Deletion"]
+    Cleanup --> FormatOutput["Mask Hidden Tests & Return Safe Verdict"]
+```
+
+### 4.4 Ephemeral Sandboxing & Security Boundaries
+Every code submission is isolated using defense-in-depth principles:
+- **Environment Sanitization**: Host `process.env` is stripped; sensitive tokens (MongoDB URIs, JWT secrets, Razorpay keys) are completely removed from child process environments.
+- **Filesystem Isolation**: Code runs inside an ephemeral, uniquely generated temporary directory (`crypto.randomUUID()`) that is automatically erased in a `finally` block even if the execution crashes.
+- **Resource Limits**:
+  - **Execution Timeout**: Hard kill after `5000ms` via `tree-kill` or process tree termination.
+  - **Output Cap**: Standard output and error streams are truncated at `64KB` (`MAX_OUTPUT_BYTES`) to prevent memory flood attacks.
+  - **Memory Limits**: V8 JavaScript execution enforces `--max-old-space-size=256` to kill memory bombs.
+- **Hidden Test Case Masking**: Visible sample test cases show inputs and expected outputs. Hidden benchmark test cases evaluate strictly server-side; candidate responses only receive pass/fail counts and verdicts (`Accepted`, `Wrong Answer`, `Time Limit Exceeded`, `Memory Limit Exceeded`), preventing test case leakage.
+
+### 4.5 Resizable Monaco Coding Workspace
+The frontend coding interface (`CodingWorkspace.jsx`) includes dynamic candidate layout controls:
+- **Horizontal Draggable Splitter**: Move between Problem Description and Editor with real-time percentage snapping.
+- **Vertical Draggable Splitter**: Resize between Monaco Editor and the Bottom Console Drawer.
+- **One-Click Drawer Collapse**: Fold the console down to 42px for unobstructed coding.
+- **Double-Click Reset**: Instant reset of dimensions to default proportions.
+- **`localStorage` Persistence**: Retains layout configurations across reloads.
+- **Transparent Drag Shield**: Prevents Monaco's iframe/canvas layer from capturing mouse events during drag.
+- **3 Execution Modes**:
+  1. *Run Code*: Executes against arbitrary candidate `stdin`.
+  2. *Run Sample Tests*: Tests code against visible example test cases.
+  3. *Submit Solution*: Evaluates all test cases (visible + hidden) and persists official submission record to MongoDB.
