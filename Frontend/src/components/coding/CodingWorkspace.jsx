@@ -17,18 +17,19 @@ import {
   HiDocumentText,
   HiShieldCheck,
   HiCodeBracket,
+  HiBeaker,
+  HiClock as HiHistory
 } from 'react-icons/hi2';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { backendServerUrl } from '../../App';
 
 export const SUPPORTED_LANGUAGES = [
-  { id: 63, name: 'JavaScript (Node.js)', slug: 'javascript', monacoLang: 'javascript' },
-  { id: 71, name: 'Python 3', slug: 'python', monacoLang: 'python' },
-  { id: 54, name: 'C++ (GCC)', slug: 'cpp', monacoLang: 'cpp' },
-  { id: 62, name: 'Java (OpenJDK)', slug: 'java', monacoLang: 'java' },
-  { id: 74, name: 'TypeScript', slug: 'typescript', monacoLang: 'typescript' },
-  { id: 60, name: 'Go', slug: 'go', monacoLang: 'go' },
+  { id: 1, name: 'C (GCC)', slug: 'c', monacoLang: 'c' },
+  { id: 2, name: 'C++ (G++)', slug: 'cpp', monacoLang: 'cpp' },
+  { id: 3, name: 'Python 3', slug: 'python', monacoLang: 'python' },
+  { id: 4, name: 'Java (OpenJDK)', slug: 'java', monacoLang: 'java' },
+  { id: 5, name: 'JavaScript (Node.js)', slug: 'javascript', monacoLang: 'javascript' },
 ];
 
 export default function CodingWorkspace({
@@ -42,7 +43,7 @@ export default function CodingWorkspace({
   const [activeProblemIdx, setActiveProblemIdx] = useState(currentProblemIndex);
   const [selectedLang, setSelectedLang] = useState(() => {
     const found = SUPPORTED_LANGUAGES.find((l) => l.slug === initialLanguage);
-    return found || SUPPORTED_LANGUAGES[0];
+    return found || SUPPORTED_LANGUAGES[4]; // Default JavaScript
   });
 
   const currentProblem = problems[activeProblemIdx] || null;
@@ -55,13 +56,16 @@ export default function CodingWorkspace({
 
   // Execution states
   const [isRunning, setIsRunning] = useState(false);
+  const [isRunningSamples, setIsRunningSamples] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('tests'); // 'tests' | 'console' | 'ai'
+  const [activeTab, setActiveTab] = useState('tests'); // 'tests' | 'console' | 'ai' | 'history'
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState(0);
 
-  // Results
+  // Results & History
   const [lastRunResults, setLastRunResults] = useState(null);
+  const [rawConsoleOutput, setRawConsoleOutput] = useState('');
   const [submissionHistory, setSubmissionHistory] = useState({});
+  const [pastSubmissionsList, setPastSubmissionsList] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const workspaceRef = useRef(null);
 
@@ -103,13 +107,13 @@ export default function CodingWorkspace({
     }
   };
 
-  // Run Code (Visible Tests Only - Zero Credits Charged)
+  // Mode 1: Run Code (Custom Input Execution - 0 Credits)
   const handleRunCode = async () => {
-    if (!currentProblem || isRunning || isSubmitting) return;
+    if (!currentProblem || isRunning || isRunningSamples || isSubmitting) return;
 
     setIsRunning(true);
-    setActiveTab('tests');
-    const toastId = toast.loading('Executing code in secure sandbox...');
+    setActiveTab('console');
+    const toastId = toast.loading('Running code with custom input...');
 
     try {
       const response = await axios.post(
@@ -117,10 +121,53 @@ export default function CodingWorkspace({
         {
           interviewId,
           problemIndex: activeProblemIdx,
-          languageId: selectedLang.id,
           language: selectedLang.slug,
           sourceCode: currentCode,
-          customInput: useCustomInput ? customInput : null,
+          customInput: customInput || '',
+        },
+        { withCredentials: true }
+      );
+
+      const data = response.data;
+      const combined = [
+        data.stdout ? `=== STDOUT ===\n${data.stdout}` : '',
+        data.stderr ? `=== STDERR ===\n${data.stderr}` : '',
+        data.compileOutput ? `=== COMPILATION ERROR ===\n${data.compileOutput}` : '',
+      ].filter(Boolean).join('\n\n') || '(No output produced)';
+
+      setRawConsoleOutput(combined);
+      toast.dismiss(toastId);
+      if (data.exitCode === 0) {
+        toast.success(`Executed successfully (${data.executionTimeMs}ms)`);
+      } else {
+        toast.error(`Execution failed with status: ${data.statusDescription}`);
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      const msg = err.response?.data?.message || err.message || 'Execution error';
+      toast.error(msg);
+      setRawConsoleOutput(`Execution Error:\n${msg}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Mode 2: Run Sample Tests (Visible Test Cases - 0 Credits)
+  const handleRunSampleTests = async () => {
+    if (!currentProblem || isRunning || isRunningSamples || isSubmitting) return;
+
+    setIsRunningSamples(true);
+    setActiveTab('tests');
+    const toastId = toast.loading('Running visible sample test cases...');
+
+    try {
+      const response = await axios.post(
+        `${backendServerUrl}/api/coding/sample-tests`,
+        {
+          interviewId,
+          problemIndex: activeProblemIdx,
+          language: selectedLang.slug,
+          sourceCode: currentCode,
         },
         { withCredentials: true }
       );
@@ -128,13 +175,13 @@ export default function CodingWorkspace({
       setLastRunResults(response.data);
       toast.dismiss(toastId);
       if (response.data.allPassed) {
-        toast.success(`Passed all ${response.data.totalCount} visible test cases!`);
+        toast.success(`Passed all ${response.data.totalCount} sample test cases!`);
       } else {
-        toast.error(`Passed ${response.data.passedCount}/${response.data.totalCount} test cases`);
+        toast.error(`Passed ${response.data.passedCount}/${response.data.totalCount} sample test cases`);
       }
     } catch (err) {
       toast.dismiss(toastId);
-      const msg = err.response?.data?.message || err.message || 'Execution error';
+      const msg = err.response?.data?.message || err.message || 'Sample test execution error';
       toast.error(msg);
       setLastRunResults({
         passedCount: 0,
@@ -144,27 +191,27 @@ export default function CodingWorkspace({
           {
             testCaseIndex: 1,
             passed: false,
-            input: customInput || 'Default visible test',
+            input: 'Sample Test',
             expectedOutput: 'Valid execution',
             actualOutput: '',
             stderr: msg,
             error: msg,
-            statusDescription: 'Compilation / Runtime Error',
+            statusDescription: 'Execution Error',
           },
         ],
       });
     } finally {
-      setIsRunning(false);
+      setIsRunningSamples(false);
     }
   };
 
-  // Submit Solution (Visible + Hidden Tests + AI Evaluation)
+  // Mode 3: Submit Solution (Full evaluation against hidden test cases + AI Review)
   const handleFinalSubmit = async () => {
-    if (!currentProblem || isRunning || isSubmitting) return;
+    if (!currentProblem || isRunning || isRunningSamples || isSubmitting) return;
 
     setIsSubmitting(true);
     setActiveTab('ai');
-    const toastId = toast.loading('Running full test suite & AI evaluation...');
+    const toastId = toast.loading('Evaluating against full test suite & generating AI review...');
 
     try {
       const response = await axios.post(
@@ -172,7 +219,6 @@ export default function CodingWorkspace({
         {
           interviewId,
           problemIndex: activeProblemIdx,
-          languageId: selectedLang.id,
           language: selectedLang.slug,
           sourceCode: currentCode,
           candidateExplanation,
@@ -185,19 +231,33 @@ export default function CodingWorkspace({
         ...prev,
         [activeProblemIdx]: subData,
       }));
+      setPastSubmissionsList((prev) => [
+        {
+          id: subData.submissionId,
+          problemIndex: activeProblemIdx,
+          language: selectedLang.name,
+          verdict: subData.verdict,
+          passed: `${subData.passedCount}/${subData.totalCount}`,
+          time: new Date().toLocaleTimeString(),
+        },
+        ...prev,
+      ]);
+
       setLastRunResults({
-        passedCount: subData.passedTestCases,
-        totalCount: subData.totalTestCases,
+        passedCount: subData.passedCount,
+        totalCount: subData.totalCount,
         allPassed: subData.allPassed,
         results: subData.testResults,
-        maxTimeMs: subData.overallExecutionTimeMs,
-        maxMemoryKb: subData.overallMemoryKb,
+        maxTimeMs: subData.maxTimeMs,
+        maxMemoryKb: subData.maxMemoryKb,
       });
 
       toast.dismiss(toastId);
-      toast.success(
-        `Problem ${activeProblemIdx + 1} submitted! Pass rate: ${subData.passedTestCases}/${subData.totalTestCases}`
-      );
+      if (subData.allPassed) {
+        toast.success(`Verdict: ${subData.verdict}! All test cases passed.`);
+      } else {
+        toast.error(`Verdict: ${subData.verdict} (${subData.passedCount}/${subData.totalCount} passed)`);
+      }
     } catch (err) {
       toast.dismiss(toastId);
       const msg = err.response?.data?.message || err.message || 'Submission error';
@@ -250,7 +310,7 @@ export default function CodingWorkspace({
               const lang = SUPPORTED_LANGUAGES.find((l) => l.slug === e.target.value);
               if (lang) setSelectedLang(lang);
             }}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-medium"
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-medium cursor-pointer"
           >
             {SUPPORTED_LANGUAGES.map((lang) => (
               <option key={lang.id} value={lang.slug}>
@@ -262,7 +322,7 @@ export default function CodingWorkspace({
           {/* Reset Code */}
           <button
             onClick={handleResetCode}
-            title="Reset code to template"
+            title="Reset code to default template"
             className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
           >
             <HiArrowPath className="w-4 h-4" />
@@ -386,7 +446,7 @@ export default function CodingWorkspace({
         {/* Right Panel: Editor & Execution Console (col-span-7) */}
         <div className="lg:col-span-7 flex flex-col bg-slate-950 min-h-0 overflow-hidden">
           {/* Monaco Editor Container */}
-          <div className="flex-1 min-h-[300px] lg:min-h-[380px] relative">
+          <div className="flex-1 min-h-[300px] lg:min-h-[360px] relative">
             <Editor
               height="100%"
               theme="vs-dark"
@@ -407,7 +467,24 @@ export default function CodingWorkspace({
             />
           </div>
 
-          {/* Action Ribbon: Custom Input toggle & Run / Submit Buttons */}
+          {/* Custom Input Drawer when toggled */}
+          {useCustomInput && (
+            <div className="bg-slate-900/90 border-t border-slate-800 p-2.5 space-y-1">
+              <label className="text-[11px] font-bold uppercase text-slate-400 flex items-center justify-between">
+                <span>Standard Input (stdin):</span>
+                <span className="text-[10px] text-slate-500 lowercase">passed to program standard input</span>
+              </label>
+              <textarea
+                rows={2}
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Enter input parameters..."
+                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs font-mono text-slate-200 outline-none focus:border-cyan-500 resize-none"
+              />
+            </div>
+          )}
+
+          {/* Action Ribbon: Custom Input toggle & 3 Execution Buttons */}
           <div className="h-14 bg-slate-900/90 border-t border-b border-slate-800 px-4 flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
               <input
@@ -419,20 +496,32 @@ export default function CodingWorkspace({
               <span>Custom Input</span>
             </label>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              {/* Mode 1: Run Code */}
               <button
                 onClick={handleRunCode}
-                disabled={isRunning || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-50 text-cyan-400 font-semibold text-xs rounded-lg border border-slate-700 transition"
+                disabled={isRunning || isRunningSamples || isSubmitting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-50 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition"
               >
-                <HiPlay className="w-3.5 h-3.5" />
+                <HiPlay className="w-3.5 h-3.5 text-cyan-400" />
                 {isRunning ? 'Running...' : 'Run Code'}
               </button>
 
+              {/* Mode 2: Run Sample Tests */}
+              <button
+                onClick={handleRunSampleTests}
+                disabled={isRunning || isRunningSamples || isSubmitting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/80 active:bg-cyan-800 disabled:opacity-50 text-cyan-300 font-semibold text-xs rounded-lg transition"
+              >
+                <HiBeaker className="w-3.5 h-3.5 text-cyan-400" />
+                {isRunningSamples ? 'Testing...' : 'Run Sample Tests'}
+              </button>
+
+              {/* Mode 3: Submit Solution */}
               <button
                 onClick={handleFinalSubmit}
-                disabled={isRunning || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-emerald-900/20 transition"
+                disabled={isRunning || isRunningSamples || isSubmitting}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-emerald-900/20 transition"
               >
                 <HiCheckCircle className="w-3.5 h-3.5" />
                 {isSubmitting ? 'Evaluating...' : 'Submit Solution'}
@@ -483,6 +572,18 @@ export default function CodingWorkspace({
                     <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
                   )}
                 </button>
+
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className={`py-2.5 border-b-2 font-medium flex items-center gap-1.5 transition ${
+                    activeTab === 'history'
+                      ? 'border-amber-400 text-amber-400'
+                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <HiHistory className="w-3.5 h-3.5" />
+                  Submissions ({pastSubmissionsList.length})
+                </button>
               </div>
 
               {lastRunResults && (
@@ -499,177 +600,217 @@ export default function CodingWorkspace({
               )}
             </div>
 
-            {/* Tab Body */}
-            <div className="flex-1 p-4 overflow-y-auto text-xs font-mono">
+            {/* Drawer Body Container */}
+            <div className="flex-1 overflow-y-auto p-4 text-xs">
               {/* Tab 1: Test Cases */}
               {activeTab === 'tests' && (
                 <div className="space-y-3">
-                  {useCustomInput ? (
-                    <div className="space-y-2">
-                      <div className="text-slate-400 text-[11px]">Custom Standard Input (stdin):</div>
-                      <textarea
-                        value={customInput}
-                        onChange={(e) => setCustomInput(e.target.value)}
-                        placeholder="Enter custom input to feed standard input..."
-                        className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      {/* Pills for each test case */}
-                      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                        {(lastRunResults?.results || currentProblem?.visibleTestCases || []).map(
-                          (item, idx) => {
-                            const passed = item.passed;
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => setActiveTestCaseIdx(idx)}
-                                className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
-                                  activeTestCaseIdx === idx
-                                    ? 'bg-slate-800 text-white border border-slate-700'
-                                    : 'bg-slate-950 text-slate-400 hover:bg-slate-800/60'
-                                }`}
-                              >
-                                {passed === true && (
-                                  <HiCheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                                )}
-                                {passed === false && (
-                                  <HiXCircle className="w-3.5 h-3.5 text-rose-400" />
-                                )}
-                                <span>{item.isHidden ? `Hidden #${idx + 1}` : `Case #${idx + 1}`}</span>
-                              </button>
-                            );
-                          }
-                        )}
+                  {lastRunResults?.results ? (
+                    <div>
+                      {/* Test case tabs header */}
+                      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+                        {lastRunResults.results.map((res, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setActiveTestCaseIdx(i)}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs transition ${
+                              activeTestCaseIdx === i
+                                ? res.passed
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                  : 'bg-rose-950 text-rose-400 border border-rose-800'
+                                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {res.passed ? (
+                              <HiCheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <HiXCircle className="w-3.5 h-3.5 text-rose-400" />
+                            )}
+                            Case {i + 1}
+                            {res.isHidden && (
+                              <span className="text-[10px] opacity-75 font-sans">(Hidden)</span>
+                            )}
+                          </button>
+                        ))}
                       </div>
 
                       {/* Active Test Case Detail */}
-                      {(() => {
-                        const activeItem =
-                          lastRunResults?.results?.[activeTestCaseIdx] ||
-                          currentProblem?.visibleTestCases?.[activeTestCaseIdx] ||
-                          null;
-
-                        if (!activeItem) {
-                          return (
-                            <div className="text-slate-500 py-6 text-center">
-                              Click "Run Code" to execute test cases.
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div className="space-y-2 bg-slate-950/70 p-3 rounded-lg border border-slate-800">
-                            <div>
-                              <div className="text-slate-500 text-[11px]">Input:</div>
-                              <pre className="text-slate-200 mt-0.5 whitespace-pre-wrap">
-                                {activeItem.input || '(empty)'}
-                              </pre>
-                            </div>
-
-                            <div>
-                              <div className="text-slate-500 text-[11px]">Expected Output:</div>
-                              <pre className="text-emerald-400 mt-0.5 whitespace-pre-wrap">
-                                {activeItem.expectedOutput || '(empty)'}
-                              </pre>
-                            </div>
-
-                            {activeItem.actualOutput !== undefined && (
-                              <div>
-                                <div className="text-slate-500 text-[11px]">Your Output:</div>
-                                <pre
-                                  className={`mt-0.5 whitespace-pre-wrap ${
-                                    activeItem.passed ? 'text-emerald-400' : 'text-rose-400'
-                                  }`}
-                                >
-                                  {activeItem.actualOutput || activeItem.stdout || '(no output)'}
-                                </pre>
-                              </div>
-                            )}
-
-                            {activeItem.error && (
-                              <div>
-                                <div className="text-rose-500 text-[11px]">Execution Error:</div>
-                                <pre className="text-rose-400 mt-0.5 whitespace-pre-wrap">
-                                  {activeItem.error}
-                                </pre>
-                              </div>
-                            )}
+                      {lastRunResults.results[activeTestCaseIdx] && (
+                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 space-y-2 font-mono">
+                          <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-900">
+                            <span
+                              className={`font-semibold ${
+                                lastRunResults.results[activeTestCaseIdx].passed
+                                  ? 'text-emerald-400'
+                                  : 'text-rose-400'
+                              }`}
+                            >
+                              Status: {lastRunResults.results[activeTestCaseIdx].statusDescription}
+                            </span>
+                            <span className="text-slate-500 font-sans text-[11px]">
+                              Runtime: {lastRunResults.results[activeTestCaseIdx].executionTimeMs || 0}ms
+                            </span>
                           </div>
-                        );
-                      })()}
-                    </>
+
+                          <div>
+                            <span className="text-slate-500 block text-[10px] uppercase font-sans">Input:</span>
+                            <pre className="text-slate-300 whitespace-pre-wrap">
+                              {lastRunResults.results[activeTestCaseIdx].input || '(empty)'}
+                            </pre>
+                          </div>
+
+                          <div>
+                            <span className="text-slate-500 block text-[10px] uppercase font-sans">Expected Output:</span>
+                            <pre className="text-emerald-400 whitespace-pre-wrap">
+                              {lastRunResults.results[activeTestCaseIdx].expectedOutput || '(empty)'}
+                            </pre>
+                          </div>
+
+                          <div>
+                            <span className="text-slate-500 block text-[10px] uppercase font-sans">Actual Output:</span>
+                            <pre
+                              className={`whitespace-pre-wrap ${
+                                lastRunResults.results[activeTestCaseIdx].passed
+                                  ? 'text-emerald-300'
+                                  : 'text-rose-400'
+                              }`}
+                            >
+                              {lastRunResults.results[activeTestCaseIdx].actualOutput || '(empty)'}
+                            </pre>
+                          </div>
+
+                          {lastRunResults.results[activeTestCaseIdx].error && (
+                            <div className="pt-1">
+                              <span className="text-rose-400 block text-[10px] uppercase font-sans">Error Output:</span>
+                              <pre className="text-rose-300 text-[11px] whitespace-pre-wrap">
+                                {lastRunResults.results[activeTestCaseIdx].error}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500 space-y-1">
+                      <p>Run code or sample tests to view evaluation results.</p>
+                      <p className="text-[11px] text-slate-600">
+                        Supports C, C++, Python, Java, and JavaScript with 0 credit deduction for runs.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
 
               {/* Tab 2: Console Output */}
               {activeTab === 'console' && (
-                <div className="space-y-3">
-                  <div className="text-slate-400 text-[11px]">Standard Output / Compiler Diagnostic:</div>
-                  <pre className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 whitespace-pre-wrap">
-                    {lastRunResults?.results?.map((r) => r.stdout || r.stderr).filter(Boolean).join('\n') ||
-                      'No console output captured yet.'}
-                  </pre>
+                <div className="font-mono text-xs bg-slate-950 p-3 rounded-lg border border-slate-800 min-h-[160px] whitespace-pre-wrap">
+                  {rawConsoleOutput ? (
+                    <span className="text-slate-300">{rawConsoleOutput}</span>
+                  ) : (
+                    <span className="text-slate-600 italic">No output yet. Click 'Run Code' to execute.</span>
+                  )}
                 </div>
               )}
 
-              {/* Tab 3: AI Evaluation */}
+              {/* Tab 3: AI Code Evaluation */}
               {activeTab === 'ai' && (
                 <div>
-                  {!currentSubmission ? (
-                    <div className="text-center py-6 text-slate-400 space-y-2">
-                      <HiSparkles className="w-8 h-8 text-purple-400 mx-auto opacity-60" />
-                      <div>Submit your final solution to receive AI technical evaluation.</div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 font-sans">
+                  {currentSubmission?.aiEvaluation ? (
+                    <div className="space-y-4">
+                      {/* Metric Badges */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-center">
-                          <div className="text-[11px] text-slate-400">Score</div>
-                          <div className="text-lg font-bold text-cyan-400">
-                            {currentSubmission.evaluation?.score || 0}%
-                          </div>
+                        <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-500 uppercase block">Score</span>
+                          <span className="text-lg font-bold text-purple-400">
+                            {currentSubmission.aiEvaluation.score}/100
+                          </span>
                         </div>
-
-                        <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-center">
-                          <div className="text-[11px] text-slate-400">Time Complexity</div>
-                          <div className="text-sm font-semibold text-purple-400">
-                            {currentSubmission.evaluation?.timeComplexity || 'O(n)'}
-                          </div>
+                        <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-500 uppercase block">Correctness</span>
+                          <span className="text-lg font-bold text-emerald-400">
+                            {currentSubmission.aiEvaluation.correctness}/100
+                          </span>
                         </div>
-
-                        <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-center">
-                          <div className="text-[11px] text-slate-400">Space Complexity</div>
-                          <div className="text-sm font-semibold text-indigo-400">
-                            {currentSubmission.evaluation?.spaceComplexity || 'O(1)'}
-                          </div>
+                        <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-500 uppercase block">Time Complexity</span>
+                          <span className="text-sm font-bold text-cyan-400">
+                            {currentSubmission.aiEvaluation.timeComplexity}
+                          </span>
                         </div>
-
-                        <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-center">
-                          <div className="text-[11px] text-slate-400">Test Cases</div>
-                          <div className="text-sm font-semibold text-emerald-400">
-                            {currentSubmission.passedTestCases}/{currentSubmission.totalTestCases}
-                          </div>
+                        <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-500 uppercase block">Space Complexity</span>
+                          <span className="text-sm font-bold text-cyan-400">
+                            {currentSubmission.aiEvaluation.spaceComplexity}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300">
-                        <span className="font-semibold text-purple-400">Interviewer Summary: </span>
-                        {currentSubmission.evaluation?.overallFeedback || 'Solution verified.'}
-                      </div>
+                      {/* Feedback Text */}
+                      {currentSubmission.aiEvaluation.overallFeedback && (
+                        <div className="p-3 bg-purple-950/20 border border-purple-800/40 rounded-lg">
+                          <span className="text-xs font-semibold text-purple-300 block mb-1">
+                            Interviewer Analysis
+                          </span>
+                          <p className="text-slate-300 text-xs leading-relaxed">
+                            {currentSubmission.aiEvaluation.overallFeedback}
+                          </p>
+                        </div>
+                      )}
 
-                      {currentSubmission.evaluation?.suggestions?.length > 0 && (
-                        <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs space-y-1">
-                          <div className="font-semibold text-cyan-400">Optimization Suggestions:</div>
-                          <ul className="list-disc list-inside space-y-0.5 text-slate-300">
-                            {currentSubmission.evaluation.suggestions.map((s, idx) => (
-                              <li key={idx}>{s}</li>
+                      {/* Suggestions */}
+                      {currentSubmission.aiEvaluation.suggestions?.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-xs font-semibold text-slate-400 block">
+                            Optimization Suggestions:
+                          </span>
+                          <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs">
+                            {currentSubmission.aiEvaluation.suggestions.map((s, i) => (
+                              <li key={i}>{s}</li>
                             ))}
                           </ul>
                         </div>
                       )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500 space-y-1">
+                      <p>Submit your solution to receive AI technical evaluation.</p>
+                      <p className="text-[11px] text-slate-600">
+                        Evaluates algorithmic Big-O complexity, correctness, and code readability.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 4: Submissions History */}
+              {activeTab === 'history' && (
+                <div className="space-y-2">
+                  {pastSubmissionsList.length > 0 ? (
+                    <div className="divide-y divide-slate-800">
+                      {pastSubmissionsList.map((sub, i) => (
+                        <div key={i} className="py-2.5 flex items-center justify-between font-mono text-xs">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                sub.verdict === 'Accepted'
+                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                  : 'bg-rose-950 text-rose-400 border border-rose-800'
+                              }`}
+                            >
+                              {sub.verdict}
+                            </span>
+                            <span className="text-slate-300 font-sans">{sub.language}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-slate-400">
+                            <span>Passed: {sub.passed}</span>
+                            <span className="text-[11px] text-slate-500">{sub.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      No submissions recorded for this problem yet.
                     </div>
                   )}
                 </div>

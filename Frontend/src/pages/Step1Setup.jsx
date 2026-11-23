@@ -382,12 +382,11 @@ function Step1Setup({ onStart }) {
                                                     onChange={(e) => setCodingLanguage(e.target.value)}
                                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-medium"
                                                 >
-                                                    <option value="javascript">JavaScript (Node.js)</option>
+                                                    <option value="c">C (GCC)</option>
+                                                    <option value="cpp">C++ (G++)</option>
                                                     <option value="python">Python 3</option>
-                                                    <option value="cpp">C++ (GCC)</option>
                                                     <option value="java">Java (OpenJDK)</option>
-                                                    <option value="typescript">TypeScript</option>
-                                                    <option value="go">Go</option>
+                                                    <option value="javascript">JavaScript (Node.js)</option>
                                                 </select>
                                             </div>
                                             <div>
