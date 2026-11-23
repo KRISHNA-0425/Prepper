@@ -476,8 +476,216 @@ function Step3Report({ report }) {
           )}
         </section>
 
-        
+        {/* SECTION D: Actionable Study Recommendations & Technical Gap Roadmap */}
+        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
+            <HiOutlineLightBulb className="text-yellow-400 text-xl" />
+            <h3 className="text-lg font-black text-white uppercase tracking-tight">
+              Actionable Study Recommendations
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {(analytics?.studyRecommendations || []).map((rec, i) => (
+              <div
+                key={i}
+                className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex items-start gap-3"
+              >
+                <div className="w-6 h-6 rounded-lg bg-yellow-400/20 text-yellow-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  {i + 1}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-medium">{rec}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION E: Question-Wise Deep Dive with Expandable Evidence Inspector */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-2">
+              <HiSparkles className="text-yellow-400" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-300">
+                Question-Wise Analysis ({report.questions?.length || 0})
+              </h3>
+            </div>
+          </div>
+
+          {/* Efficiency Bar Chart per Question */}
+          <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 mb-6">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
+              Efficiency per Question
+            </h4>
+            <div className="h-44 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} />
+                  <YAxis domain={[0, 10]} hide />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', fontSize: '12px', color: '#fff' }}
+                    itemStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
+                  />
+                  <Bar dataKey="score" radius={[8, 8, 8, 8]} barSize={36}>
+                    {barData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.score >= 7 ? '#34d399' : entry.score >= 4 ? '#fbbf24' : '#ef4444'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Question List Cards */}
+          <div className="space-y-4">
+            {report.questions?.map((q, index) => {
+              const isExpanded = Boolean(expandedQuestions[index]);
+              const ev = q.evidenceEvaluation;
+              const qScore = Number(q.score) || 0;
+
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-slate-900/40 border border-slate-800 hover:border-slate-700/80 rounded-3xl p-6 sm:p-7 transition-all space-y-4 shadow-sm"
+                >
+                  {/* Card Header */}
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex gap-3 sm:gap-4 items-start">
+                      <span className="text-yellow-400 font-black text-lg sm:text-xl italic shrink-0">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <div>
+                        <h4 className="text-slate-100 font-bold text-base sm:text-lg leading-snug">
+                          {q.question}
+                        </h4>
+                        {ev?.category && (
+                          <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/50">
+                            Category: {ev.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-2xl">
+                      <span className="text-xl sm:text-2xl font-black text-white">{qScore}</span>
+                      <span className="text-slate-500 font-bold text-xs">/10</span>
+                    </div>
+                  </div>
+
+                  {/* Candidate Transcript */}
+                  <div className="bg-slate-950/60 rounded-2xl p-4 border-l-4 border-slate-600">
+                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase mb-1.5 tracking-wider">
+                      <HiUserCircle className="text-sm" /> Candidate Transcript
+                    </div>
+                    <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed italic">
+                      {q.answer ? `"${q.answer}"` : 'No response recorded.'}
+                    </p>
+                  </div>
+
+                  {/* AI Feedback & Quick Diagnostics */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5">
+                      <div className="flex items-center gap-1.5 text-yellow-400 text-[10px] font-black uppercase mb-2 tracking-wider">
+                        <HiChatBubbleLeftRight className="text-sm" /> Evaluator Feedback
+                      </div>
+                      <p className="text-slate-300 text-xs leading-relaxed italic">
+                        "{q.feedback || ev?.summaryFeedback || 'Evaluation recorded.'}"
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5 flex flex-col justify-center">
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase mb-2 tracking-wider">
+                        <HiOutlineCheckCircle className="text-sm" /> Dimension Snapshot
+                      </div>
+                      <div className="grid grid-cols-3 text-center gap-2">
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase">Accuracy</p>
+                          <p className="text-sm text-white font-black">{q.correctness || qScore}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase">Comms</p>
+                          <p className="text-sm text-white font-black">{q.communication || qScore}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase">Confidence</p>
+                          <p className="text-sm text-white font-black">
+                            {ev?.evaluationConfidence ? `${Math.round(ev.evaluationConfidence * 100)}%` : `${q.confidence || 7}/10`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expandable Evidence Inspector Button */}
+                  {ev && Array.isArray(ev.criteria) && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleQuestion(index)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 text-xs font-bold text-slate-300 hover:text-yellow-400 transition-colors flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <HiOutlineInformationCircle className="text-yellow-400 text-sm" />
+                          {isExpanded ? 'Hide Evidence Breakdown' : 'Explore Supporting Answer Evidence'}
+                        </span>
+                        {isExpanded ? <HiOutlineChevronUp /> : <HiOutlineChevronDown />}
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="mt-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-4"
+                          >
+                            <h5 className="text-xs font-black uppercase tracking-wider text-yellow-400">
+                              Criterion Evidence & Citations
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {ev.criteria.map((c, cIdx) => (
+                                <div key={cIdx} className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-200">{c.name}</span>
+                                    <span className="text-xs font-mono font-bold text-yellow-400">{c.score}/10</span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400">{c.reasoning}</p>
+
+                                  {Array.isArray(c.evidence) && c.evidence.length > 0 && (
+                                    <div className="space-y-1.5 pt-1">
+                                      {c.evidence.map((eItem, eIdx) => (
+                                        <div key={eIdx} className="text-[10px] bg-slate-950 p-2 rounded-lg border-l-2 border-emerald-400">
+                                          {eItem.text && (
+                                            <p className="font-mono text-slate-300 italic mb-0.5">"{eItem.text}"</p>
+                                          )}
+                                          <p className="text-slate-400">{eItem.explanation}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
+
 export default Step3Report;
