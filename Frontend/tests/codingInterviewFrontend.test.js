@@ -190,4 +190,42 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
       );
     });
   });
+
+  // =========================================================================
+  // 6. Fully Resizable Workspace Panels & Splitters
+  // =========================================================================
+  describe('6. Fully Resizable Workspace Panels & Splitters', () => {
+    it('should provide horizontal draggable splitter to resize problem and editor panels', () => {
+      assert.ok(
+        workspaceCode.includes('cursor-col-resize') && workspaceCode.includes('leftPanelPercent'),
+        'CodingWorkspace must provide horizontal draggable splitter with cursor-col-resize and leftPanelPercent state'
+      );
+      assert.ok(
+        workspaceCode.includes('prepper_coding_left_panel_width'),
+        'Must persist candidate custom left panel width to localStorage'
+      );
+    });
+
+    it('should provide vertical draggable splitter to resize Monaco editor and console drawer', () => {
+      assert.ok(
+        workspaceCode.includes('cursor-row-resize') && workspaceCode.includes('drawerHeight'),
+        'CodingWorkspace must provide vertical draggable splitter with cursor-row-resize and drawerHeight state'
+      );
+      assert.ok(
+        workspaceCode.includes('prepper_coding_drawer_height'),
+        'Must persist candidate custom console drawer height to localStorage'
+      );
+    });
+
+    it('should support double-click to reset panels and drawer collapse toggle', () => {
+      assert.ok(
+        workspaceCode.includes('onDoubleClick') && workspaceCode.includes('setLeftPanelPercent(42)'),
+        'Must support double-click to reset panel split to default 42%'
+      );
+      assert.ok(
+        workspaceCode.includes('isDrawerCollapsed'),
+        'Must support collapsing and expanding the bottom console drawer'
+      );
+    });
+  });
 });

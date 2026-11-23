@@ -18,6 +18,10 @@ import {
   HiShieldCheck,
   HiCodeBracket,
   HiBeaker,
+  HiChevronUp,
+  HiChevronDown,
+  HiEllipsisVertical,
+  HiEllipsisHorizontal,
   HiClock as HiHistory
 } from 'react-icons/hi2';
 import axios from 'axios';
@@ -89,6 +93,115 @@ export default function CodingWorkspace({
   const [pastSubmissionsList, setPastSubmissionsList] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const workspaceRef = useRef(null);
+  const splitGridRef = useRef(null);
+  const rightPanelRef = useRef(null);
+
+  // Resizable Layout States with localStorage persistence
+  const [leftPanelPercent, setLeftPanelPercent] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prepper_coding_left_panel_width');
+      if (saved) {
+        const parsed = Number(saved);
+        if (!isNaN(parsed) && parsed >= 20 && parsed <= 75) return parsed;
+      }
+    } catch {}
+    return 42;
+  });
+
+  const [drawerHeight, setDrawerHeight] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prepper_coding_drawer_height');
+      if (saved) {
+        const parsed = Number(saved);
+        if (!isNaN(parsed) && parsed >= 45 && parsed <= 600) return parsed;
+      }
+    } catch {}
+    return 230;
+  });
+
+  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
+  const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
+  const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+
+  // Responsive screen width listener
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Horizontal splitter drag handler (Problem Panel <-> Editor Panel)
+  useEffect(() => {
+    if (!isDraggingHorizontal) return;
+
+    const handleMouseMove = (e) => {
+      if (!splitGridRef.current) return;
+      const rect = splitGridRef.current.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const newPercent = ((clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(75, Math.max(20, newPercent));
+      setLeftPanelPercent(clamped);
+      try {
+        localStorage.setItem('prepper_coding_left_panel_width', String(clamped));
+      } catch {}
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingHorizontal(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove);
+    window.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDraggingHorizontal]);
+
+  // Vertical splitter drag handler (Monaco Editor <-> Bottom Console Drawer)
+  useEffect(() => {
+    if (!isDraggingVertical) return;
+
+    const handleMouseMove = (e) => {
+      if (!rightPanelRef.current) return;
+      const rect = rightPanelRef.current.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const newHeight = rect.bottom - clientY;
+      const maxHeight = Math.max(300, rect.height * 0.75);
+      const clamped = Math.min(maxHeight, Math.max(45, newHeight));
+      setDrawerHeight(clamped);
+      if (clamped > 50 && isDrawerCollapsed) {
+        setIsDrawerCollapsed(false);
+      }
+      try {
+        localStorage.setItem('prepper_coding_drawer_height', String(clamped));
+      } catch {}
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingVertical(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove);
+    window.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDraggingVertical, isDrawerCollapsed]);
 
   // Sync fullscreen state with document fullscreenchange events (e.g. Esc key)
   useEffect(() => {
@@ -441,10 +554,28 @@ export default function CodingWorkspace({
         </div>
       </div>
 
-      {/* Main Workspace Split Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-y-auto lg:overflow-hidden">
-        {/* Left Panel: Problem Description (col-span-5) */}
-        <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col bg-slate-900/40 min-h-0 h-full overflow-y-auto p-4 sm:p-5 space-y-4">
+      {/* Invisible global drag capture overlay to prevent Monaco Editor from stealing mouse events */}
+      {(isDraggingHorizontal || isDraggingVertical) && (
+        <div
+          className={`fixed inset-0 z-50 select-none ${
+            isDraggingHorizontal ? 'cursor-col-resize' : 'cursor-row-resize'
+          }`}
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+        />
+      )}
+
+      {/* Main Workspace Split (Flexbox with Draggable Splitter) */}
+      <div
+        ref={splitGridRef}
+        className="flex-1 flex flex-col md:flex-row min-h-0 overflow-y-auto md:overflow-hidden relative"
+      >
+        {/* Left Panel: Problem Description */}
+        <div
+          style={{
+            width: isDesktop ? `${leftPanelPercent}%` : '100%',
+          }}
+          className="md:min-w-[20%] md:max-w-[75%] border-b md:border-b-0 border-slate-800 flex flex-col bg-slate-900/40 min-h-0 h-full overflow-y-auto p-4 sm:p-5 space-y-4 shrink-0"
+        >
           <div>
             <h2 className="text-xl font-bold text-slate-100 mb-1">
               {currentProblem?.title}
@@ -541,10 +672,43 @@ export default function CodingWorkspace({
           </div>
         </div>
 
-        {/* Right Panel: Editor & Execution Console (col-span-7) */}
-        <div className="lg:col-span-7 flex flex-col bg-slate-950 min-h-0 h-full overflow-hidden">
+        {/* Horizontal Resizable Splitter between Problem Panel & Code Editor (visible on desktop/tablet) */}
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsDraggingHorizontal(true);
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            setIsDraggingHorizontal(true);
+          }}
+          onDoubleClick={() => {
+            setLeftPanelPercent(42);
+            try {
+              localStorage.setItem('prepper_coding_left_panel_width', '42');
+            } catch {}
+            toast.success('Reset panel split to default (42%)', { id: 'reset-panel', duration: 1500 });
+          }}
+          title="Drag to resize problem / editor panels (Double-click to reset)"
+          className={`hidden md:flex w-2 hover:w-2.5 items-center justify-center cursor-col-resize select-none shrink-0 transition-colors z-20 group ${
+            isDraggingHorizontal
+              ? 'bg-cyan-500'
+              : 'bg-slate-900 hover:bg-cyan-500/80 border-x border-slate-800'
+          }`}
+        >
+          <div className="w-0.5 h-10 rounded-full bg-slate-600 group-hover:bg-white transition-colors" />
+        </div>
+
+        {/* Right Panel: Editor & Execution Console */}
+        <div
+          ref={rightPanelRef}
+          style={{
+            width: isDesktop ? `calc(${100 - leftPanelPercent}% - 8px)` : '100%',
+          }}
+          className="flex-1 flex flex-col bg-slate-950 min-h-0 h-full overflow-hidden min-w-0"
+        >
           {/* Monaco Editor Container */}
-          <div className="flex-1 min-h-[160px] relative overflow-hidden">
+          <div className="flex-1 min-h-[80px] relative overflow-hidden">
             <Editor
               height="100%"
               theme="vs-dark"
@@ -583,52 +747,86 @@ export default function CodingWorkspace({
           )}
 
           {/* Action Ribbon: Custom Input toggle & 3 Execution Buttons */}
-          <div className="h-12 sm:h-14 bg-slate-900/90 border-t border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between shrink-0">
-            <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
+          <div className="h-12 sm:h-14 bg-slate-900/90 border-t border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between shrink-0 overflow-x-auto gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 shrink-0">
               <input
                 type="checkbox"
                 checked={useCustomInput}
                 onChange={(e) => setUseCustomInput(e.target.checked)}
                 className="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0"
               />
-              <span>Custom Input</span>
+              <span className="whitespace-nowrap">Custom Input</span>
             </label>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Mode 1: Run Code */}
               <button
                 onClick={handleRunCode}
                 disabled={isRunning || isRunningSamples || isSubmitting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-50 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-50 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 transition shrink-0 whitespace-nowrap cursor-pointer"
               >
                 <HiPlay className="w-3.5 h-3.5 text-cyan-400" />
-                {isRunning ? 'Running...' : 'Run Code'}
+                <span>{isRunning ? 'Running...' : 'Run Code'}</span>
               </button>
 
               {/* Mode 2: Run Sample Tests */}
               <button
                 onClick={handleRunSampleTests}
                 disabled={isRunning || isRunningSamples || isSubmitting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/80 active:bg-cyan-800 disabled:opacity-50 text-cyan-300 font-semibold text-xs rounded-lg transition"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/80 active:bg-cyan-800 disabled:opacity-50 text-cyan-300 font-semibold text-xs rounded-lg transition shrink-0 whitespace-nowrap cursor-pointer"
               >
                 <HiBeaker className="w-3.5 h-3.5 text-cyan-400" />
-                {isRunningSamples ? 'Testing...' : 'Run Sample Tests'}
+                <span>{isRunningSamples ? 'Testing...' : 'Run Sample Tests'}</span>
               </button>
 
               {/* Mode 3: Submit Solution */}
               <button
                 onClick={handleFinalSubmit}
                 disabled={isRunning || isRunningSamples || isSubmitting}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-emerald-900/20 transition"
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 text-white font-semibold text-xs rounded-lg shadow-lg shadow-emerald-900/20 transition shrink-0 whitespace-nowrap cursor-pointer"
               >
                 <HiCheckCircle className="w-3.5 h-3.5" />
-                {isSubmitting ? 'Evaluating...' : 'Submit Solution'}
+                <span>{isSubmitting ? 'Evaluating...' : 'Submit Solution'}</span>
               </button>
             </div>
           </div>
 
-          {/* Bottom Drawer: Console & Test Results */}
-          <div className="h-52 sm:h-56 lg:h-64 bg-slate-900/70 flex flex-col min-h-0 shrink-0">
+          {/* Vertical Resizable Splitter between Editor and Bottom Drawer */}
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsDraggingVertical(true);
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              setIsDraggingVertical(true);
+            }}
+            onDoubleClick={() => {
+              setDrawerHeight(230);
+              setIsDrawerCollapsed(false);
+              try {
+                localStorage.setItem('prepper_coding_drawer_height', '230');
+              } catch {}
+              toast.success('Reset console drawer to default (230px)', { id: 'reset-drawer', duration: 1500 });
+            }}
+            title="Drag to resize console drawer (Double-click to reset)"
+            className={`h-2 hover:h-2.5 w-full flex items-center justify-center cursor-row-resize select-none shrink-0 transition-colors z-20 group ${
+              isDraggingVertical
+                ? 'bg-cyan-500'
+                : 'bg-slate-900 hover:bg-cyan-500/80 border-y border-slate-800'
+            }`}
+          >
+            <div className="h-0.5 w-14 rounded-full bg-slate-600 group-hover:bg-white transition-colors" />
+          </div>
+
+          {/* Bottom Drawer: Console & Test Results (Resizable & Collapsible) */}
+          <div
+            style={{
+              height: isDrawerCollapsed ? '42px' : `${drawerHeight}px`,
+              maxHeight: isDrawerCollapsed ? '42px' : 'calc(100% - 130px)',
+            }}
+            className="bg-slate-900/70 flex flex-col min-h-0 shrink-0 transition-none"
+          >
             {/* Drawer Header Tabs */}
             <div className="flex items-center justify-between px-3 sm:px-4 bg-slate-900 border-b border-slate-800 text-xs shrink-0">
               <div className="flex items-center gap-4">
@@ -684,22 +882,38 @@ export default function CodingWorkspace({
                 </button>
               </div>
 
-              {lastRunResults && (
-                <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <HiClock className="w-3 h-3 text-cyan-400" />
-                    {lastRunResults.maxTimeMs || 0}ms
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <HiCpuChip className="w-3 h-3 text-purple-400" />
-                    {lastRunResults.maxMemoryKb || 0}KB
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {lastRunResults && (
+                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <HiClock className="w-3 h-3 text-cyan-400" />
+                      {lastRunResults.maxTimeMs || 0}ms
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <HiCpuChip className="w-3 h-3 text-purple-400" />
+                      {lastRunResults.maxMemoryKb || 0}KB
+                    </span>
+                  </div>
+                )}
+
+                {/* Quick Collapse / Expand Drawer */}
+                <button
+                  onClick={() => setIsDrawerCollapsed(!isDrawerCollapsed)}
+                  title={isDrawerCollapsed ? 'Expand console drawer' : 'Collapse console drawer'}
+                  className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition ml-1 cursor-pointer"
+                >
+                  {isDrawerCollapsed ? (
+                    <HiChevronUp className="w-3.5 h-3.5 text-cyan-400" />
+                  ) : (
+                    <HiChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Drawer Body Container */}
-            <div className="flex-1 overflow-y-auto p-4 text-xs">
+            {/* Drawer Body Container (Hidden when collapsed) */}
+            {!isDrawerCollapsed && (
+              <div className="flex-1 overflow-y-auto p-4 text-xs">
               {/* Tab 1: Test Cases */}
               {activeTab === 'tests' && (
                 <div className="space-y-3">
@@ -926,7 +1140,8 @@ export default function CodingWorkspace({
                 </div>
               )}
             </div>
-          </div>
+          )}
+        </div>
         </div>
       </div>
     </div>
