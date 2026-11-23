@@ -162,8 +162,32 @@ export class CodeExecutionAdapter {
       throw err;
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Strict production security: Disallow mock execution for real candidates in production
     if (providerName === 'mock') {
+      if (isProduction && process.env.ALLOW_MOCK_IN_PROD !== 'true') {
+        const err = new Error(
+          'Mock execution is prohibited in production environments. Candidate evaluation requires an active, isolated execution provider.'
+        );
+        err.statusCode = 503;
+        err.code = 'MOCK_PROHIBITED_IN_PROD';
+        throw err;
+      }
       return this.providers.mock;
+    }
+
+    // Strict production security: Disallow in-backend subprocess execution in production without sandbox
+    if (providerName === 'local') {
+      if (isProduction && process.env.ALLOW_LOCAL_EXECUTION_IN_PROD !== 'true') {
+        const err = new Error(
+          'Local in-backend subprocess execution is prohibited in production environments due to insufficient kernel sandbox boundaries (filesystem, memory cgroups, and network isolation). Deploy an isolated execution worker (e.g. go-judge) or set ALLOW_LOCAL_EXECUTION_IN_PROD=true.'
+        );
+        err.statusCode = 503;
+        err.code = 'INSECURE_LOCAL_PROHIBITED_IN_PROD';
+        throw err;
+      }
+      return this.providers.local;
     }
 
     if (this.providers[providerName]) {

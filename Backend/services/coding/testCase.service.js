@@ -64,7 +64,7 @@ export class TestCaseService {
           executionTimeMs: res.executionTimeMs,
           memoryKb: res.memoryKb,
           statusDescription: res.statusDescription,
-          error: res.error || '',
+          error: res.error ? '[EXECUTION ERROR]' : '',
           isHidden: true,
         };
       }

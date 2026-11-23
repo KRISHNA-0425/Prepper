@@ -137,7 +137,10 @@ export class CodeExecutionService {
           try {
             if (process.platform !== 'win32' && proc.pid) {
               process.kill(-proc.pid, 'SIGKILL');
-            } else {
+            } else if (proc.pid) {
+              try {
+                spawn('taskkill', ['/F', '/T', '/PID', String(proc.pid)]);
+              } catch {}
               proc.kill('SIGKILL');
             }
           } catch {}
@@ -160,6 +163,9 @@ export class CodeExecutionService {
           outputLimitExceeded = true;
           stdout += chunk.toString().slice(0, EXECUTION_LIMITS.MAX_OUTPUT_BUFFER_BYTES - stdout.length);
           try {
+            if (process.platform === 'win32' && proc.pid) {
+              try { spawn('taskkill', ['/F', '/T', '/PID', String(proc.pid)]); } catch {}
+            }
             proc.kill('SIGKILL');
           } catch {}
         } else {

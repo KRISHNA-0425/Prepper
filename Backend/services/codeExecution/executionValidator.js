@@ -83,6 +83,15 @@ export class ExecutionValidator {
     }
 
     userLastRunTimestamps.set(String(userId), now);
+
+    // Periodic cleanup to prevent unbounded memory retention
+    if (userLastRunTimestamps.size > 5000) {
+      for (const [uid, timestamp] of userLastRunTimestamps.entries()) {
+        if (now - timestamp > 60000) {
+          userLastRunTimestamps.delete(uid);
+        }
+      }
+    }
   }
 
   /**
