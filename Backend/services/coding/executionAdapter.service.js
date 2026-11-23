@@ -100,6 +100,36 @@ function main() {
 
 main();
 `
+  },
+  {
+    slug: 'typescript',
+    name: 'TypeScript (5.0)',
+    monacoLang: 'typescript',
+    extension: 'ts',
+    compiler: 'tsc',
+    version: '5.0.0',
+    starterCode: `function main(): void {
+    // Read input from standard input
+}
+
+main();
+`
+  },
+  {
+    slug: 'go',
+    name: 'Go (1.20)',
+    monacoLang: 'go',
+    extension: 'go',
+    compiler: 'go',
+    version: '1.20.0',
+    starterCode: `package main
+
+import "fmt"
+
+func main() {
+    // Read input from standard input
+}
+`
   }
 ];
 
