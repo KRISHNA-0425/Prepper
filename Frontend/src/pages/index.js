@@ -24,3 +24,14 @@ export { default as CrossExaminationSession } from './CrossExaminationSession';
 // 4. Module 4: Live Coding Workspace
 export { default as CodingSetup } from './CodingSetup';
 export { default as CodingSessionPage } from './CodingSessionPage';
+
+// 5. Module 5: Personalized Interview Recovery Plan
+export { default as RecoveryPlansListPage } from './RecoveryPlansListPage';
+export { default as RecoveryPlanDashboard } from './RecoveryPlanDashboard';
+
+// 6. Module 6: Company-Specific Interview Simulation
+export { default as CompanyInterviewSetup } from './CompanyInterviewSetup';
+export { default as CompanyInterviewSession } from './CompanyInterviewSession';
+export { default as CompanyInterviewReport } from './CompanyInterviewReport';
+export { default as CompanyInterviewHistory } from './CompanyInterviewHistory';
+

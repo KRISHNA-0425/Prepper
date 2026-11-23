@@ -14,6 +14,13 @@ import CrossExaminationSetup from './pages/CrossExaminationSetup'
 import CrossExaminationSession from './pages/CrossExaminationSession'
 import CodingSetup from './pages/CodingSetup'
 import CodingSessionPage from './pages/CodingSessionPage'
+import RecoveryPlansListPage from './pages/RecoveryPlansListPage'
+import RecoveryPlanDashboard from './pages/RecoveryPlanDashboard'
+import CompanyInterviewSetup from './pages/CompanyInterviewSetup'
+import CompanyInterviewSession from './pages/CompanyInterviewSession'
+import CompanyInterviewReport from './pages/CompanyInterviewReport'
+import CompanyInterviewHistory from './pages/CompanyInterviewHistory'
+
 
 
 export const backendServerUrl = import.meta.env.VITE_SERVER_URL
@@ -66,6 +73,12 @@ function App() {
         <Route path='/cross-examination/:sessionId' element={<CrossExaminationSession />} />
         <Route path='/coding' element={<CodingSetup />} />
         <Route path='/coding/:sessionId' element={<CodingSessionPage />} />
+        <Route path='/recovery-plans' element={<RecoveryPlansListPage />} />
+        <Route path='/recovery-plans/:planId' element={<RecoveryPlanDashboard />} />
+        <Route path='/company-interview' element={<CompanyInterviewSetup />} />
+        <Route path='/company-interview/:sessionId' element={<CompanyInterviewSession />} />
+        <Route path='/company-interview/report/:id' element={<CompanyInterviewReport />} />
+        <Route path='/company-interview/history' element={<CompanyInterviewHistory />} />
       </Routes>
     </>
   )

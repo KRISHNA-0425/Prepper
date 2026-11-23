@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine, RiCodeSSlashLine } from "react-icons/ri";
+import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine, RiCodeSSlashLine, RiRoadMapLine, RiBuilding4Line } from "react-icons/ri";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { backendServerUrl } from '../App';
@@ -20,6 +20,9 @@ function Navbar() {
 
     const isCrossExamActive = location.pathname.startsWith('/cross-examination');
     const isLiveCodingActive = location.pathname.startsWith('/coding');
+    const isRecoveryPlanActive = location.pathname.startsWith('/recovery-plans');
+    const isCompanyActive = location.pathname.startsWith('/company-interview');
+
 
     const handleLogout = async () => {
         try {
@@ -82,6 +85,38 @@ function Navbar() {
                         <RiCodeSSlashLine className="text-indigo-600 text-sm shrink-0" />
                         <span className="hidden sm:inline">Live Coding</span>
                         <span className="sm:hidden text-[11px]">Coding</span>
+                    </Link>
+
+                    {/* Module 5: Recovery Plans Navigation Item */}
+                    <Link 
+                        to="/recovery-plans" 
+                        aria-label="Recovery Plans"
+                        aria-current={isRecoveryPlanActive ? "page" : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-all shadow-xs border ${
+                            isRecoveryPlanActive 
+                                ? 'bg-emerald-500/20 text-emerald-950 border-emerald-400/70 shadow-sm ring-1 ring-emerald-400/40' 
+                                : 'bg-white/50 hover:bg-white/80 text-slate-800 border-white/70'
+                        }`}
+                    >
+                        <RiRoadMapLine className="text-emerald-600 text-sm shrink-0" />
+                        <span className="hidden sm:inline">Recovery Plan</span>
+                        <span className="sm:hidden text-[11px]">Recovery</span>
+                    </Link>
+
+                    {/* Module 6: Company Simulation Navigation Item */}
+                    <Link 
+                        to="/company-interview" 
+                        aria-label="Company Simulation"
+                        aria-current={isCompanyActive ? "page" : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-all shadow-xs border ${
+                            isCompanyActive 
+                                ? 'bg-amber-400/30 text-amber-950 border-amber-400/70 shadow-sm ring-1 ring-amber-400/40' 
+                                : 'bg-white/50 hover:bg-white/80 text-slate-800 border-white/70'
+                        }`}
+                    >
+                        <RiBuilding4Line className="text-amber-600 text-sm shrink-0" />
+                        <span className="hidden sm:inline">Company Prep</span>
+                        <span className="sm:hidden text-[11px]">Company</span>
                     </Link>
                 </div>
 
