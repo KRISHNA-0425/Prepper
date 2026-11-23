@@ -501,3 +501,127 @@ export const buildSafeFallbackEvaluation = ({ question = '', answer = '', catego
  * @param {object} [context={}] - Interview metadata (role, mode, etc.)
  * @returns {object} Interview-level analytics summary
  */
+export const aggregateInterviewAnalytics = (questions = [], context = {}) => {
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return {
+      overallScore: 0,
+      percentageScore: 0,
+      totalQuestions: 0,
+      answeredCount: 0,
+      criterionScores: ALL_CRITERIA_NAMES.map((name) => ({
+        name,
+        score: 0,
+        maxScore: 10,
+        percentage: 0,
+      })),
+      strongestCompetencies: [],
+      weakestCompetencies: [],
+      recurringGaps: [],
+      keyStrengths: [],
+      studyRecommendations: [],
+    };
+  }
+
+  const answeredQuestions = questions.filter((q) => q.answer && String(q.answer).trim().length > 0);
+  const totalQuestions = questions.length;
+  const answeredCount = answeredQuestions.length;
+
+  // Track criterion scores across all questions
+  const criterionTotals = {};
+  for (const name of ALL_CRITERIA_NAMES) {
+    criterionTotals[name] = { sum: 0, count: 0 };
+  }
+
+  let totalOverallScore = 0;
+  const allStrengths = [];
+  const allWeaknesses = [];
+  const allMissing = [];
+  const allImprovements = [];
+
+  questions.forEach((q) => {
+    const ev = q.evidenceEvaluation;
+    if (ev && Array.isArray(ev.criteria) && ev.criteria.length > 0) {
+      totalOverallScore += Number(ev.overallScore) || 0;
+      ev.criteria.forEach((c) => {
+        if (criterionTotals[c.name]) {
+          criterionTotals[c.name].sum += Number(c.score) || 0;
+          criterionTotals[c.name].count += 1;
+        }
+      });
+      if (Array.isArray(ev.strengths)) allStrengths.push(...ev.strengths);
+      if (Array.isArray(ev.weaknesses)) allWeaknesses.push(...ev.weaknesses);
+      if (Array.isArray(ev.missingConcepts)) allMissing.push(...ev.missingConcepts);
+      if (Array.isArray(ev.improvements)) allImprovements.push(...ev.improvements);
+    } else {
+      // Legacy backward-compatibility mapping
+      const legacyScore = Number(q.score) || 0;
+      const legacyCorrectness = Number(q.correctness) || legacyScore;
+      const legacyComms = Number(q.communication) || legacyScore;
+      const legacyConfidence = Number(q.confidence) || legacyScore;
+
+      totalOverallScore += legacyScore;
+
+      criterionTotals[EVALUATION_CRITERIA.TECHNICAL_ACCURACY].sum += legacyCorrectness;
+      criterionTotals[EVALUATION_CRITERIA.TECHNICAL_ACCURACY].count += 1;
+
+      criterionTotals[EVALUATION_CRITERIA.CONCEPTUAL_UNDERSTANDING].sum += legacyCorrectness;
+      criterionTotals[EVALUATION_CRITERIA.CONCEPTUAL_UNDERSTANDING].count += 1;
+
+      criterionTotals[EVALUATION_CRITERIA.COMMUNICATION_CLARITY].sum += legacyComms;
+      criterionTotals[EVALUATION_CRITERIA.COMMUNICATION_CLARITY].count += 1;
+
+      criterionTotals[EVALUATION_CRITERIA.PROBLEM_SOLVING_ABILITY].sum += legacyScore;
+      criterionTotals[EVALUATION_CRITERIA.PROBLEM_SOLVING_ABILITY].count += 1;
+
+      criterionTotals[EVALUATION_CRITERIA.PRACTICAL_KNOWLEDGE].sum += legacyScore;
+      criterionTotals[EVALUATION_CRITERIA.PRACTICAL_KNOWLEDGE].count += 1;
+
+      criterionTotals[EVALUATION_CRITERIA.DEPTH_OF_EXPLANATION].sum += legacyConfidence;
+      criterionTotals[EVALUATION_CRITERIA.DEPTH_OF_EXPLANATION].count += 1;
+
+      if (q.feedback) {
+        if (legacyScore >= 7) allStrengths.push(q.feedback);
+        else allWeaknesses.push(q.feedback);
+      }
+    }
+  });
+
+  const avgOverallScore = totalQuestions > 0 ? Math.round((totalOverallScore / totalQuestions) * 10) / 10 : 0;
+  const percentageScore = Math.round(avgOverallScore * 10);
+
+  // Compute averages for each of the 6 criteria
+  const criterionScores = ALL_CRITERIA_NAMES.map((name) => {
+    const item = criterionTotals[name];
+    const avg = item.count > 0 ? Math.round((item.sum / item.count) * 10) / 10 : 0;
+    return {
+      name,
+      score: avg,
+      maxScore: 10,
+      percentage: Math.round(avg * 10),
+    };
+  });
+
+  // Sort criteria to find strongest and weakest
+  const sortedCriteria = [...criterionScores].sort((a, b) => b.score - a.score);
+  const strongestCompetencies = sortedCriteria.slice(0, 2).map((c) => c.name);
+  const weakestCompetencies = sortedCriteria.slice(-2).reverse().map((c) => c.name);
+
+  // Deduplicate strings
+  const dedupe = (arr) => Array.from(new Set(arr.filter(Boolean)));
+  const keyStrengths = dedupe(allStrengths).slice(0, 5);
+  const recurringGaps = dedupe([...allWeaknesses, ...allMissing]).slice(0, 5);
+  const studyRecommendations = dedupe(allImprovements).slice(0, 5);
+
+  return {
+    overallScore: avgOverallScore,
+    percentageScore,
+    totalQuestions,
+    answeredCount,
+    criterionScores,
+    strongestCompetencies,
+    weakestCompetencies,
+    recurringGaps,
+    keyStrengths,
+    studyRecommendations,
+  };
+};
