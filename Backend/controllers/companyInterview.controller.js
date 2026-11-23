@@ -24,6 +24,7 @@ export const getCompanies = async (req, res) => {
       success: true,
       count: companies.length,
       companies,
+      data: companies,
     });
   } catch (error) {
     return res.status(500).json({
@@ -45,13 +46,13 @@ export const getCompanyBySlug = async (req, res) => {
     // 1. Check curated
     const curated = findCuratedProfile(cleanSlug);
     if (curated) {
-      return res.status(200).json({ success: true, company: curated });
+      return res.status(200).json({ success: true, company: curated, data: curated });
     }
 
     // 2. Check DB
     const profile = await CompanyProfile.findOne({ slug: cleanSlug }).lean();
     if (profile) {
-      return res.status(200).json({ success: true, company: profile });
+      return res.status(200).json({ success: true, company: profile, data: profile });
     }
 
     return res.status(404).json({
@@ -92,6 +93,7 @@ export const getCompanyIntelligence = async (req, res) => {
     return res.status(200).json({
       success: true,
       company: profile,
+      data: profile,
     });
   } catch (error) {
     return res.status(500).json({
@@ -100,6 +102,7 @@ export const getCompanyIntelligence = async (req, res) => {
     });
   }
 };
+
 
 /**
  * Recommends an interview round and structure based on company, role, and experience
@@ -176,9 +179,15 @@ export const createSession = async (req, res) => {
       success: true,
       message: 'Company interview simulation initialized',
       interviewId: interview._id,
+      sessionId: interview._id,
       interview,
       companyProfile,
       interviewerGreeting,
+      data: {
+        sessionId: interview._id,
+        interviewId: interview._id,
+        interview,
+      },
     });
   } catch (error) {
     const status = error.statusCode || error.status || 500;
@@ -209,6 +218,8 @@ export const getSession = async (req, res) => {
     return res.status(200).json({
       success: true,
       interview,
+      session: interview,
+      data: interview,
     });
   } catch (error) {
     const status = error.status || 500;
@@ -226,22 +237,49 @@ export const getSession = async (req, res) => {
 export const submitAnswer = async (req, res) => {
   try {
     const userId = req.userId;
-    const { interviewId, questionIndex, answer, timeTaken } = req.body;
+    const interviewId = req.body.interviewId || req.body.sessionId;
+    let questionIndex = req.body.questionIndex;
+    const answer = req.body.answer || req.body.candidateAnswer;
+    const timeTaken = req.body.timeTaken || 0;
 
-    if (!interviewId || questionIndex === undefined) {
+    if (!interviewId) {
       return res.status(400).json({
         success: false,
-        message: 'interviewId and questionIndex are required',
+        message: 'interviewId is required',
       });
+    }
+
+    // If questionId provided instead of questionIndex, find the index
+    if (questionIndex === undefined && req.body.questionId) {
+      const currentSession = await getCompanyInterviewSession(interviewId, userId);
+      if (currentSession && Array.isArray(currentSession.questions)) {
+        const foundIdx = currentSession.questions.findIndex(
+          (q) => q._id?.toString() === req.body.questionId.toString()
+        );
+        if (foundIdx !== -1) {
+          questionIndex = foundIdx;
+        }
+      }
+    }
+
+    if (questionIndex === undefined) {
+      questionIndex = 0;
     }
 
     const result = await submitCompanyAnswer({
       interviewId,
-      questionIndex,
-      answer,
+      questionIndex: Number(questionIndex),
+      answer: answer || '',
       timeTaken: Number(timeTaken) || 0,
       userId,
     });
+
+    const evalObj = result.evaluatedQuestion?.evidenceEvaluation || {
+      overallScore: result.evaluatedQuestion?.score || 70,
+      feedback: result.evaluatedQuestion?.feedback || 'Answer recorded.',
+      strengths: [],
+      weaknesses: [],
+    };
 
     return res.status(200).json({
       success: true,
@@ -249,6 +287,12 @@ export const submitAnswer = async (req, res) => {
       evaluatedQuestion: result.evaluatedQuestion,
       interview: result.interview,
       isLastQuestion: result.isLastQuestion,
+      evaluation: evalObj,
+      data: {
+        evaluation: evalObj,
+        evaluatedQuestion: result.evaluatedQuestion,
+        interview: result.interview,
+      },
     });
   } catch (error) {
     const status = error.status || 400;
@@ -266,7 +310,7 @@ export const submitAnswer = async (req, res) => {
 export const finishSession = async (req, res) => {
   try {
     const userId = req.userId;
-    const { interviewId } = req.body;
+    const interviewId = req.body.interviewId || req.body.sessionId;
 
     if (!interviewId) {
       return res.status(400).json({
@@ -282,6 +326,7 @@ export const finishSession = async (req, res) => {
       message: 'Company interview simulation completed',
       interview: finalizedInterview,
       readinessAssessment: finalizedInterview.companySimulation?.readinessAssessment,
+      data: finalizedInterview,
     });
   } catch (error) {
     const status = error.status || 400;
@@ -305,6 +350,7 @@ export const getMyCompanySimulations = async (req, res) => {
       success: true,
       count: simulations.length,
       simulations,
+      data: simulations,
     });
   } catch (error) {
     return res.status(500).json({
@@ -313,3 +359,4 @@ export const getMyCompanySimulations = async (req, res) => {
     });
   }
 };
+
