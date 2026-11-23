@@ -838,8 +838,9 @@ Return ONLY valid JSON:
         const isAllocationExhausted = lockedDoc.currentQuestionIndex >= targetAllocation || lockedDoc.currentQuestionIndex >= lockedDoc.questions.length;
 
         return res.status(200).json({ 
-            feedback: parsed.feedback,
-            score: parsed.finalScore,
+            feedback: currentQuestion.feedback,
+            score: currentQuestion.score,
+            evidenceEvaluation: currentQuestion.evidenceEvaluation,
             followUpQuestion,
             questions: lockedDoc.questions,
             currentQuestionIndex: lockedDoc.currentQuestionIndex,
