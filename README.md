@@ -23,6 +23,7 @@ The platform is designed around five tightly integrated core modules:
 3. **Module 3 — Adaptive Questioning & Real-Time Steering**: Dynamic difficulty adjustment (Beginner $\leftrightarrow$ Intermediate $\leftrightarrow$ Advanced) with streak-based state transitions, weak-area detection, and Section F Trajectory reporting.
 4. **Module 4 — Isolated Live Coding Execution Engine & Workspace**: A zero-cost (₹0 infrastructure), in-backend multi-language code execution engine with Monaco Editor, dynamic host compiler registry, ephemeral process sandboxing, hidden test case protection, concurrency limits, and a fully resizable dual-splitter workspace.
 5. **Module 5 — Personalized Interview Recovery Plan**: Transforms multi-source evaluation evidence into adaptive, day-by-day remediation curricula (7, 14, or 30-day schedules) with study time budgets, progress tracking, candidate notes, deterministic fallback, and authentic score-delta reassessment.
+6. **Module 6 — Company-Specific Interview Simulation**: Simulates authentic interviews for premier enterprises (Google, Microsoft, Amazon, Adobe, IBM, TCS, Infosys, Accenture, Deloitte) and candidate-supplied companies across 7 distinct rounds (OA, Tech 1, Tech 2, System Design, Hiring Manager, Behavioral, HR) with Role Readiness Scorecards, Hiring Verdicts, and Module 5 remediation bridges.
 
 ---
 
@@ -44,6 +45,7 @@ flowchart TD
             V_Coding["Module 4: Resizable Monaco Coding Workspace (/coding/:id)"]
             V_Report["Analytics & Scorecard (/report/:id)"]
             V_Recovery["Module 5: Recovery Dashboard & Roadmap (/recovery-plans/:id)"]
+            V_Company["Module 6: Company Simulation Workspace (/company-interview)"]
         end
     end
 
@@ -58,6 +60,7 @@ flowchart TD
             C_Cross["crossExamination.controller.js"]
             C_Coding["coding.controller.js"]
             C_Recovery["recoveryPlan.controller.js (Module 5)"]
+            C_Company["companyInterview.controller.js (Module 6)"]
             C_Payment["payment.controller.js"]
         end
 
@@ -68,6 +71,7 @@ flowchart TD
             S_CrossExam["answerAnalysis.service.js (Module 2)"]
             S_Evaluation["answerEvaluation.service.js (Evidence Scoring)"]
             S_Recovery["recoveryPlan.service.js (Module 5)"]
+            S_Company["companyInterview.service.js (Module 6)"]
         end
 
         subgraph CodeExecutionEngine["Module 4: Zero-Cost Execution Subsystem"]
@@ -115,12 +119,18 @@ flowchart TD
     C_Recovery --> S_Recovery
     S_Recovery --> S_OpenRouter
 
+    C_Company --> S_Company
+    S_Company --> S_OpenRouter
+    S_Company --> S_Evaluation
+    S_Company --> S_Pricing
+
     %% Services to External
     Controllers --> DB_Mongo
     S_OpenRouter --> EXT_OpenRouter
     C_Payment --> EXT_Razorpay
     S_ExecService -->|"Isolated Child Process Execution"| EXT_HostRuntimes
 ```
+
 
 ---
 
@@ -432,6 +442,42 @@ Every generated task, weakness, and strength is traceable back to genuine interv
 
 ---
 
+## 🏢 Deep Dive: Module 6 — Company-Specific Interview Simulation Engine
+
+### 6.1 Overview & Objective
+Module 6 elevates candidate preparation by accurately modeling the engineering expectations, corporate principles, and evaluation rubrics of premier technology companies (including **Google, Microsoft, Amazon, Adobe, IBM, TCS, Infosys, Accenture, Deloitte**, and candidate-supplied custom companies). It eliminates generic interview experiences by tailoring questions, interviewer personas, and rubrics to specific enterprise hiring standards.
+
+### 6.2 The 7-Round Simulation Architecture
+Candidates can configure or receive automated recommendations across 7 standardized interview rounds:
+1. **Online Assessment (OA)**: Algorithmic problem solving, complex data structures, and edge-case handling.
+2. **Technical Round 1**: Core algorithmic complexity, trees, graphs, and dynamic programming.
+3. **Technical Round 2**: In-depth domain architecture, concurrency, memory models, and API contracts.
+4. **System Design**: High-throughput distributed systems, partitioning, CAP theorem, caching, and database sharding.
+5. **Hiring Manager Round**: Engineering ownership, past failures, architecture defense, and trade-offs.
+6. **Behavioral & Leadership**: Grounded in company-specific tenets (e.g. Amazon's 16 Leadership Principles, Googleyness).
+7. **Final HR & Cultural Fit**: Team collaboration, career trajectory, and professional ethics.
+
+### 6.3 Curated Intelligence & Dynamic Synthesis
+- **9 Curated Premier Profiles**: Pre-seeded with verified public engineering patterns, interview culture rubrics, and technology stacks.
+- **On-Demand Custom Company Crawler**: For uncurated enterprises, an LLM intelligence engine synthesizes company-specific interview patterns and caches them in MongoDB Atlas for instant reuse.
+- **Zero-Cost Deterministic Fallbacks**: Complete offline question banks for all 7 rounds guarantee that interviews never fail due to upstream AI timeouts.
+
+### 6.4 Role Readiness Scorecard & Hiring Verdicts
+Upon completion, the evaluation engine compiles:
+- **Readiness Score ($0-100$)**: Weighted composite evaluation across technical knowledge, problem-solving, and communication.
+- **Hiring Verdicts**: Explicit classification into `Strong Hire` ($\ge 85$), `Hire` ($70-84$), `Leaning Hire` ($60-69$), `Leaning No Hire` ($45-59$), and `No Hire` ($< 45$).
+- **Fit Level**: Categorization into `Exceeds Expectations`, `Meets Expectations`, or `Needs Further Preparation`.
+- **Actionable Gap Analysis**: Direct identification of architectural or behavioral gaps with suggestions for the next round.
+
+### 6.5 Cross-Module Synergy & Module 5 Bridge
+- **Voice & Speech**: Integrated Web Speech recognition and text-to-speech for realistic spoken interview cadence (Module 1).
+- **Evidence Scoring**: Multidimensional rubric breakdown (Module 2).
+- **Live Coding Workspace**: Direct execution for Online Assessment rounds (Module 4).
+- **Module 5 Recovery Plan Bridge**: One-click bridge from the Company Readiness Scorecard to generate a personalized remediation program addressing company-specific gaps.
+
+
+---
+
 ## 🗄️ Database Schemas & Entity-Relationship Architecture
 
 The platform uses MongoDB with strict Mongoose schemas to support complex nested interview trajectories, evidence evaluations, and code submissions:
@@ -442,6 +488,8 @@ erDiagram
     User ||--o{ CodingSubmission : submits
     User ||--o{ Payment : purchases
     User ||--o{ RecoveryPlan : follows
+    User ||--o{ CompanyProfile : creates
+    CompanyProfile ||--o{ Interview : simulates
     Interview ||--o{ Question : contains
     Interview ||--o{ CodingProblem : references
     Interview ||--o{ RecoveryPlan : remediates
@@ -457,18 +505,31 @@ erDiagram
         date createdAt
     }
 
+    CompanyProfile {
+        ObjectId _id PK
+        string name
+        string slug
+        string tier
+        string industry
+        array supportedRounds
+        array techStackFocus
+        array behavioralPrinciples
+        boolean isVerified
+    }
+
     Interview {
         ObjectId _id PK
         ObjectId userId FK
         string role
         string experienceLevel
-        string sessionType "standard or cross-exam or coding"
+        string sessionType "standard or cross-exam or coding or company"
         string status "in-progress or completed or abandoned"
         number overallScore
         number selectedDurationMinutes
         date expiresAt
         object adaptiveState "currentTier and streak history"
         object analytics "competency gaps and rubrics"
+        object companySimulation "companyName and readinessAssessment"
     }
 
     Question {
@@ -596,6 +657,19 @@ erDiagram
 | `POST` | `/api/recovery-plans/:planId/reassess/start` | Generate targeted reassessment questions tailored to weaknesses | Yes |
 | `POST` | `/api/recovery-plans/:planId/reassess/submit`| Submit reassessment answers, evaluate on 0-100 rubric & compute delta | Yes |
 
+### 🏢 Company-Specific Interview Simulation (`/api/company-interview`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET`  | `/api/company-interview/companies` | Retrieve curated premier and cached custom company profiles | No |
+| `GET`  | `/api/company-interview/companies/:slug` | Retrieve single company intelligence profile by slug | No |
+| `POST` | `/api/company-interview/intelligence` | Synthesize on-demand company intelligence for custom enterprises | Yes |
+| `POST` | `/api/company-interview/recommend-structure` | Recommend interview round based on role, category & seniority | No |
+| `POST` | `/api/company-interview/create-session` | Atomically deduct 50 credits and initialize company simulation | Yes |
+| `GET`  | `/api/company-interview/session/:id` | Retrieve company simulation session with anti-IDOR check | Yes |
+| `POST` | `/api/company-interview/submit-answer` | Submit candidate response and evaluate against company rubrics | Yes |
+| `POST` | `/api/company-interview/finish` | Finalize simulation and compute Role Readiness Scorecard & Verdict | Yes |
+| `GET`  | `/api/company-interview/history` | Retrieve candidate's historical company interview simulations | Yes |
+
 ---
 
 ## 💰 Credit Economics & Pricing Policy
@@ -606,7 +680,9 @@ To maintain fair platform economics and prevent resource starvation:
 - **Module 4 (Live Coding Session)**: Dynamic formula calibrated by question count and time limit:
   $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
 - **Module 5 (Personalized Recovery Plan)**: `0 Credits` (Included with every completed interview evaluation).
+- **Module 6 (Company Simulation)**: `50 Credits` (Full corporate persona, 7-round options, readiness scorecard, and automatic refund on failure).
 - **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
+
 
 ---
 
@@ -685,24 +761,31 @@ The platform includes exhaustive unit, integration, and security regression test
 
 ### Running Test Suites
 ```bash
-# Run complete frontend test suite (187 tests)
+# Run complete frontend test suite (215 tests)
 npm --prefix Frontend test
 
 # Run frontend production build
 npm --prefix Frontend run build
 
+# Run company simulation backend tests
+node --test Backend/tests/companyInterview.test.js
+
 # Run backend execution & security test suites
 node --test Backend/tests/localCodeExecution.test.js Backend/tests/securityAndProductionAudit.test.js Backend/tests/codingSecurityMatrix.test.js
+
+# Run recovery plan tests (Module 5)
+node --test Backend/tests/recoveryPlan.test.js
 
 # Run cross-examination tests
 node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnalysis.service.test.js
 ```
 
 ### Verification Matrix Summary
-- **Frontend Regression Suite**: **187 / 187 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, dual splitters, localStorage persistence, 503 error handling).
+- **Frontend Regression Suite**: **215 / 215 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, company simulation, recovery plan roadmaps, 503 error handling).
+- **Backend Company Simulation Suite**: **8 / 8 tests passing** (Curated profiles, dynamic intelligence crawler, 7-round question generator, hiring verdicts, anti-IDOR security, credit checks).
 - **Backend Execution Engine Suite**: **15 / 15 tests passing** (Host compiler registry, stdout/stdin, C/C++/Java/Python/JS execution, infinite loop timeouts, output capping, memory limits, test case runner).
 - **Security & Production Audit Suite**: **12 / 12 tests passing** (Anti-IDOR, secrets isolation, ephemeral directory cleanup, network egress blocking, concurrency semaphore, fail-closed production guard).
-- **Vite Production Bundler**: **Passed cleanly in 11.2s** with 0 errors.
+- **Vite Production Bundler**: **Passed cleanly in 13.9s** with 0 errors.
 
 ---
 
@@ -719,12 +802,14 @@ Prepper/
 │   │   ├── crossExamination.controller.js # Module 2 resume project probing
 │   │   ├── coding.controller.js         # Module 4 live coding endpoints
 │   │   ├── recoveryPlan.controller.js   # Module 5 personalized recovery plans
+│   │   ├── companyInterview.controller.js # Module 6 company simulation endpoints
 │   │   ├── payment.controller.js        # Razorpay payment verification
 │   │   └── user.controller.js           # Candidate profile & credit balance
 │   ├── middleware/                      # Auth verification, rate limiting, and uploads
 │   ├── models/                          # Mongoose data models
 │   │   ├── user.model.js                # Candidate accounts & credit wallet
 │   │   ├── interview.model.js           # Unified interview state, answers & trajectory
+│   │   ├── companyProfile.model.js      # Module 6 company intelligence & culture profiles
 │   │   ├── crossExaminationSession.model.js # High-pressure project defense sessions
 │   │   ├── codingProblem.model.js       # Algorithmic problem bank & driver code
 │   │   ├── codingSubmission.model.js    # Code execution attempts, verdicts & memory
@@ -736,6 +821,7 @@ Prepper/
 │   │   ├── crossExamination.routes.js   # /api/cross-examination routes
 │   │   ├── coding.routes.js             # /api/coding routes
 │   │   ├── recoveryPlan.routes.js       # /api/recovery-plans routes
+│   │   ├── companyInterview.routes.js   # /api/company-interview routes
 │   │   └── payment.routes.js            # /api/payment routes
 │   ├── services/                        # Domain logic services & registries
 │   │   ├── index.js                     # Domain-driven unified service export barrel
@@ -751,6 +837,13 @@ Prepper/
 │   │   ├── resumeIntelligence.service.js# In-memory PDF parsing via pdfjs-dist
 │   │   ├── evidenceEvaluation.service.js# 6-criterion evidence grounding
 │   │   ├── reportGeneration.service.js  # Executive scorecard & roadmap compiler
+│   │   ├── companySimulation/           # Module 6 company simulation services
+│   │   │   ├── curatedCompanyProfiles.js # 9 Premier corporate intelligence profiles
+│   │   │   ├── companyIntelligence.service.js # Profile retrieval & dynamic crawler
+│   │   │   ├── companyQuestionPrompt.js # Grounded company & round prompts
+│   │   │   ├── companyQuestionGenerator.service.js # AI synthesis & 7-round fallback banks
+│   │   │   ├── companyEvaluation.service.js # Hiring verdicts & fit level compiler
+│   │   │   └── companyInterview.service.js # Full simulation orchestration
 │   │   ├── recoveryPlan/                # Module 5 recovery plan engines
 │   │   │   ├── recoveryPlan.service.js  # Main orchestration & progress lifecycle
 │   │   │   ├── evidenceHarvester.service.js # Multi-engine evidence crawler
@@ -780,6 +873,12 @@ Prepper/
 │   │   │   ├── CapabilityCard.jsx       # Landing page capability card
 │   │   │   ├── FeatureCard.jsx          # Feature showcase item
 │   │   │   ├── ModeCard.jsx             # Interview mode selector card
+│   │   │   ├── company/                 # Module 6 company simulation components
+│   │   │   │   ├── index.js             # Company component barrel export
+│   │   │   │   ├── CompanySelector.jsx  # Premier grid & custom company search
+│   │   │   │   ├── CompanyIntelligenceCard.jsx # Culture, principles, & stack card
+│   │   │   │   ├── RoundSelector.jsx    # 7-round interactive selector
+│   │   │   │   └── CompanyReadinessCard.jsx # Readiness gauge & hiring verdict
 │   │   │   ├── coding/                  # Live coding workspace components
 │   │   │   │   ├── CodingWorkspace.jsx  # Monaco editor, dual splitters, console drawer
 │   │   │   │   └── CodingReportSection.jsx # Report submission summary & verdict
@@ -808,7 +907,11 @@ Prepper/
 │   │   │   ├── CodingSetup.jsx          # Module 4 setup, questions & timer selector
 │   │   │   ├── CodingSessionPage.jsx    # Module 4 live coding session runner
 │   │   │   ├── RecoveryPlansListPage.jsx# Module 5 recovery programs list
-│   │   │   └── RecoveryPlanDashboard.jsx# Module 5 daily study & reassessment dashboard
+│   │   │   ├── RecoveryPlanDashboard.jsx# Module 5 daily study & reassessment dashboard
+│   │   │   ├── CompanyInterviewSetup.jsx# Module 6 company & round configuration
+│   │   │   ├── CompanyInterviewSession.jsx # Module 6 live voice & question session
+│   │   │   ├── CompanyInterviewReport.jsx # Module 6 readiness scorecard & recovery bridge
+│   │   │   └── CompanyInterviewHistory.jsx # Module 6 simulation history & verdict filters
 │   │   ├── hooks/                       # Custom React hooks (speech, timer)
 │   │   ├── redux/                       # Redux Toolkit store & user slices
 │   │   ├── utils/                       # API helpers & timer utilities
