@@ -905,6 +905,7 @@ export const finishInterview = async (req, res) => {
             confidence: totalQuestions ? Math.round(totalConfidence / totalQuestions) : 0,
             communication: totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0,
             correctness: totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0,
+            analytics,
             questions: interview.questions,
             role: interview.role,
             experience: interview.experience,
