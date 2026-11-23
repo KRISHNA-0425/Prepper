@@ -56,11 +56,12 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
       assert.ok(workspaceCode.includes('theme="vs-dark"'), 'Must configure vs-dark theme for consistent design');
     });
 
-    it('should support core languages: JavaScript, Python, C++, Java, TypeScript, Go', () => {
+    it('should support core languages: C, C++, Python, Java, JavaScript, TypeScript, Go', () => {
       assert.ok(workspaceCode.includes('javascript'), 'Must support JavaScript');
       assert.ok(workspaceCode.includes('python'), 'Must support Python');
       assert.ok(workspaceCode.includes('cpp'), 'Must support C++');
       assert.ok(workspaceCode.includes('java'), 'Must support Java');
+      assert.ok(workspaceCode.includes('c'), 'Must support C');
       assert.ok(workspaceCode.includes('typescript'), 'Must support TypeScript');
       assert.ok(workspaceCode.includes('go'), 'Must support Go');
     });
