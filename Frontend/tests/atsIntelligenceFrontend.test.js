@@ -50,6 +50,11 @@ describe('Module 7: AI Resume-to-Job ATS & Application Intelligence Frontend Sui
   const appCode = fs.readFileSync(appPath, 'utf8');
   const navbarCode = fs.readFileSync(navbarPath, 'utf8');
 
+  const step1SetupCode = fs.readFileSync(path.resolve(frontendRoot, 'src/pages/Step1Setup.jsx'), 'utf8');
+  const companySetupCode = fs.readFileSync(path.resolve(frontendRoot, 'src/pages/CompanyInterviewSetup.jsx'), 'utf8');
+  const codingSetupCode = fs.readFileSync(path.resolve(frontendRoot, 'src/pages/CodingSetup.jsx'), 'utf8');
+  const recoveryListCode = fs.readFileSync(path.resolve(frontendRoot, 'src/pages/RecoveryPlansListPage.jsx'), 'utf8');
+
   // =========================================================================
   // 1. ResumeUploadDropzone Component
   // =========================================================================
@@ -131,6 +136,15 @@ describe('Module 7: AI Resume-to-Job ATS & Application Intelligence Frontend Sui
       assert.ok(bridgeBarCode.includes('/recovery-plans'), 'Must bridge to Module 5 Recovery Plan');
       assert.ok(bridgeBarCode.includes('/company-interview'), 'Must bridge to Module 6 Company Simulation');
     });
+
+    it('verifies receiving setup pages ingest location.state prefill payloads from ATS bridge', () => {
+      assert.ok(step1SetupCode.includes('location.state?.prefillRole'), 'Step1Setup must prefill role from ATS');
+      assert.ok(step1SetupCode.includes('location.state?.prefillSkills'), 'Step1Setup must prefill skills from ATS');
+      assert.ok(companySetupCode.includes('location.state?.prefillRole'), 'CompanyInterviewSetup must prefill role from ATS');
+      assert.ok(companySetupCode.includes('location.state?.prefillCompany'), 'CompanyInterviewSetup must prefill company from ATS');
+      assert.ok(codingSetupCode.includes('location.state?.prefillCategory'), 'CodingSetup must prefill category from ATS');
+      assert.ok(recoveryListCode.includes('atsBridgeData'), 'RecoveryPlansListPage must display active ATS bridge banner');
+    });
   });
 
   // =========================================================================
@@ -167,6 +181,8 @@ describe('Module 7: AI Resume-to-Job ATS & Application Intelligence Frontend Sui
       assert.ok(navbarCode.includes('/ats'));
       assert.ok(navbarCode.includes('isAtsActive'));
       assert.ok(navbarCode.includes('ATS Intelligence'));
+      assert.ok(navbarCode.includes('/ats/new'));
+      assert.ok(navbarCode.includes('New ATS Match'));
       assert.ok(navbarCode.includes('/ats/history'));
       assert.ok(navbarCode.includes('ATS Analyses'));
     });

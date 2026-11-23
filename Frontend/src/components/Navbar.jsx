@@ -44,7 +44,7 @@ function Navbar() {
                 className='w-full max-w-6xl bg-white/30 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/60 px-4 md:px-6 py-3 flex items-center justify-between relative'
             >
                 {/* Logo Section & Dedicated Nav Links */}
-                <div className='flex items-center gap-2 sm:gap-4'>
+                <div className='flex items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar max-w-[calc(100vw-180px)] md:max-w-none py-1'>
                     <Link to="/" aria-label="Prepper AI Home">
                         <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
                             <img 
@@ -228,10 +228,16 @@ function Navbar() {
                                                 <RiShieldFlashLine size={18} className="text-yellow-600 shrink-0" /> Cross-Exam History
                                             </button>
                                             <button 
+                                                onClick={() => { navigate('/ats/new'); setIsDropdownOpen(false); }} 
+                                                className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
+                                            >
+                                                <RiFileSearchLine size={18} className="text-blue-600 shrink-0" /> New ATS Match
+                                            </button>
+                                            <button 
                                                 onClick={() => { navigate('/ats/history'); setIsDropdownOpen(false); }} 
                                                 className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
                                             >
-                                                <RiFileSearchLine size={18} className="text-blue-600 shrink-0" /> ATS Analyses
+                                                <RiFileSearchLine size={18} className="text-blue-600 shrink-0" /> ATS Analyses History
                                             </button>
                                             <button 
                                                 onClick={handleLogout} 
