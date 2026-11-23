@@ -383,3 +383,151 @@ The frontend coding interface (`CodingWorkspace.jsx`) includes dynamic candidate
   1. *Run Code*: Executes against arbitrary candidate `stdin`.
   2. *Run Sample Tests*: Tests code against visible example test cases.
   3. *Submit Solution*: Evaluates all test cases (visible + hidden) and persists official submission record to MongoDB.
+
+---
+
+## 🗄️ Database Schemas & Entity-Relationship Architecture
+
+The platform uses MongoDB with strict Mongoose schemas to support complex nested interview trajectories, evidence evaluations, and code submissions:
+
+```mermaid
+erDiagram
+    User ||--o{ Interview : conducts
+    User ||--o{ CodingSubmission : submits
+    User ||--o{ Payment : purchases
+    Interview ||--o{ Question : contains
+    Interview ||--o{ CodingProblem : references
+    CodingProblem ||--o{ CodingSubmission : receives
+
+    User {
+        ObjectId _id PK
+        string name
+        string email
+        string password
+        number credits
+        string role
+        date createdAt
+    }
+
+    Interview {
+        ObjectId _id PK
+        ObjectId userId FK
+        string role
+        string experienceLevel
+        string sessionType "standard | cross-examination | coding"
+        string status "in-progress | completed | abandoned"
+        number overallScore
+        number selectedDurationMinutes
+        date expiresAt
+        object adaptiveState "currentTier, streak, steeringHistory"
+        object analytics "competencyGaps, rubricBreakdown"
+    }
+
+    Question {
+        ObjectId _id PK
+        string questionText
+        string category
+        string difficultyTier
+        string candidateAnswer
+        number score
+        object rubricScores
+        object evidenceEvaluation
+        string transitionPhrase
+    }
+
+    CodingProblem {
+        ObjectId _id PK
+        string title
+        string slug
+        string difficulty "Easy | Medium | Hard"
+        string category
+        string description
+        array constraints
+        array visibleTestCases
+        array hiddenTestCases
+        object driverCode
+    }
+
+    CodingSubmission {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId interviewId FK
+        ObjectId problemId FK
+        string language
+        string code
+        string verdict "Accepted | Wrong Answer | TLE | MLE | Error"
+        number passedCount
+        number totalCount
+        number maxTimeMs
+        number maxMemoryKb
+        date createdAt
+    }
+
+    Payment {
+        ObjectId _id PK
+        ObjectId userId FK
+        string razorpayOrderId
+        string razorpayPaymentId
+        number amount
+        number creditsAdded
+        string status "created | success | failed"
+    }
+```
+
+---
+
+## 🌐 Complete REST API Endpoint Reference
+
+### 🔐 Authentication (`/api/auth`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/auth/register` | Register new user account with initial credits | No |
+| `POST` | `/api/auth/login` | Authenticate candidate & issue HTTP-only JWT cookie | No |
+| `POST` | `/api/auth/logout` | Clear auth token cookie & terminate session | Yes |
+| `GET`  | `/api/auth/me` | Fetch authenticated user profile & credit balance | Yes |
+
+### 🎙️ Standard Interview & Trajectory (`/api/interview`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/interview/create` | Create new interview, parse resume PDF, deduct credits | Yes |
+| `POST` | `/api/interview/submit-answer` | Submit answer, run adaptive evaluation & get next question | Yes |
+| `POST` | `/api/interview/finish` | Finalize interview, compute Section F analytics & scorecard | Yes |
+| `GET`  | `/api/interview/session/:id` | Fetch full interview session data & transcript | Yes |
+| `GET`  | `/api/interview/report/:id` | Retrieve comprehensive evaluation report & radar chart | Yes |
+| `GET`  | `/api/interview/history` | List candidate interview history with pagination | Yes |
+
+### 🔍 Dedicated Cross-Examination (`/api/cross-examination`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/cross-examination/create` | Analyze resume projects & generate claim anchor points | Yes |
+| `POST` | `/api/cross-examination/submit-answer` | Submit defense, escalate pressure tier, ground transcript | Yes |
+| `POST` | `/api/cross-examination/finish` | Compile project defense score & claim authenticity report | Yes |
+| `GET`  | `/api/cross-examination/history` | Fetch separate dedicated cross-examination history | Yes |
+
+### 💻 Live Coding & Execution Engine (`/api/coding`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET`  | `/api/coding/languages` | Discover active compiler runtimes on host | Yes |
+| `POST` | `/api/coding/create-session` | Initialize coding round, select problems & duration | Yes |
+| `POST` | `/api/coding/run` | Execute code against arbitrary candidate stdin | Yes |
+| `POST` | `/api/coding/run-tests` | Run code against visible example test cases | Yes |
+| `POST` | `/api/coding/submit` | Evaluate against visible + hidden test cases & persist | Yes |
+| `GET`  | `/api/coding/history/:interviewId` | Retrieve past submissions for the coding interview | Yes |
+
+### 💳 Payment & Credits (`/api/payment`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/payment/create-order` | Generate Razorpay order for purchasing interview credits | Yes |
+| `POST` | `/api/payment/verify` | Verify cryptographic HMAC signature & credit wallet | Yes |
+| `GET`  | `/api/payment/transactions` | Retrieve candidate payment & credit transaction log | Yes |
+
+---
+
+## 💰 Credit Economics & Pricing Policy
+
+To maintain fair platform economics and prevent resource starvation:
+- **Module 1 (Standard Voice Interview)**: `10 Credits` (Base 5 questions + AI voice + full scorecard).
+- **Module 2 (Dedicated Cross-Examination)**: `10 Credits` (Full project defense + pressure escalation).
+- **Module 4 (Live Coding Session)**: Dynamic formula calibrated by question count and time limit:
+  $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
+- **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
