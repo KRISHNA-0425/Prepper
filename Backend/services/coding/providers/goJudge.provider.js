@@ -10,19 +10,24 @@ export class GoJudgeExecutionProvider extends BaseExecutionProvider {
   constructor(baseUrl = process.env.CODE_EXECUTION_URL || 'http://localhost:5050') {
     super('go-judge');
     this.baseUrl = baseUrl.replace(/\/$/, '');
-    this.client = axios.create({
-      baseURL: this.baseUrl,
+  }
+
+  getClient() {
+    const currentBaseUrl = (process.env.CODE_EXECUTION_URL || this.baseUrl || 'http://localhost:5050').replace(/\/$/, '');
+    const apiKey = process.env.CODE_EXECUTION_API_KEY;
+    return axios.create({
+      baseURL: currentBaseUrl,
       timeout: Number(process.env.CODE_EXECUTION_TIMEOUT) || 12000,
       headers: {
         'Content-Type': 'application/json',
-        ...(process.env.CODE_EXECUTION_API_KEY ? { Authorization: `Bearer ${process.env.CODE_EXECUTION_API_KEY}` } : {})
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
       }
     });
   }
 
   async checkHealth() {
     try {
-      const response = await this.client.get('/version');
+      const response = await this.getClient().get('/version');
       return {
         healthy: true,
         version: response.data?.version || 'Go-Judge Standalone',
@@ -31,7 +36,7 @@ export class GoJudgeExecutionProvider extends BaseExecutionProvider {
     } catch (err) {
       return {
         healthy: false,
-        error: `Go Judge connection error at ${this.baseUrl}: ${err.message}`
+        error: `Go Judge connection error: ${err.message}`
       };
     }
   }
@@ -130,7 +135,7 @@ export class GoJudgeExecutionProvider extends BaseExecutionProvider {
 
   async execute(params) {
     const cmdList = this.buildGoJudgeCmd(params);
-    const response = await this.client.post('/run', { cmd: cmdList });
+    const response = await this.getClient().post('/run', { cmd: cmdList });
     const results = response.data;
 
     if (!Array.isArray(results) || results.length === 0) {
@@ -138,7 +143,8 @@ export class GoJudgeExecutionProvider extends BaseExecutionProvider {
     }
 
     // If compilation stage failed in compiled languages (C, C++, Java)
-    if (results.length > 1 && results[0].status !== 'Accepted') {
+    const isCompiledLang = ['c', 'cpp', 'java'].includes(params.language);
+    if ((results.length > 1 || isCompiledLang) && results[0].status !== 'Accepted') {
       const compileStep = results[0];
       return {
         success: true,

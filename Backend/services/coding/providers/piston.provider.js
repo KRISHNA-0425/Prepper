@@ -10,19 +10,24 @@ export class PistonExecutionProvider extends BaseExecutionProvider {
   constructor(baseUrl = process.env.CODE_EXECUTION_URL || 'http://localhost:2000') {
     super('piston');
     this.baseUrl = baseUrl.replace(/\/$/, '');
-    this.client = axios.create({
-      baseURL: this.baseUrl,
+  }
+
+  getClient() {
+    const currentBaseUrl = (process.env.CODE_EXECUTION_URL || this.baseUrl || 'http://localhost:2000').replace(/\/$/, '');
+    const apiKey = process.env.CODE_EXECUTION_API_KEY;
+    return axios.create({
+      baseURL: currentBaseUrl,
       timeout: Number(process.env.CODE_EXECUTION_TIMEOUT) || 12000,
       headers: {
         'Content-Type': 'application/json',
-        ...(process.env.CODE_EXECUTION_API_KEY ? { Authorization: process.env.CODE_EXECUTION_API_KEY } : {})
+        ...(apiKey ? { Authorization: apiKey } : {})
       }
     });
   }
 
   async checkHealth() {
     try {
-      const response = await this.client.get('/api/v2/runtimes');
+      const response = await this.getClient().get('/api/v2/runtimes');
       return {
         healthy: Array.isArray(response.data),
         version: 'Piston Engine v2',
@@ -31,7 +36,7 @@ export class PistonExecutionProvider extends BaseExecutionProvider {
     } catch (err) {
       return {
         healthy: false,
-        error: `Piston connection error at ${this.baseUrl}: ${err.message}`
+        error: `Piston connection error: ${err.message}`
       };
     }
   }
@@ -56,7 +61,7 @@ export class PistonExecutionProvider extends BaseExecutionProvider {
       compile_timeout: 10000
     };
 
-    const response = await this.client.post('/api/v2/execute', payload);
+    const response = await this.getClient().post('/api/v2/execute', payload);
     const data = response.data;
 
     if (!data) {
