@@ -19,6 +19,8 @@ import {
 } from 'react-icons/hi2';
 import { useNavigate } from 'react-router-dom';
 import CodingReportSection from '../components/coding/CodingReportSection';
+import RecoveryPlanSetupModal from '../components/recovery/RecoveryPlanSetupModal';
+import { RiRoadMapLine, RiSparklingLine, RiArrowRightLine } from 'react-icons/ri';
 import {
   Radar,
   RadarChart,
@@ -46,6 +48,7 @@ function Step3Report({ report }) {
   const navigate = useNavigate();
   const [expandedQuestions, setExpandedQuestions] = useState({});
   const [evidenceFilter, setEvidenceFilter] = useState('all'); // 'all' | 'correct' | 'partially_correct' | 'incorrect' | 'missing'
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
 
   const toggleQuestion = (index) => {
     setExpandedQuestions((prev) => ({
@@ -232,6 +235,42 @@ function Step3Report({ report }) {
             </span>
           )}
         </div>
+
+        {/* MODULE 5: Personalized Recovery Plan CTA Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-yellow-400/10 via-amber-500/10 to-slate-900 border border-yellow-400/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-3 bg-yellow-400/20 border border-yellow-400/40 rounded-2xl text-yellow-400 shrink-0">
+              <RiRoadMapLine className="text-2xl" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-slate-950">
+                  New • Module 5
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  Personalized Recovery Plan
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                Convert this evaluation's identified gaps and evidence into an adaptive, day-by-day study roadmap with progress tracking and reassessment.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsRecoveryModalOpen(true)}
+            className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-950 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-yellow-400/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            <RiSparklingLine className="text-sm" />
+            Generate Recovery Plan
+            <RiArrowRightLine className="text-sm" />
+          </button>
+        </motion.div>
 
         {/* SECTION A: Overall Performance Summary & Aggregate Score */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -809,6 +848,15 @@ function Step3Report({ report }) {
             </div>
           )}
         </section>
+
+        {/* Module 5 Recovery Plan Setup Modal */}
+        <RecoveryPlanSetupModal
+          isOpen={isRecoveryModalOpen}
+          onClose={() => setIsRecoveryModalOpen(false)}
+          interviewId={report._id}
+          role={report.role || 'Software Engineer'}
+          score={overallPercent}
+        />
       </div>
     </div>
   );

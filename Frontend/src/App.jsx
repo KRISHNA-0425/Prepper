@@ -14,6 +14,8 @@ import CrossExaminationSetup from './pages/CrossExaminationSetup'
 import CrossExaminationSession from './pages/CrossExaminationSession'
 import CodingSetup from './pages/CodingSetup'
 import CodingSessionPage from './pages/CodingSessionPage'
+import RecoveryPlansListPage from './pages/RecoveryPlansListPage'
+import RecoveryPlanDashboard from './pages/RecoveryPlanDashboard'
 
 
 export const backendServerUrl = import.meta.env.VITE_SERVER_URL
@@ -66,6 +68,8 @@ function App() {
         <Route path='/cross-examination/:sessionId' element={<CrossExaminationSession />} />
         <Route path='/coding' element={<CodingSetup />} />
         <Route path='/coding/:sessionId' element={<CodingSessionPage />} />
+        <Route path='/recovery-plans' element={<RecoveryPlansListPage />} />
+        <Route path='/recovery-plans/:planId' element={<RecoveryPlanDashboard />} />
       </Routes>
     </>
   )
