@@ -81,7 +81,7 @@ export const deductInterviewCredits = async (userId, userModelOrAmount = User, c
     const updatedUser = await UserModel.findOneAndUpdate(
       { _id: userId, credits: { $gte: amount } },
       { $inc: { credits: -amount } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (updatedUser) {
@@ -138,7 +138,7 @@ export const refundInterviewCredits = async (userId, userModelOrAmount = User, c
     return UserModel.findByIdAndUpdate(
       userId,
       { $inc: { credits: amount } },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 
