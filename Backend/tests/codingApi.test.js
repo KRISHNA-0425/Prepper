@@ -2,9 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import codingExecutionService from '../services/coding/codingExecution.service.js';
 import testCaseService from '../services/coding/testCase.service.js';
-import judge0Service, { JUDGE0_STATUS } from '../services/coding/judge0.service.js';
 
-test('Coding API - Run Code visible test cases flow', async (t) => {
+test('Coding API - Run Sample Tests visible test cases flow', async () => {
   // Mock interview object
   const mockUserId = 'user_abc123';
   const mockInterview = {
@@ -26,14 +25,12 @@ test('Coding API - Run Code visible test cases flow', async (t) => {
     ],
   };
 
-  // Temporarily stub verifyInterviewAccess
   const originalVerify = codingExecutionService.verifyInterviewAccess;
   codingExecutionService.verifyInterviewAccess = async () => mockInterview;
 
-  // Temporarily stub testCaseService.executeTestCases
   const originalExecute = testCaseService.executeTestCases;
   testCaseService.executeTestCases = async ({ testCases }) => {
-    // Verify that runCode only sent visible test cases (1 test case, not hidden!)
+    // Verify that sample tests only sent visible test cases (1 test case, not hidden!)
     assert.equal(testCases.length, 1);
     assert.equal(testCases[0].isHidden, false);
 
@@ -60,7 +57,7 @@ test('Coding API - Run Code visible test cases flow', async (t) => {
   };
 
   try {
-    const result = await codingExecutionService.runCode({
+    const result = await codingExecutionService.runSampleTests({
       userId: mockUserId,
       interviewId: 'interview_xyz789',
       problemIndex: 0,
@@ -70,6 +67,7 @@ test('Coding API - Run Code visible test cases flow', async (t) => {
     });
 
     assert.equal(result.success, true);
+    assert.equal(result.mode, 'sample-tests');
     assert.equal(result.passedCount, 1);
     assert.equal(result.totalCount, 1);
     assert.equal(result.allPassed, true);
@@ -104,18 +102,18 @@ test('Coding API - Ownership and lifecycle access controls', async () => {
   }
 
   // Test unauthorized user rejection
-  const activeInterview = {
+  const foreignInterview = {
     _id: 'int_2',
-    userId: 'user_owner',
+    userId: 'user_actual_owner',
     status: 'Incompleted',
   };
 
-  (await import('../models/interview.model.js')).default.findById = async () => activeInterview;
+  (await import('../models/interview.model.js')).default.findById = async () => foreignInterview;
 
   try {
     await assert.rejects(
       async () => {
-        await codingExecutionService.verifyInterviewAccess('int_2', 'user_stranger');
+        await codingExecutionService.verifyInterviewAccess('int_2', 'user_attacker');
       },
       { message: 'Unauthorized: You do not own this interview session' }
     );

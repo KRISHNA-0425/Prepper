@@ -93,7 +93,7 @@ test('5. CodingExecutionService - Payload and size limits validation', () => {
     () => {
       codingExecutionService.validatePayload({
         sourceCode: '   ',
-        languageId: 63,
+        language: 'javascript',
         interviewId: 'mock_id',
         problemIndex: 0,
       });
@@ -107,7 +107,7 @@ test('5. CodingExecutionService - Payload and size limits validation', () => {
     () => {
       codingExecutionService.validatePayload({
         sourceCode: hugeCode,
-        languageId: 63,
+        language: 'javascript',
         interviewId: 'mock_id',
         problemIndex: 0,
       });
