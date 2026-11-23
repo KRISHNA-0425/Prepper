@@ -23,3 +23,10 @@ export { default as PastSessionsModal } from './cross-examination/PastSessionsMo
 export { default as PreparationGuidance } from './cross-examination/PreparationGuidance';
 export { default as SessionProgress } from './cross-examination/SessionProgress';
 export { default as SessionSummaryModal } from './cross-examination/SessionSummaryModal';
+
+// 4. Module 5: Personalized Recovery Plan Components
+export { default as RecoveryPlanSetupModal } from './recovery/RecoveryPlanSetupModal';
+export { default as RecoveryPlanOverview } from './recovery/RecoveryPlanOverview';
+export { default as DailyTaskList } from './recovery/DailyTaskList';
+export { default as TaskDetailModal } from './recovery/TaskDetailModal';
+export { default as ReassessmentModal } from './recovery/ReassessmentModal';
