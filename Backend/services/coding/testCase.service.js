@@ -1,10 +1,11 @@
 /**
  * @file testCase.service.js
- * Evaluates user code against test cases with output normalization, whitespace handling,
- * and security masking to ensure hidden test cases are NEVER leaked to the client.
+ * Evaluates candidate code against test cases with output normalization, whitespace handling,
+ * numeric float tolerance, and security masking for hidden evaluation test cases.
  */
 
-import judge0Service from './judge0.service.js';
+import executionAdapter from './executionAdapter.service.js';
+import driverTemplateService from './driverTemplate.service.js';
 
 export class TestCaseService {
   /**
@@ -75,22 +76,24 @@ export class TestCaseService {
   }
 
   /**
-   * Executes code against an array of test cases using Judge0.
+   * Executes code against an array of test cases using the pluggable execution adapter.
    *
    * @param {object} params
    * @param {string} params.sourceCode
-   * @param {number} params.languageId
+   * @param {string} params.language - 'c' | 'cpp' | 'python' | 'java' | 'javascript'
    * @param {Array<{ input: string, expectedOutput: string, isHidden?: boolean }>} params.testCases
    * @param {number} [params.cpuTimeLimit=5.0]
    * @param {number} [params.memoryLimitKb=128000]
+   * @param {string} [params.executionMode='stdin']
    * @returns {Promise<{ passedCount: number, totalCount: number, allPassed: boolean, results: Array<object>, maxTimeMs: number, maxMemoryKb: number }>}
    */
   async executeTestCases({
     sourceCode,
-    languageId,
+    language,
     testCases = [],
     cpuTimeLimit = 5.0,
     memoryLimitKb = 128000,
+    executionMode = 'stdin'
   }) {
     if (!Array.isArray(testCases) || testCases.length === 0) {
       return {
@@ -103,6 +106,13 @@ export class TestCaseService {
       };
     }
 
+    // Wrap code if problem specifies function-based execution mode
+    const executableCode = driverTemplateService.wrapCode({
+      language,
+      sourceCode,
+      executionMode
+    });
+
     const results = [];
     let passedCount = 0;
     let maxTimeMs = 0;
@@ -113,24 +123,28 @@ export class TestCaseService {
       const isHidden = Boolean(tc.isHidden);
 
       try {
-        const execution = await judge0Service.executeCode({
-          sourceCode,
-          languageId,
+        const execution = await executionAdapter.execute({
+          language,
+          sourceCode: executableCode,
           stdin: tc.input || '',
-          expectedOutput: tc.expectedOutput || '',
           cpuTimeLimit,
           memoryLimitKb,
         });
 
-        const executionTimeMs = Math.round((execution.time || 0) * 1000);
-        const memoryKb = execution.memory || 0;
+        const executionTimeMs = execution.executionTimeMs || 0;
+        const memoryKb = execution.memoryKb || 0;
         if (executionTimeMs > maxTimeMs) maxTimeMs = executionTimeMs;
         if (memoryKb > maxMemoryKb) maxMemoryKb = memoryKb;
 
         const isOutputCorrect = this.compareOutputs(execution.stdout, tc.expectedOutput);
-        const passed = execution.passed || isOutputCorrect;
+        const passed = execution.exitCode === 0 && isOutputCorrect;
 
         if (passed) passedCount++;
+
+        let statusDescription = execution.statusDescription;
+        if (execution.statusDescription === 'Accepted' && !isOutputCorrect) {
+          statusDescription = 'Wrong Answer';
+        }
 
         results.push({
           testCaseIndex: i + 1,
@@ -143,7 +157,7 @@ export class TestCaseService {
           compileOutput: execution.compileOutput || '',
           executionTimeMs,
           memoryKb,
-          statusDescription: execution.statusDescription || (passed ? 'Accepted' : 'Wrong Answer'),
+          statusDescription,
           error: execution.stderr || execution.compileOutput || '',
           isHidden,
         });

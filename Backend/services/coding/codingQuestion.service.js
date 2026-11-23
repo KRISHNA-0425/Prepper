@@ -24,6 +24,18 @@ export const CODING_CATEGORIES = [
 export const CODING_DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 
 export const STARTER_CODE_TEMPLATES = {
+  c: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    char buffer[1024];
+    if (fgets(buffer, sizeof(buffer), stdin)) {
+        printf("%s", buffer);
+    }
+    return 0;
+}
+`,
   javascript: `const fs = require('fs');
 
 function solve(input) {
@@ -107,6 +119,34 @@ Output the two indices separated by a space in ascending order. If multiple pair
     optimalTimeComplexity: 'O(n)',
     optimalSpaceComplexity: 'O(n)',
     starterCode: {
+      c: `#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int nums[10000];
+    int n = 0, target;
+    char line[100000];
+    if (fgets(line, sizeof(line), stdin)) {
+        char *ptr = line;
+        int val, bytes;
+        while (sscanf(ptr, "%d%n", &val, &bytes) == 1) {
+            nums[n++] = val;
+            ptr += bytes;
+        }
+    }
+    if (scanf("%d", &target) == 1) {
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (nums[i] + nums[j] == target) {
+                    printf("%d %d\\n", i, j);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+`,
       javascript: `const fs = require('fs');
 
 function twoSum(nums, target) {
@@ -239,6 +279,34 @@ true
     optimalTimeComplexity: 'O(n)',
     optimalSpaceComplexity: 'O(1)',
     starterCode: {
+      c: `#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int nums[10000];
+    int n = 0, target;
+    char line[100000];
+    if (fgets(line, sizeof(line), stdin)) {
+        char *ptr = line;
+        int val, bytes;
+        while (sscanf(ptr, "%d%n", &val, &bytes) == 1) {
+            nums[n++] = val;
+            ptr += bytes;
+        }
+    }
+    if (scanf("%d", &target) == 1) {
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (nums[i] + nums[j] == target) {
+                    printf("%d %d\\n", i, j);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+`,
       javascript: `const fs = require('fs');
 
 function isPalindrome(s) {
@@ -347,6 +415,34 @@ abcabcbb
     optimalTimeComplexity: 'O(n)',
     optimalSpaceComplexity: 'O(min(n, m)) where m is the alphabet size',
     starterCode: {
+      c: `#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    int nums[10000];
+    int n = 0, target;
+    char line[100000];
+    if (fgets(line, sizeof(line), stdin)) {
+        char *ptr = line;
+        int val, bytes;
+        while (sscanf(ptr, "%d%n", &val, &bytes) == 1) {
+            nums[n++] = val;
+            ptr += bytes;
+        }
+    }
+    if (scanf("%d", &target) == 1) {
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (nums[i] + nums[j] == target) {
+                    printf("%d %d\\n", i, j);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+`,
       javascript: `const fs = require('fs');
 
 function lengthOfLongestSubstring(s) {
