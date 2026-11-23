@@ -200,6 +200,36 @@ Responsibilities:
       assert.equal(m3.isMatched, false);
       assert.equal(m3.evidenceSource, 'none');
     });
+
+    it('strictly isolates Java from JavaScript, C from C++, and Go from Google Cloud', () => {
+      const jsCandidate = ['JavaScript', 'Node.js', 'React'];
+      const jsText = 'Fullstack JavaScript developer specializing in Node and React web apps.';
+
+      // Java required -> must NOT match JavaScript
+      const javaMatch = checkSkillMatch('Java', jsCandidate, jsText);
+      assert.equal(javaMatch.isMatched, false, 'Java must NOT match JavaScript');
+
+      // JavaScript required -> must match
+      const jsMatch = checkSkillMatch('JavaScript', jsCandidate, jsText);
+      assert.equal(jsMatch.isMatched, true, 'JavaScript must match');
+
+      const cppCandidate = ['C++', 'Python'];
+      const cppText = 'Developed high-performance trading engine in C++ and Python.';
+
+      // C required -> must NOT match C++
+      const cMatch = checkSkillMatch('C', cppCandidate, cppText);
+      assert.equal(cMatch.isMatched, false, 'C must NOT match C++');
+
+      // C++ required -> must match
+      const cppMatch = checkSkillMatch('C++', cppCandidate, cppText);
+      assert.equal(cppMatch.isMatched, true, 'C++ must match');
+
+      // Go vs Google Cloud
+      const gcpCandidate = ['Google Cloud'];
+      const gcpText = 'Deployed microservices on Google Cloud platform.';
+      const goMatch = checkSkillMatch('Go', gcpCandidate, gcpText);
+      assert.equal(goMatch.isMatched, false, 'Go must NOT match Google Cloud');
+    });
   });
 
   // =========================================================================

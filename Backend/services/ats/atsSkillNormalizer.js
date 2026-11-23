@@ -179,8 +179,46 @@ export const normalizeSkillList = (skills = []) => {
 };
 
 /**
+ * Guard to prevent false positive matches between distinct technologies that share substrings.
+ */
+export const isDisjointTech = (a = '', b = '') => {
+  const normA = (a || '').toLowerCase().trim();
+  const normB = (b || '').toLowerCase().trim();
+  const pair = [normA, normB].sort().join('::');
+  return (
+    pair === 'java::javascript' ||
+    pair === 'c::c++' ||
+    pair === 'c::c#' ||
+    pair === 'c++::c#' ||
+    pair === 'r::rust' ||
+    pair === 'go::google cloud' ||
+    pair === 'go::google cloud platform'
+  );
+};
+
+/**
+ * Escapes regex special characters.
+ */
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Creates a regex that safely matches a skill accounting for punctuation like ++ and #.
+ */
+export const createSafeSkillRegex = (skill) => {
+  const norm = (skill || '').trim();
+  const escaped = escapeRegExp(norm);
+  const startsWithWord = /^\w/.test(norm);
+  const endsWithWord = /\w$/.test(norm);
+
+  const leadBoundary = startsWithWord ? '(?:^|[^a-zA-Z0-9_])' : '';
+  const trailBoundary = endsWithWord ? '(?:$|[^a-zA-Z0-9_+#])' : '';
+
+  return new RegExp(`${leadBoundary}${escaped}${trailBoundary}`, 'i');
+};
+
+/**
  * Determines whether candidate has matched a required skill.
- * Checks normalized exact match, alias match, or word-boundary substring.
+ * Checks normalized exact match, alias match, or word-boundary substring with disjoint guards.
  *
  * @param {string} targetSkill
  * @param {string[]} candidateSkills
@@ -188,8 +226,12 @@ export const normalizeSkillList = (skills = []) => {
  * @returns {{ isMatched: boolean, matchedSkill: string | null, evidenceSource: string }}
  */
 export const checkSkillMatch = (targetSkill, candidateSkills = [], candidateSourceText = '') => {
+  if (!targetSkill || typeof targetSkill !== 'string') {
+    return { isMatched: false, matchedSkill: null, evidenceSource: 'none' };
+  }
+
   const normTarget = normalizeSkill(targetSkill).toLowerCase();
-  const normCandidateList = candidateSkills.map((s) => normalizeSkill(s).toLowerCase());
+  const normCandidateList = (candidateSkills || []).map((s) => normalizeSkill(s).toLowerCase());
 
   // 1. Direct normalized skill list match
   const directIdx = normCandidateList.indexOf(normTarget);
@@ -201,28 +243,75 @@ export const checkSkillMatch = (targetSkill, candidateSkills = [], candidateSour
     };
   }
 
-  // 2. Substring or boundary match in candidate skills
+  // 2. Token-level or alias match with word-boundary and disjoint guards
   for (let i = 0; i < candidateSkills.length; i++) {
-    const cSkill = normalizeSkill(candidateSkills[i]).toLowerCase();
-    if (cSkill.includes(normTarget) || normTarget.includes(cSkill)) {
+    const rawCSkill = candidateSkills[i];
+    const cSkill = normalizeSkill(rawCSkill).toLowerCase();
+
+    // Guard against disjoint false positives
+    if (isDisjointTech(normTarget, cSkill)) {
+      continue;
+    }
+
+    // Exact canonical match after normalization
+    if (cSkill === normTarget) {
       return {
         isMatched: true,
-        matchedSkill: candidateSkills[i],
+        matchedSkill: rawCSkill,
+        evidenceSource: 'skills_list',
+      };
+    }
+
+    // If short skill (<= 3 chars like C, Go, R), do not match via loose substring
+    if (normTarget.length <= 3 || cSkill.length <= 3) {
+      continue;
+    }
+
+    // Word boundary match in candidate skill name
+    const boundaryRegex = createSafeSkillRegex(normTarget);
+    if (boundaryRegex.test(cSkill)) {
+      return {
+        isMatched: true,
+        matchedSkill: rawCSkill,
         evidenceSource: 'skills_variation',
       };
     }
   }
 
-  // 3. Search raw text with word boundaries
+  // 3. Search raw text with safe boundaries and disjoint guards
   if (candidateSourceText && typeof candidateSourceText === 'string') {
-    const lowerText = candidateSourceText.toLowerCase();
-    const regex = new RegExp(`\\b${normTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    if (regex.test(lowerText)) {
-      return {
-        isMatched: true,
-        matchedSkill: normalizeSkill(targetSkill),
-        evidenceSource: 'resume_body_text',
-      };
+    if (normTarget === 'java') {
+      const javaRegex = /(?:^|[^a-zA-Z0-9_])java(?:$|[^a-zA-Z0-9_])/i;
+      const textWithoutJs = candidateSourceText.replace(/javascript/gi, ' ');
+      if (javaRegex.test(textWithoutJs)) {
+        return {
+          isMatched: true,
+          matchedSkill: 'Java',
+          evidenceSource: 'resume_body_text',
+        };
+      }
+    } else if (normTarget === 'c') {
+      const cRegex = /(?:^|[^a-zA-Z0-9_])c(?:$|[^a-zA-Z0-9_+#])/i;
+      const textWithoutCppOrCs = candidateSourceText
+        .replace(/c\+\+/gi, ' ')
+        .replace(/c#/gi, ' ')
+        .replace(/csharp/gi, ' ');
+      if (cRegex.test(textWithoutCppOrCs)) {
+        return {
+          isMatched: true,
+          matchedSkill: 'C',
+          evidenceSource: 'resume_body_text',
+        };
+      }
+    } else {
+      const regex = createSafeSkillRegex(normTarget);
+      if (regex.test(candidateSourceText)) {
+        return {
+          isMatched: true,
+          matchedSkill: normalizeSkill(targetSkill),
+          evidenceSource: 'resume_body_text',
+        };
+      }
     }
   }
 
