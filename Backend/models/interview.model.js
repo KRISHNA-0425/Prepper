@@ -1,6 +1,35 @@
 import mongoose from 'mongoose';
 import { DIFFICULTY_LEVELS, ALL_DIFFICULTY_LEVELS, ALL_STEERING_ACTIONS, TOPIC_STATUS, GAP_SEVERITY } from '../contracts/adaptiveContracts.js';
 
+const codingTestCaseSchema = new mongoose.Schema({
+    input: { type: String, required: true },
+    expectedOutput: { type: String, required: true },
+    explanation: { type: String, default: "" },
+    isHidden: { type: Boolean, default: false },
+    weight: { type: Number, default: 1 }
+}, { _id: false });
+
+const codingProblemSchema = new mongoose.Schema({
+    problemId: { type: String, required: true },
+    title: { type: String, required: true },
+    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'], default: 'Medium' },
+    category: { type: String, default: 'Problem Solving' },
+    description: { type: String, required: true },
+    inputFormat: { type: String, default: "" },
+    outputFormat: { type: String, default: "" },
+    constraints: { type: [String], default: [] },
+    starterCode: {
+        type: Map,
+        of: String,
+        default: {}
+    },
+    visibleTestCases: { type: [codingTestCaseSchema], default: [] },
+    hiddenTestCases: { type: [codingTestCaseSchema], default: [] },
+    hints: { type: [String], default: [] },
+    optimalTimeComplexity: { type: String, default: "" },
+    optimalSpaceComplexity: { type: String, default: "" }
+}, { _id: true });
+
 const questionSchema = new mongoose.Schema({
     question: {
         type: String,
@@ -133,10 +162,28 @@ const interviewSchema = new mongoose.Schema({
     },
     mode: {
         type: String,
-        enum: ["HR", "Technical"],
+        enum: ["HR", "Technical", "Coding"],
         required: true,
         default: "Technical"
     },
+    interviewType: {
+        type: String,
+        enum: ["conceptual", "coding", "hybrid"],
+        default: "conceptual"
+    },
+    codingLanguage: {
+        type: String,
+        default: "javascript"
+    },
+    codingCategory: {
+        type: String,
+        default: "Problem Solving"
+    },
+    codingProblems: [codingProblemSchema],
+    codingSubmissions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CodingSubmission"
+    }],
     resumeText: {
         type: String,
     },
