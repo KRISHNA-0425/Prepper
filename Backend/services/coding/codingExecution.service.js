@@ -14,10 +14,31 @@ import executionAdapter from './executionAdapter.service.js';
 
 export const MAX_CODE_SIZE_BYTES = 64 * 1024; // 64 KB limit
 export const RUN_RATE_LIMIT_MS = 1500; // 1.5 seconds between runs
+export const MAX_CONCURRENT_EXECUTIONS = Number(process.env.MAX_CONCURRENT_EXECUTIONS) || 10;
 
 const userLastRunTimestamps = new Map();
+let activeExecutionsCount = 0;
 
 export class CodingExecutionService {
+  /**
+   * Bounded concurrency guard for Render Free tier protection.
+   */
+  async withConcurrencyGuard(action) {
+    if (activeExecutionsCount >= MAX_CONCURRENT_EXECUTIONS) {
+      const err = new Error('Execution engine is currently at maximum capacity. Please wait a moment and try again.');
+      err.statusCode = 429;
+      err.code = 'MAX_CONCURRENCY_EXCEEDED';
+      throw err;
+    }
+
+    activeExecutionsCount++;
+    try {
+      return await action();
+    } finally {
+      activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+    }
+  }
+
   /**
    * Validates code execution payload and security constraints.
    */
@@ -118,13 +139,15 @@ export class CodingExecutionService {
       throw err;
     }
 
-    const executionResult = await executionAdapter.execute({
-      language: langSlug,
-      sourceCode,
-      stdin: String(customInput || ''),
-      cpuTimeLimit: 5.0,
-      memoryLimitKb: 128000
-    });
+    const executionResult = await this.withConcurrencyGuard(() =>
+      executionAdapter.execute({
+        language: langSlug,
+        sourceCode,
+        stdin: String(customInput || ''),
+        cpuTimeLimit: 5.0,
+        memoryLimitKb: 128000
+      })
+    );
 
     return {
       success: true,
@@ -177,13 +200,15 @@ export class CodingExecutionService {
       sampleTests.push({ input: '', expectedOutput: '', isHidden: false });
     }
 
-    const summary = await testCaseService.executeTestCases({
-      language: langSlug,
-      sourceCode,
-      testCases: sampleTests,
-      cpuTimeLimit: 5.0,
-      memoryLimitKb: 128000
-    });
+    const summary = await this.withConcurrencyGuard(() =>
+      testCaseService.executeTestCases({
+        language: langSlug,
+        sourceCode,
+        testCases: sampleTests,
+        cpuTimeLimit: 5.0,
+        memoryLimitKb: 128000
+      })
+    );
 
     return {
       success: true,
@@ -242,13 +267,15 @@ export class CodingExecutionService {
       fullSuite.push({ input: '', expectedOutput: '', isHidden: false });
     }
 
-    const executionSummary = await testCaseService.executeTestCases({
-      language: langSlug,
-      sourceCode,
-      testCases: fullSuite,
-      cpuTimeLimit: 5.0,
-      memoryLimitKb: 128000
-    });
+    const executionSummary = await this.withConcurrencyGuard(() =>
+      testCaseService.executeTestCases({
+        language: langSlug,
+        sourceCode,
+        testCases: fullSuite,
+        cpuTimeLimit: 5.0,
+        memoryLimitKb: 128000
+      })
+    );
 
     // Determine submission verdict
     let submissionStatus = 'Accepted';
