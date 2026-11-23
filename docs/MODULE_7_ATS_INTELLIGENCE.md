@@ -25,6 +25,8 @@ flowchart TD
     subgraph Client["Candidate UI (React 19 + Tailwind CSS)"]
         UI_Dropzone["ResumeUploadDropzone.jsx (PDF / DOCX / TXT)"]
         UI_Setup["AtsSetupPage.jsx (Job Description Input)"]
+        UI_Report["AtsAnalysisReport.jsx (Scorecard & Gaps)"]
+        UI_History["AtsHistoryPage.jsx (Analyses History)"]
         UI_Gauge["AtsScoreGauge.jsx (Circular Visualizer)"]
         UI_Breakdown["AtsDimensionBreakdown.jsx (7 Dimensions)"]
         UI_Gaps["SkillGapTable.jsx (Mandatory vs Preferred)"]
@@ -33,11 +35,11 @@ flowchart TD
     end
 
     subgraph API["Express ATS API Layer (/api/ats)"]
-        C_Upload["ats.controller.js: uploadResume"]
-        C_Analyze["ats.controller.js: analyzeMatch"]
-        C_Direct["ats.controller.js: directAnalyze"]
-        C_Report["ats.controller.js: getAnalysisById"]
-        C_History["ats.controller.js: listHistory"]
+        C_Upload["ats.controller.js: uploadResumeHandler"]
+        C_Analyze["ats.controller.js: analyzeAtsHandler"]
+        C_Direct["ats.controller.js: analyzeDirectHandler"]
+        C_Report["ats.controller.js: getAtsAnalysisHandler"]
+        C_History["ats.controller.js: getUserAnalysesHandler"]
     end
 
     subgraph ATSDomain["ATS Domain Services (Backend/services/ats)"]
@@ -61,6 +63,7 @@ flowchart TD
     UI_Setup -->|"POST /api/ats/analyze"| C_Analyze
     UI_Setup -->|"Direct PDF/DOCX/TXT Match"| C_Direct
     UI_Report -->|"GET /api/ats/analysis/:id"| C_Report
+    UI_History -->|"GET /api/ats/history"| C_History
 
     %% Controller to Services
     C_Upload --> S_Parser
