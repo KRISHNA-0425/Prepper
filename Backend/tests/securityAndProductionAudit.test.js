@@ -28,10 +28,10 @@ import codeExecutionService from '../services/codeExecution/execution.service.js
 import { EXECUTION_LIMITS, getSanitizedEnv } from '../services/codeExecution/executionLimits.js';
 
 test('Prepper AI Module 4 — Security & Production-Readiness Audit Suite', async (t) => {
-  // Ensure local execution is enabled for audit
+  // Ensure local execution is enabled for audit in non-production
   process.env.CODE_EXECUTION_ENABLED = 'true';
   process.env.CODE_EXECUTION_PROVIDER = 'local';
-  process.env.ALLOW_LOCAL_EXECUTION_IN_PROD = 'true';
+  process.env.NODE_ENV = 'test';
 
   await t.test('1. Entry point validation: validates required fields, language, and size', () => {
     // Missing interviewId
@@ -347,25 +347,21 @@ test('Prepper AI Module 4 — Security & Production-Readiness Audit Suite', asyn
     }
   });
 
-  await t.test('12. Fail-closed production provider protection: no unsafe local or mock fallback', () => {
+  await t.test('12. Fail-closed production provider protection: no unsafe local or mock fallback and no bypass', () => {
     const origNodeEnv = process.env.NODE_ENV;
     const origProvider = process.env.CODE_EXECUTION_PROVIDER;
-    const origAllowLocal = process.env.ALLOW_LOCAL_EXECUTION_IN_PROD;
-    const origAllowMock = process.env.ALLOW_MOCK_IN_PROD;
 
     try {
       // Simulate production environment
       process.env.NODE_ENV = 'production';
-      delete process.env.ALLOW_LOCAL_EXECUTION_IN_PROD;
-      delete process.env.ALLOW_MOCK_IN_PROD;
 
-      // A. Local provider in production without explicit override must fail-closed with 503
+      // A. Local provider in production must fail-closed with 503
       process.env.CODE_EXECUTION_PROVIDER = 'local';
       assert.throws(() => {
         executionAdapter.getActiveProvider();
       }, { statusCode: 503, code: 'INSECURE_LOCAL_PROHIBITED_IN_PROD' });
 
-      // B. Mock provider in production without explicit override must fail-closed with 503
+      // B. Mock provider in production must fail-closed with 503
       process.env.CODE_EXECUTION_PROVIDER = 'mock';
       assert.throws(() => {
         executionAdapter.getActiveProvider();
@@ -377,18 +373,29 @@ test('Prepper AI Module 4 — Security & Production-Readiness Audit Suite', asyn
         executionAdapter.getActiveProvider();
       }, { statusCode: 503, code: 'PROVIDER_UNRECOGNIZED' });
 
-      // D. In production, allowing local with explicit override succeeds
+      // D. In production, environment variables CANNOT bypass these restrictions!
       process.env.CODE_EXECUTION_PROVIDER = 'local';
       process.env.ALLOW_LOCAL_EXECUTION_IN_PROD = 'true';
-      const provider = executionAdapter.getActiveProvider();
-      assert.equal(provider.name, 'local');
+      process.env.ALLOW_MOCK_IN_PROD = 'true';
+      assert.throws(() => {
+        executionAdapter.getActiveProvider();
+      }, { statusCode: 503, code: 'INSECURE_LOCAL_PROHIBITED_IN_PROD' });
+
+      process.env.CODE_EXECUTION_PROVIDER = 'mock';
+      assert.throws(() => {
+        executionAdapter.getActiveProvider();
+      }, { statusCode: 503, code: 'MOCK_PROHIBITED_IN_PROD' });
+
+      // E. Development local execution still works seamlessly
+      process.env.NODE_ENV = 'development';
+      process.env.CODE_EXECUTION_PROVIDER = 'local';
+      const devLocalProvider = executionAdapter.getActiveProvider();
+      assert.equal(devLocalProvider.name, 'local');
     } finally {
       process.env.NODE_ENV = origNodeEnv;
       process.env.CODE_EXECUTION_PROVIDER = origProvider;
-      if (origAllowLocal) process.env.ALLOW_LOCAL_EXECUTION_IN_PROD = origAllowLocal;
-      else delete process.env.ALLOW_LOCAL_EXECUTION_IN_PROD;
-      if (origAllowMock) process.env.ALLOW_MOCK_IN_PROD = origAllowMock;
-      else delete process.env.ALLOW_MOCK_IN_PROD;
+      delete process.env.ALLOW_LOCAL_EXECUTION_IN_PROD;
+      delete process.env.ALLOW_MOCK_IN_PROD;
     }
   });
 });

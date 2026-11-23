@@ -162,4 +162,32 @@ describe('Prepper AI — Module 4: Live Coding Interview Frontend Test Suite', (
       assert.ok(reportSectionCode.includes('Optimization Suggestions'), 'Must display actionable optimization suggestions');
     });
   });
+
+  // =========================================================================
+  // 5. Resilient Production Error & 503 Handling
+  // =========================================================================
+  describe('5. Resilient Production Error & 503 Handling', () => {
+    it('should handle HTTP 503 execution unavailable state gracefully without crashing', () => {
+      assert.ok(
+        workspaceCode.includes('err.response?.status === 503') || workspaceCode.includes('isUnavailable'),
+        'CodingWorkspace must explicitly inspect HTTP 503 status'
+      );
+      assert.ok(
+        workspaceCode.includes('Code execution is temporarily unavailable') ||
+        workspaceCode.includes('Code Execution Temporarily Unavailable'),
+        'Must display user-facing message that code execution is temporarily unavailable'
+      );
+    });
+
+    it('should preserve Monaco Editor functionality when execution engine is unavailable', () => {
+      assert.ok(
+        workspaceCode.includes('<Editor') && workspaceCode.includes('onChange={handleCodeChange}'),
+        'Monaco Editor must remain active and editable during execution outage'
+      );
+      assert.ok(
+        workspaceCode.includes('unavailableMessage') || workspaceCode.includes('Execution Unavailable (503)'),
+        'Must render structured unavailable status in test results tab rather than false success'
+      );
+    });
+  });
 });

@@ -164,9 +164,9 @@ export class CodeExecutionAdapter {
 
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Strict production security: Disallow mock execution for real candidates in production
+    // Strict production security: Disallow mock execution for real candidates in production (no overrides)
     if (providerName === 'mock') {
-      if (isProduction && process.env.ALLOW_MOCK_IN_PROD !== 'true') {
+      if (isProduction) {
         const err = new Error(
           'Mock execution is prohibited in production environments. Candidate evaluation requires an active, isolated execution provider.'
         );
@@ -177,11 +177,11 @@ export class CodeExecutionAdapter {
       return this.providers.mock;
     }
 
-    // Strict production security: Disallow in-backend subprocess execution in production without sandbox
+    // Strict production security: Disallow in-backend subprocess execution in production without sandbox (no overrides)
     if (providerName === 'local') {
-      if (isProduction && process.env.ALLOW_LOCAL_EXECUTION_IN_PROD !== 'true') {
+      if (isProduction) {
         const err = new Error(
-          'Local in-backend subprocess execution is prohibited in production environments due to insufficient kernel sandbox boundaries (filesystem, memory cgroups, and network isolation). Deploy an isolated execution worker (e.g. go-judge) or set ALLOW_LOCAL_EXECUTION_IN_PROD=true.'
+          'Local in-backend subprocess execution is strictly prohibited in production environments due to insufficient kernel sandbox boundaries (filesystem, memory cgroups, and network isolation). An isolated execution worker (e.g. go-judge) must be configured.'
         );
         err.statusCode = 503;
         err.code = 'INSECURE_LOCAL_PROHIBITED_IN_PROD';

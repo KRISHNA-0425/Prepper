@@ -199,9 +199,16 @@ export default function CodingWorkspace({
       }
     } catch (err) {
       toast.dismiss(toastId);
-      const msg = err.response?.data?.message || err.message || 'Execution error';
-      toast.error(msg);
-      setRawConsoleOutput(`Execution Error:\n${msg}`);
+      const isUnavailable = err.response?.status === 503;
+      const msg = isUnavailable
+        ? 'Code execution is temporarily unavailable. You can continue writing and editing code.'
+        : (err.response?.data?.message || err.message || 'Execution error');
+      toast.error(msg, { duration: 5000 });
+      setRawConsoleOutput(
+        isUnavailable
+          ? `⚠️ Code Execution Temporarily Unavailable (HTTP 503)\n\nCode execution is temporarily disabled or unavailable in this environment.\nMonaco Editor remains fully functional so you can continue writing and editing your solution code.`
+          : `Execution Error:\n${msg}`
+      );
     } finally {
       setIsRunning(false);
     }
@@ -236,12 +243,19 @@ export default function CodingWorkspace({
       }
     } catch (err) {
       toast.dismiss(toastId);
-      const msg = err.response?.data?.message || err.message || 'Sample test execution error';
-      toast.error(msg);
+      const isUnavailable = err.response?.status === 503;
+      const msg = isUnavailable
+        ? 'Code execution is temporarily unavailable. You can continue writing and editing code.'
+        : (err.response?.data?.message || err.message || 'Sample test execution error');
+      toast.error(msg, { duration: 5000 });
       setLastRunResults({
         passedCount: 0,
         totalCount: currentProblem.visibleTestCases?.length || 1,
         allPassed: false,
+        isUnavailable,
+        unavailableMessage: isUnavailable
+          ? 'Code execution is temporarily unavailable in this environment. Monaco Editor remains fully functional for writing and editing code.'
+          : null,
         results: [
           {
             testCaseIndex: 1,
@@ -251,7 +265,7 @@ export default function CodingWorkspace({
             actualOutput: '',
             stderr: msg,
             error: msg,
-            statusDescription: 'Execution Error',
+            statusDescription: isUnavailable ? 'Execution Unavailable (503)' : 'Execution Error',
           },
         ],
       });
@@ -315,8 +329,11 @@ export default function CodingWorkspace({
       }
     } catch (err) {
       toast.dismiss(toastId);
-      const msg = err.response?.data?.message || err.message || 'Submission error';
-      toast.error(msg);
+      const isUnavailable = err.response?.status === 503;
+      const msg = isUnavailable
+        ? 'Code execution is temporarily unavailable. Your solution code is preserved in the editor.'
+        : (err.response?.data?.message || err.message || 'Submission error');
+      toast.error(msg, { duration: 5000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -675,6 +692,18 @@ export default function CodingWorkspace({
               {/* Tab 1: Test Cases */}
               {activeTab === 'tests' && (
                 <div className="space-y-3">
+                  {lastRunResults?.isUnavailable && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-lg text-amber-200 mb-3 space-y-1">
+                      <div className="font-semibold text-xs flex items-center gap-1.5 text-amber-300">
+                        <span>⚠️ Code Execution Temporarily Unavailable (HTTP 503)</span>
+                      </div>
+                      <p className="text-[11px] text-amber-200/80">
+                        {lastRunResults.unavailableMessage ||
+                          'The code execution engine is temporarily unavailable in this environment. Monaco Editor remains fully functional. You can continue writing and editing your solution code.'}
+                      </p>
+                    </div>
+                  )}
+
                   {lastRunResults?.results ? (
                     <div>
                       {/* Test case tabs header */}
