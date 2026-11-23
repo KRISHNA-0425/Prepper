@@ -349,5 +349,59 @@ export const harvestInterviewEvidence = async (interviewId, userId) => {
     // Coding submissions optional; proceed smoothly if not present
   }
 
+  // 5. Harvest from Company Simulation (Module 6)
+  if (interview.companySimulation?.isCompanySimulation) {
+    const comp = interview.companySimulation;
+    const compName = comp.companyName || 'Target Company';
+    const roundTitle = comp.roundTitle || 'Technical Round';
+
+    if (comp.targetDesignation) {
+      harvestedData.targetRole = `${compName} - ${comp.targetDesignation}`;
+    }
+
+    const readiness = comp.readinessAssessment;
+    if (readiness) {
+      if (Array.isArray(readiness.gaps)) {
+        readiness.gaps.forEach((gap, idx) => {
+          if (gap && typeof gap === 'string') {
+            addWeakness({
+              topic: normalizeTopic(`${compName} ${roundTitle} Standards`),
+              severity: 'high',
+              description: `${compName} Interview Gap: ${gap}`,
+              misconceptionSnippet: '',
+              evidence: {
+                sourceType: 'company_interview',
+                sourceId: interview._id,
+                questionOrProblemId: `company_gap_${idx}`,
+                competency: `${compName} ${roundTitle}`,
+                evidenceExcerpt: `Evaluated against ${compName} engineering rubric: "${gap}"`,
+                identifiedFinding: gap,
+              },
+            });
+          }
+        });
+      }
+
+      if (Array.isArray(readiness.strengths)) {
+        readiness.strengths.forEach((str, idx) => {
+          if (str && typeof str === 'string') {
+            addStrength({
+              topic: normalizeTopic(`${compName} Core Competency`),
+              description: `${compName} Demonstrated Strength: ${str}`,
+              evidence: {
+                sourceType: 'company_interview',
+                sourceId: interview._id,
+                questionOrProblemId: `company_str_${idx}`,
+                competency: `${compName} Core Competency`,
+                evidenceExcerpt: str,
+                identifiedFinding: str,
+              },
+            });
+          }
+        });
+      }
+    }
+  }
+
   return harvestedData;
 };
