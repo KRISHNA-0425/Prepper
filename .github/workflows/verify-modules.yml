@@ -1,0 +1,64 @@
+name: Continuous Integration & Module Verification
+
+on:
+  push:
+    branches: [ main, coding-interview, feat/*, feature/* ]
+  pull_request:
+    branches: [ main, coding-interview ]
+
+jobs:
+  test-backend:
+    name: Backend Test Suites & Regression Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        run: |
+          cd Backend
+          npm ci
+
+      - name: Run Backend Regression Test Suites
+        run: |
+          cd Backend
+          npm run test:company
+          npm run test
+
+  test-frontend:
+    name: Frontend Test Suites & Production Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd Frontend
+          npm ci
+
+      - name: Run Frontend Tests
+        run: |
+          cd Frontend
+          npm test
+
+      - name: Run Frontend Production Build
+        run: |
+          cd Frontend
+          npm run build
