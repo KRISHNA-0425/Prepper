@@ -77,14 +77,14 @@ flowchart TD
     end
 
     subgraph DataStorage["Persistence & External Services"]
-        DB_Mongo[(MongoDB Atlas / Local)]
+        DB_Mongo[("MongoDB Atlas")]
         EXT_OpenRouter["OpenRouter AI (Meta Llama / Nemotron)"]
         EXT_Razorpay["Razorpay Payment Gateway"]
         EXT_HostRuntimes["Local Host Runtimes (Node, Python3, GCC, G++, Java, Go)"]
     end
 
     %% Client to Backend
-    Client -->|HTTPS / REST API| MW_Rate
+    Client -->|"HTTPS / REST API"| MW_Rate
     MW_Rate --> MW_Auth
     MW_Auth --> Controllers
     MW_Upload --> C_Interview
@@ -112,7 +112,7 @@ flowchart TD
     Controllers --> DB_Mongo
     S_OpenRouter --> EXT_OpenRouter
     C_Payment --> EXT_Razorpay
-    S_ExecService -->|Isolated Child Process (Spawn)| EXT_HostRuntimes
+    S_ExecService -->|"Isolated Child Process Execution"| EXT_HostRuntimes
 ```
 
 ---
@@ -168,11 +168,11 @@ Every candidate answer is evaluated across 6 weighted rubrics:
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Candidate as Candidate (Browser)
-    participant Client as Frontend (Step2Interview)
-    participant API as Express API (/api/interview)
-    participant DB as MongoDB Atlas
-    participant AI as OpenRouter AI (LLM)
+    actor Candidate as "Candidate Browser"
+    participant Client as "Frontend Step2Interview"
+    participant API as "Express API"
+    participant DB as "MongoDB Atlas"
+    participant AI as "OpenRouter AI"
 
     Candidate->>Client: Enters Job Role, Experience & Uploads Resume PDF
     Client->>API: POST /api/interview/create (Multipart Form)
@@ -231,20 +231,12 @@ stateDiagram-v2
     Tier3_ArchitectureChallenge --> Tier4_StressAndTradeoffs: Edge-Case Validated
     Tier3_ArchitectureChallenge --> Tier2_TechnicalDrilldown: Partial Concession
 
-    Tier4_StressAndTradeoffs --> [*]: Interrogation Complete (Report Generated)
+    Tier4_StressAndTradeoffs --> [*]: Interrogation Complete
 
-    state Tier1_Clarification {
-        description: "Verify role, tech stack choices, team size, and core architecture."
-    }
-    state Tier2_TechnicalDrilldown {
-        description: "Deep dive into data models, concurrency, caching, and API contracts."
-    }
-    state Tier3_ArchitectureChallenge {
-        description: "Simulate system failures, traffic spikes, and state synchronization bugs."
-    }
-    state Tier4_StressAndTradeoffs {
-        description: "Force candidate to defend unpopular trade-offs and alternative designs."
-    }
+    state "Tier 1: Role & Tech Stack Clarification" as Tier1_Clarification
+    state "Tier 2: Deep Technical Drilldown" as Tier2_TechnicalDrilldown
+    state "Tier 3: Architecture & Failure Challenge" as Tier3_ArchitectureChallenge
+    state "Tier 4: Stress & System Tradeoffs" as Tier4_StressAndTradeoffs
 ```
 
 ### 2.4 Hallucination-Resistant Transcript Grounding
@@ -271,19 +263,19 @@ The difficulty engine (`adaptiveQuestion.service.js`) tracks consecutive score s
 
 ```mermaid
 flowchart TD
-    StartQ["Candidate Submits Answer"] --> Eval["Evaluate Answer Score (0-100)"]
+    StartQ["Candidate Submits Answer"] --> Eval["Evaluate Answer Score 0 to 100"]
     Eval --> CheckStreak{"Score Streak Analysis"}
 
-    CheckStreak -->|Score >= 80 for 2 consecutive questions| LevelUp["Promote Tier: Beginner -> Intermediate -> Advanced"]
-    CheckStreak -->|Score < 50 for 2 consecutive questions| LevelDown["Demote Tier: Advanced -> Intermediate -> Beginner"]
-    CheckStreak -->|Mixed or Single Outlier| Maintain["Maintain Current Tier"]
+    CheckStreak -->|"Score >= 80 (2 consecutive)"| LevelUp["Promote Tier: Beginner to Intermediate to Advanced"]
+    CheckStreak -->|"Score < 50 (2 consecutive)"| LevelDown["Demote Tier: Advanced to Intermediate to Beginner"]
+    CheckStreak -->|"Mixed or Single Outlier"| Maintain["Maintain Current Tier"]
 
     LevelUp --> CheckLoop{"Anti-Loop Guard Check"}
     LevelDown --> CheckLoop
     Maintain --> CheckLoop
 
-    CheckLoop -->|Topic Explored >= 2 times| PivotTopic["Pivot to Untested Topic (Cool-Down Activated)"]
-    CheckLoop -->|Topic Explored < 2 times| KeepTopic["Deepen Current Topic or Steer to Sub-Topic"]
+    CheckLoop -->|"Topic Explored >= 2 times"| PivotTopic["Pivot to Untested Topic (Cool-Down Activated)"]
+    CheckLoop -->|"Topic Explored < 2 times"| KeepTopic["Deepen Current Topic or Steer to Sub-Topic"]
 
     PivotTopic --> Formulate["Generate Contextual Transition Phrase & Next Question"]
     KeepTopic --> Formulate
@@ -340,21 +332,21 @@ flowchart TD
     AuthCheck --> ValCheck["ExecutionValidator (Max 64KB, Valid Lang)"]
     ValCheck --> ConcurrencyCheck{"Semaphore Limit (Max 3 Concurrent)"}
     
-    ConcurrencyCheck -->|Busy| Reject503["HTTP 503: Execution Busy, Retry Later"]
-    ConcurrencyCheck -->|Slot Available| EnvCheck{"Environment Mode"}
+    ConcurrencyCheck -->|"Busy"| Reject503["HTTP 503: Execution Busy, Retry Later"]
+    ConcurrencyCheck -->|"Slot Available"| EnvCheck{"Environment Mode"}
 
-    EnvCheck -->|Production without isolate| FailClosed["Fail-Closed HTTP 503 (Safe Notice)"]
-    EnvCheck -->|Development / Local Provider| Dispatch["Dispatch to local.provider.js"]
+    EnvCheck -->|"Production without isolate"| FailClosed["Fail-Closed HTTP 503 (Safe Notice)"]
+    EnvCheck -->|"Development or Local Provider"| Dispatch["Dispatch to local.provider.js"]
 
     Dispatch --> EphemeralDir["Create Temp Directory: /tmp/coding-exec-..."]
     EphemeralDir --> WriteSrc["Write Solution Source Code & Input"]
     WriteSrc --> IsolateEnv["Strip process.env (Remove Secrets, DB URIs)"]
 
-    IsolateEnv --> CompileStep{"Is Compiled Language (C++, C, Java)?"}
-    CompileStep -->|Yes| SpawnCompiler["Spawn Compiler with 5000ms Timeout"]
-    SpawnCompiler -->|Compilation Error| ReturnCompileErr["Capture stderr & Cleanup Files"]
-    SpawnCompiler -->|Success| SpawnRunner["Spawn Executable"]
-    CompileStep -->|No| SpawnRunner
+    IsolateEnv --> CompileStep{"Is Compiled Language?"}
+    CompileStep -->|"Yes"| SpawnCompiler["Spawn Compiler with 5000ms Timeout"]
+    SpawnCompiler -->|"Compilation Error"| ReturnCompileErr["Capture stderr & Cleanup Files"]
+    SpawnCompiler -->|"Success"| SpawnRunner["Spawn Executable"]
+    CompileStep -->|"No"| SpawnRunner
 
     SpawnRunner --> EnforceLimits["Enforce 5000ms Timeout & 64KB Max Output"]
     EnforceLimits --> Cleanup["Guarantee Immediate Directory & Process Deletion"]
@@ -414,13 +406,13 @@ erDiagram
         ObjectId userId FK
         string role
         string experienceLevel
-        string sessionType "standard | cross-examination | coding"
-        string status "in-progress | completed | abandoned"
+        string sessionType "standard or cross-exam or coding"
+        string status "in-progress or completed or abandoned"
         number overallScore
         number selectedDurationMinutes
         date expiresAt
-        object adaptiveState "currentTier, streak, steeringHistory"
-        object analytics "competencyGaps, rubricBreakdown"
+        object adaptiveState "currentTier and streak history"
+        object analytics "competency gaps and rubrics"
     }
 
     Question {
@@ -439,7 +431,7 @@ erDiagram
         ObjectId _id PK
         string title
         string slug
-        string difficulty "Easy | Medium | Hard"
+        string difficulty "Easy or Medium or Hard"
         string category
         string description
         array constraints
@@ -455,7 +447,7 @@ erDiagram
         ObjectId problemId FK
         string language
         string code
-        string verdict "Accepted | Wrong Answer | TLE | MLE | Error"
+        string verdict "Accepted or Wrong Answer or TLE or Error"
         number passedCount
         number totalCount
         number maxTimeMs
@@ -470,7 +462,7 @@ erDiagram
         string razorpayPaymentId
         number amount
         number creditsAdded
-        string status "created | success | failed"
+        string status "created or success or failed"
     }
 ```
 
