@@ -13,6 +13,12 @@ export const ANSWER_TIME_LIMIT_SECONDS = 60; // Strict 60 seconds per answer
 export const ANSWER_GRACE_PERIOD_SECONDS = 5; // Grace period for network transit
 export const STANDARDIZED_DIFFICULTY = 'medium';
 
+// Dedicated Live Coding Pricing & Constraints
+export const MIN_CODING_QUESTION_COUNT = 1;
+export const MAX_CODING_QUESTION_COUNT = 5;
+export const DEFAULT_CODING_QUESTION_COUNT = 2;
+export const CODING_QUESTION_PRICING_RATE = 10; // 10 credits per coding question
+
 export const TIME_PACKAGES = {
   '30': {
     id: '30_minutes',
@@ -54,7 +60,67 @@ export const calculateInterviewPricing = (params = {}) => {
     selectedQuestionCount,
     durationMinutes,
     timePackage,
+    interviewType,
+    isCoding,
+    mode,
   } = params;
+
+  // 0. Dedicated Live Coding Mode (1 to 5 questions, custom duration, 10 credits/question)
+  const isCodingSession = interviewType === 'coding' || isCoding || mode === 'Coding';
+  if (isCodingSession) {
+    let count = Number(selectedQuestionCount);
+    if (!Number.isInteger(count) || count < MIN_CODING_QUESTION_COUNT || count > MAX_CODING_QUESTION_COUNT) {
+      if (selectedQuestionCount === undefined || selectedQuestionCount === null) {
+        count = DEFAULT_CODING_QUESTION_COUNT;
+      } else {
+        return {
+          valid: false,
+          error: `Coding question count must be an integer between ${MIN_CODING_QUESTION_COUNT} and ${MAX_CODING_QUESTION_COUNT} problems.`,
+          interviewMode: 'coding',
+          selectedQuestionCount: count,
+          selectedDurationMinutes: null,
+          targetQuestionCount: count,
+          creditsCharged: 0,
+          difficulty: params.difficulty || STANDARDIZED_DIFFICULTY,
+          answerTimeLimitSeconds: 1800,
+        };
+      }
+    }
+
+    let parsedDuration = null;
+    if (durationMinutes) {
+      parsedDuration = Number(durationMinutes);
+    } else if (timePackage && !isNaN(Number(timePackage))) {
+      parsedDuration = Number(timePackage);
+    }
+
+    if (parsedDuration && (isNaN(parsedDuration) || parsedDuration < 10 || parsedDuration > 240)) {
+      return {
+        valid: false,
+        error: 'Coding interview duration must be between 10 and 240 minutes.',
+        interviewMode: 'time_based',
+        selectedQuestionCount: count,
+        selectedDurationMinutes: null,
+        targetQuestionCount: count,
+        creditsCharged: 0,
+        difficulty: params.difficulty || STANDARDIZED_DIFFICULTY,
+        answerTimeLimitSeconds: 1800,
+      };
+    }
+
+    const creditsCharged = count * CODING_QUESTION_PRICING_RATE;
+
+    return {
+      valid: true,
+      interviewMode: parsedDuration ? 'time_based' : 'question_based',
+      selectedQuestionCount: count,
+      selectedDurationMinutes: parsedDuration,
+      targetQuestionCount: count,
+      creditsCharged,
+      difficulty: params.difficulty || STANDARDIZED_DIFFICULTY,
+      answerTimeLimitSeconds: parsedDuration ? parsedDuration * 60 : 3600,
+    };
+  }
 
   // 1. Time-Based Mode
   if (interviewMode === 'time_based') {

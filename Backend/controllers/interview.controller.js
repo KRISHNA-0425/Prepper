@@ -4,6 +4,9 @@ import { askAI } from '../services/openRouter.service.js';
 import { extractResumeClaims, extractTextFromDocxBuffer, safeParseJson } from '../services/resumeIntelligence.service.js';
 import User from '../models/user.model.js';
 import Interview from '../models/interview.model.js';
+import CodingSubmission from '../models/codingSubmission.model.js';
+import codingQuestionService from '../services/coding/codingQuestion.service.js';
+import testCaseService from '../services/coding/testCase.service.js';
 import CrossExaminationSession from '../models/crossExaminationSession.model.js';
 import mongoose from 'mongoose';
 import {
@@ -276,8 +279,9 @@ export const generateQuestions = async (req, res) => {
         const validCrossTypes = ["Technical", "Behavioral"];
         const safeCrossQuestioningType = validCrossTypes.includes(crossQuestioningType) ? crossQuestioningType : "Technical";
 
-        // Normalize mode to valid enum: ["HR", "Technical"]
-        const safeMode = (mode === "HR" || mode === "HR/Behavioral" || mode === "Behavioral") ? "HR" : "Technical";
+        // Normalize mode to valid enum: ["HR", "Technical", "Coding"]
+        const isCodingInterview = mode === "Coding" || req.body.interviewType === "coding";
+        const safeMode = isCodingInterview ? "Coding" : (mode === "HR" || mode === "HR/Behavioral" || mode === "Behavioral") ? "HR" : "Technical";
 
         // Server-side guard: cross-questioning strictly requires a valid non-empty resume
         const hasValidResume = Boolean(resumeText && typeof resumeText === 'string' && resumeText.trim().length > 0);
@@ -294,7 +298,10 @@ export const generateQuestions = async (req, res) => {
             interviewMode,
             selectedQuestionCount,
             durationMinutes: durationMinutes || req.body.selectedDurationMinutes,
-            timePackage
+            timePackage,
+            interviewType: isCodingInterview ? 'coding' : req.body.interviewType,
+            isCoding: isCodingInterview,
+            difficulty: req.body.codingDifficulty || req.body.difficulty
         });
 
         if (!pricing.valid) {
@@ -317,6 +324,96 @@ export const generateQuestions = async (req, res) => {
             });
         }
         creditsDeductedAmount = pricing.creditsCharged;
+
+        // Dedicated Live Coding Interview Generation
+        if (isCodingInterview) {
+            const codingLanguage = req.body.codingLanguage || 'javascript';
+            const codingCategory = req.body.codingCategory || 'Problem Solving';
+            const codingDifficulty = req.body.codingDifficulty || 'Medium';
+
+            let codingProblems = [];
+            try {
+                codingProblems = await codingQuestionService.generateCodingProblems({
+                    role,
+                    category: codingCategory,
+                    difficulty: codingDifficulty,
+                    language: codingLanguage,
+                    count: Math.min(pricing.targetQuestionCount, 5)
+                });
+            } catch (probErr) {
+                console.error("[generateQuestions] Coding problem generation error:", probErr);
+                await safeRefund();
+                return res.status(500).json({ message: "Failed to generate coding challenges" });
+            }
+
+            const startedAt = new Date();
+            const expiresAt = pricing.selectedDurationMinutes
+                ? new Date(startedAt.getTime() + pricing.selectedDurationMinutes * 60 * 1000)
+                : null;
+            const currentQuestionStartedAt = new Date();
+            const currentQuestionDeadline = calculateQuestionDeadline({
+                currentQuestionStartedAt,
+                answerTimeLimitSeconds: 60,
+                expiresAt
+            });
+
+            let interview;
+            try {
+                interview = await Interview.create({
+                    userId: req.userId,
+                    role,
+                    experience,
+                    mode: "Coding",
+                    interviewType: "coding",
+                    codingLanguage,
+                    codingCategory,
+                    codingProblems,
+                    interviewMode: pricing.interviewMode,
+                    selectedQuestionCount: pricing.selectedQuestionCount,
+                    selectedDurationMinutes: pricing.selectedDurationMinutes,
+                    targetQuestionCount: pricing.targetQuestionCount,
+                    creditsCharged: pricing.creditsCharged,
+                    difficulty: codingDifficulty.toLowerCase(),
+                    answerTimeLimitSeconds: 60,
+                    startedAt,
+                    expiresAt,
+                    currentQuestionIndex: 0,
+                    currentQuestionStartedAt,
+                    currentQuestionDeadline,
+                    questions: codingProblems.map((p, idx) => ({
+                        question: `${p.title}: ${p.description.slice(0, 100)}...`,
+                        difficulty: p.difficulty.toLowerCase(),
+                        topic: p.category,
+                        category: 'coding',
+                        timeLimit: 60,
+                        isFollowUp: false,
+                        depth: 0,
+                        transitionPhrase: idx === 0 ? "Let's begin with your coding challenge." : ""
+                    }))
+                });
+            } catch (createErr) {
+                await safeRefund();
+                throw createErr;
+            }
+
+            creditsDeductedAmount = 0;
+            return res.json({
+                interviewId: interview._id,
+                creditsLeft: deduction.creditsLeft,
+                interviewType: "coding",
+                codingLanguage,
+                codingCategory,
+                codingProblems: codingProblems.map(p => {
+                    const obj = p.toObject ? p.toObject() : { ...p };
+                    delete obj.hiddenTestCases;
+                    return obj;
+                }),
+                questions: interview.questions,
+                selectedDurationMinutes: pricing.selectedDurationMinutes,
+                expiresAt,
+                startedAt
+            });
+        }
 
         const projectText = Array.isArray(projects) && projects.length ? projects.map(p => typeof p === 'string' ? p : (p.name || p.title || '')).filter(Boolean).join(', ') : "None";
         const skillText = Array.isArray(skills) && skills.length ? skills.map(s => typeof s === 'string' ? s : (s.name || s.title || '')).filter(Boolean).join(', ') : "None";
@@ -1361,6 +1458,23 @@ export const getInterviewReport = async (req, res) => {
             }
         }
 
+        const isCoding = interview.interviewType === 'coding' || interview.mode === 'Coding';
+        const sanitizedProblems = (interview.codingProblems || []).map(p => {
+            const obj = p.toObject ? p.toObject() : { ...p };
+            delete obj.hiddenTestCases;
+            return obj;
+        });
+
+        let codingSubmissions = [];
+        if (isCoding || (interview.codingProblems && interview.codingProblems.length > 0)) {
+            const rawSubs = await CodingSubmission.find({ interviewId: interview._id }).sort({ createdAt: 1 });
+            codingSubmissions = rawSubs.map(s => {
+                const obj = s.toObject();
+                obj.testResults = testCaseService.sanitizeResultsForClient(obj.testResults);
+                return obj;
+            });
+        }
+
         return res.status(200).json({
             role: interview.role,
             experience: interview.experience,
@@ -1372,6 +1486,11 @@ export const getInterviewReport = async (req, res) => {
             analytics,
             adaptiveState: interview.adaptiveState || null,
             questions: interview.questions,
+            interviewType: interview.interviewType || (isCoding ? 'coding' : 'conceptual'),
+            codingLanguage: interview.codingLanguage || 'javascript',
+            codingCategory: interview.codingCategory || 'Problem Solving',
+            codingProblems: sanitizedProblems,
+            codingSubmissions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
             crossQuestioningType: interview.crossQuestioningType || 'Technical',
             interviewMode: interview.interviewMode || 'question_based',
@@ -1414,6 +1533,13 @@ export const getInterviewSession = async (req, res) => {
             await interview.save();
         }
 
+        const isCoding = interview.interviewType === 'coding' || interview.mode === 'Coding';
+        const sanitizedProblems = (interview.codingProblems || []).map(p => {
+            const obj = p.toObject ? p.toObject() : { ...p };
+            delete obj.hiddenTestCases;
+            return obj;
+        });
+
         const totalQuestions = interview.questions.length;
         return res.status(200).json({
             interviewId: interview._id,
@@ -1422,6 +1548,10 @@ export const getInterviewSession = async (req, res) => {
             mode: interview.mode,
             status: interview.status,
             isSessionExpired,
+            interviewType: interview.interviewType || (isCoding ? 'coding' : 'conceptual'),
+            codingLanguage: interview.codingLanguage || 'javascript',
+            codingCategory: interview.codingCategory || 'Problem Solving',
+            codingProblems: sanitizedProblems,
             analytics: interview.analytics || null,
             adaptiveState: interview.adaptiveState || null,
             questions: interview.questions,

@@ -212,6 +212,7 @@ function Step1Setup({ onStart }) {
                     enableCrossQuestioning: Boolean(hasValidResume && enableCrossQuestioning),
                     crossQuestioningType: crossQuestioningType || "Technical",
                     interviewMode,
+                    interviewType: 'conceptual',
                     selectedQuestionCount: interviewMode === 'question_based' ? selectedQuestionCount : undefined,
                     durationMinutes: interviewMode === 'time_based' ? Number(timePackage) : undefined,
                     timePackage: interviewMode === 'time_based' ? timePackage : undefined,
@@ -352,7 +353,10 @@ function Step1Setup({ onStart }) {
                                     </div>
                                     <div className='space-y-1'>
                                         <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><RiUserVoiceLine /> Mode</label>
-                                        <select value={mode} onChange={(e) => setMode(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'><option value="Technical">Technical</option><option value="HR">HR/Behavioral</option></select>
+                                        <select value={mode} onChange={(e) => setMode(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'>
+                                            <option value="Technical">Technical</option>
+                                            <option value="HR">HR/Behavioral</option>
+                                        </select>
                                     </div>
                                 </motion.div>
 

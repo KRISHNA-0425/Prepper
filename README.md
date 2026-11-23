@@ -1,145 +1,711 @@
-# 🤖 Prepper AI - Advanced Interview Prep Platform
+# 🤖 Prepper AI — Enterprise Full-Stack AI Technical Interview Platform
 
 <p align="center">
-  <img src="https://img.shields.io/badge/MERN%20Stack-Ready-blue?style=for-the-badge&logo=react" alt="MERN Stack" />
+  <img src="https://img.shields.io/badge/MERN%20Stack-Production--Ready-00D8FF?style=for-the-badge&logo=react&logoColor=black" alt="MERN Stack" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
-  <img src="https://img.shields.io/badge/Razorpay-Integration-11397b?style=for-the-badge&logo=razorpay" alt="Razorpay" />
+  <img src="https://img.shields.io/badge/Monaco_Editor-1E1E1E?style=for-the-badge&logo=visualstudiocode&logoColor=007ACC" alt="Monaco Editor" />
+  <img src="https://img.shields.io/badge/Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/OpenRouter%20AI-6366F1?style=for-the-badge&logo=openai&logoColor=white" alt="OpenRouter" />
+  <img src="https://img.shields.io/badge/Razorpay-11397b?style=for-the-badge&logo=razorpay&logoColor=white" alt="Razorpay" />
+  <img src="https://img.shields.io/badge/License-ISC-yellow.svg?style=for-the-badge" alt="License" />
 </p>
 
-A comprehensive, full-stack web application designed to help users prepare for interviews using AI. This platform empowers candidates by analyzing their resumes and conducting dynamic mock interview sessions based on real-world scenarios.
+---
 
-## ✨ Features
+## 🌟 Executive Summary
 
-- **🛡️ Secure Authentication**: Robust login and authorization powered by Firebase and JWT.
-- **🎙️ AI-Powered Interview Sessions**: Start and interact with advanced AI models for realistic mock interview rounds.
-- **📄 Advanced Resume Analysis**: Seamless resume uploading via Multer with PDF parsing powered by `pdfjs-dist`. Instantly extracts key information (skills, past projects, experience) for a tailored interview setup.
-- **💳 Credit System & Payments**: Integrated Razorpay payment gateway for purchasing interview credits and managing subscription tiers.
-- **📊 Interactive Data Visualization**: Integrated `recharts` and `react-circular-progressbar` for clear, visual feedback on user progress, strengths, and areas of improvement.
-- **🎨 Modern & Responsive UI**: Beautiful interfaces built with React and TailwindCSS, featuring smooth micro-animations using Framer Motion and custom components like `CapabilityCard`.
-- **🚀 State & API Management**: Robust frontend data management with Redux Toolkit and fast, secure API communication via Axios.
-- **🔒 Backend Security**: Built-in rate limiting using `express-rate-limit` to prevent abuse, secure endpoints, and ensure high availability.
+**Prepper AI** is an enterprise-grade, full-stack AI technical interview preparation and candidate evaluation platform built with the MERN stack (MongoDB, Express, React, Node.js). It simulates high-stakes technical, behavioral, project-defense, and live coding interviews with human-caliber AI feedback, real-time code execution, dynamic difficulty steering, and evidence-grounded performance analytics.
 
-## 🛠️ Tech Stack
+The platform is designed around four tightly integrated core modules:
+1. **Module 1 — Conversational Mock Interview Engine**: Audio/speech-driven conceptual interviews based on candidate resumes and job roles with 6-criterion rubric scoring.
+2. **Module 2 — Dedicated Cross-Examination & Deep-Dive Probing**: Targeted resume project defense engine with progressive escalation, claim verification, and hallucination-resistant transcript grounding.
+3. **Module 3 — Adaptive Questioning & Real-Time Steering**: Dynamic difficulty adjustment (Beginner $\leftrightarrow$ Intermediate $\leftrightarrow$ Advanced) with streak-based state transitions, weak-area detection, and Section F Trajectory reporting.
+4. **Module 4 — Isolated Live Coding Execution Engine & Workspace**: A zero-cost (₹0 infrastructure), in-backend multi-language code execution engine with Monaco Editor, dynamic host compiler registry, ephemeral process sandboxing, hidden test case protection, concurrency limits, and a fully resizable dual-splitter workspace.
 
-### Frontend
-- **Framework**: React 19 + Vite
-- **Styling & UI**: TailwindCSS, Framer Motion
-- **Data Visualization**: Recharts, React Circular Progressbar
-- **State Management**: Redux Toolkit & React-Redux
-- **Routing**: React Router DOM (v7)
-- **Payment Integration**: Razorpay Web SDK
-- **Other Tools**: Axios, Firebase Web SDK, React Icons
+---
 
-### Backend
-- **Server Environment**: Node.js & Express.js
-- **Database**: MongoDB (via Mongoose)
-- **Authentication**: Firebase Auth, JWT (`jsonwebtoken`), bcryptjs
-- **File Uploads & Processing**: Multer, `pdfjs-dist`
-- **Security & Rate Limiting**: `express-rate-limit`, Helmet, CORS
-- **Payment Gateway**: Razorpay Node.js SDK
-- **Other Utilities**: `cookie-parser`, `dotenvx` for secure environment variable management
+## 🏗️ High-Level System Architecture
 
-## 📁 Project Structure
+Prepper AI integrates a responsive React single-page application with an Express REST API backend, MongoDB persistence, OpenRouter AI intelligence, and a sandboxed host-level child-process execution engine.
+
+```mermaid
+flowchart TD
+    subgraph Client["Candidate Frontend (React 19 + Vite)"]
+        UI_Home["Landing & Capabilities"]
+        UI_Auth["Firebase / JWT Auth"]
+        UI_Dash["Dashboard & History"]
+        UI_Pricing["Credit Pricing & Razorpay Modal"]
+        
+        subgraph InterviewViews["Interview Workspaces"]
+            V_Standard["Module 1: Voice Interview (/interview)"]
+            V_Cross["Module 2: Cross-Examination (/cross-examination)"]
+            V_Coding["Module 4: Resizable Monaco Coding Workspace (/coding/:id)"]
+            V_Report["Analytics & Scorecard (/report/:id)"]
+        end
+    end
+
+    subgraph BackendAPI["Backend Application (Node.js + Express)"]
+        MW_Auth["Auth Middleware (JWT Verify)"]
+        MW_Rate["Rate Limiter (express-rate-limit)"]
+        MW_Upload["Multer PDF Processor (pdfjs-dist)"]
+        
+        subgraph Controllers["API Controllers"]
+            C_Auth["auth.controller.js"]
+            C_Interview["interview.controller.js"]
+            C_Cross["crossExamination.controller.js"]
+            C_Coding["coding.controller.js"]
+            C_Payment["payment.controller.js"]
+        end
+
+        subgraph CoreServices["Domain Services"]
+            S_OpenRouter["openRouter.service.js (LLM Engine)"]
+            S_Pricing["interviewPricing.service.js (Credit Math)"]
+            S_Adaptive["adaptiveQuestion.service.js (Module 3)"]
+            S_CrossExam["answerAnalysis.service.js (Module 2)"]
+            S_Evaluation["answerEvaluation.service.js (Evidence Scoring)"]
+        end
+
+        subgraph CodeExecutionEngine["Module 4: Zero-Cost Execution Subsystem"]
+            S_Adapter["executionAdapter.service.js"]
+            S_LocalProv["local.provider.js"]
+            S_Registry["languageRegistry.js (Compiler Discovery)"]
+            S_Runner["testCaseRunner.js (Hidden Test Masking)"]
+            S_ExecService["execution.service.js (Process Sandboxing)"]
+            S_Limits["executionLimits.js & executionValidator.js"]
+        end
+    end
+
+    subgraph DataStorage["Persistence & External Services"]
+        DB_Mongo[(MongoDB Atlas / Local)]
+        EXT_OpenRouter["OpenRouter AI (Meta Llama / Nemotron)"]
+        EXT_Razorpay["Razorpay Payment Gateway"]
+        EXT_HostRuntimes["Local Host Runtimes (Node, Python3, GCC, G++, Java, Go)"]
+    end
+
+    %% Client to Backend
+    Client -->|HTTPS / REST API| MW_Rate
+    MW_Rate --> MW_Auth
+    MW_Auth --> Controllers
+    MW_Upload --> C_Interview
+    MW_Upload --> C_Cross
+
+    %% Controllers to Services
+    C_Interview --> S_OpenRouter
+    C_Interview --> S_Adaptive
+    C_Interview --> S_Evaluation
+    C_Interview --> S_Pricing
+
+    C_Cross --> S_OpenRouter
+    C_Cross --> S_CrossExam
+    C_Cross --> S_Pricing
+
+    C_Coding --> S_Adapter
+    C_Coding --> S_Pricing
+    S_Adapter --> S_LocalProv
+    S_LocalProv --> S_Runner
+    S_Runner --> S_ExecService
+    S_ExecService --> S_Registry
+    S_ExecService --> S_Limits
+
+    %% Services to External
+    Controllers --> DB_Mongo
+    S_OpenRouter --> EXT_OpenRouter
+    C_Payment --> EXT_Razorpay
+    S_ExecService -->|Isolated Child Process (Spawn)| EXT_HostRuntimes
+```
+
+---
+
+## 🛠️ Complete Technology Stack
+
+| Layer | Technology | Version | Purpose & Architectural Role |
+| :--- | :--- | :--- | :--- |
+| **Frontend Framework** | **React** | `^19.0.0` | Declarative UI, component lifecycle, hooks, context |
+| **Build Tool** | **Vite** | `^7.3.1` | Ultra-fast HMR, Rollup production bundling, asset optimization |
+| **Styling** | **Tailwind CSS** | `^3.4.17` | Utility-first responsive design, dark-mode styling, fluid layouts |
+| **Animations** | **Framer Motion** | `^12.4.7` | Smooth transitions, modal overlays, progress bars, interactive cards |
+| **Code Editor** | **Monaco Editor** | `@monaco-editor/react ^4.7.0` | VS Code-powered syntax highlighting, auto-indent, code formatting |
+| **Charts & Gauges** | **Recharts & Circular Progressbar** | `^2.15.1` / `^2.1.0` | Visualizing category mastery, difficulty trajectories, score meters |
+| **State Management** | **Redux Toolkit** | `^2.5.1` | Global auth, user credits, interview sessions, modal states |
+| **HTTP Client** | **Axios** | `^1.7.9` | Interceptor-managed API calls with cookie authentication |
+| **Backend Runtime** | **Node.js** | `v18+` / `v20+` | Asynchronous event-driven JavaScript server runtime |
+| **Web Framework** | **Express.js** | `^4.21.2` | RESTful routing, middleware pipeline, error management |
+| **Database** | **MongoDB Atlas** | `v7.0+` | NoSQL document database, ACID transactions, complex aggregations |
+| **ODM** | **Mongoose** | `^8.10.1` | Strict schema validation, pre/post hooks, virtual fields |
+| **AI Orchestration** | **OpenRouter API** | — | Meta Llama 3.3 70B, Nvidia Nemotron, fault-tolerant retry workflows |
+| **PDF Processing** | **`pdfjs-dist` & Multer** | `^4.10.38` / `^1.4.5` | In-memory resume text extraction without disk pollution |
+| **Payment Gateway** | **Razorpay Node SDK** | `^2.9.5` | Webhook verification, order creation, dynamic credit wallet reloads |
+| **Security & Sandbox**| **Child Process (`child_process.spawn`)** | Built-in | Ephemeral compilation, execution timeouts, memory caps, secret masking |
+
+---
+
+## 🎯 Deep Dive: Module 1 — Conversational Mock Interview Engine
+
+### 1.1 Overview & Objective
+Module 1 delivers an authentic, conversational voice- and text-driven technical interview simulation tailored to the candidate's target job role, experience level, and resume projects. It replicates the initial technical screening and behavioral assessment conducted by engineering leads.
+
+### 1.2 Resume Processing Pipeline
+When a candidate uploads a PDF resume:
+1. **In-Memory Streaming**: Multer intercepts the multipart upload into a memory buffer without persisting sensitive files to the filesystem.
+2. **Deterministic Text Extraction**: `pdfjs-dist` parses the PDF document page-by-page, extracting raw textual content, headers, projects, technologies, and work history.
+3. **Entity & Role Normalization**: The backend extracts key skills, tech stacks, and domain expertise to calibrate question generation.
+
+### 1.3 6-Criterion Evaluation Matrix
+Every candidate answer is evaluated across 6 weighted rubrics:
+
+| Metric | Description | Weight |
+| :--- | :--- | :---: |
+| **Technical Accuracy** | Factual correctness, proper API/concept naming, and conceptual precision. | 25% |
+| **Completeness** | Depth of coverage, edge case consideration, and answering all question facets. | 20% |
+| **Structure & Clarity** | Use of logical frameworks (STAR, PREP, top-down structure) and readability. | 15% |
+| **Problem-Solving** | Systematic thinking, engineering trade-offs, and design rationale. | 15% |
+| **Communication Quality** | Conciseness, tone, professional vocabulary, and confidence indicators. | 15% |
+| **Behavioral Alignment** | Ownership, collaboration, conflict resolution, and leadership principles. | 10% |
+
+### 1.4 Module 1 Interview Sequence Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as Candidate (Browser)
+    participant Client as Frontend (Step2Interview)
+    participant API as Express API (/api/interview)
+    participant DB as MongoDB Atlas
+    participant AI as OpenRouter AI (LLM)
+
+    Candidate->>Client: Enters Job Role, Experience & Uploads Resume PDF
+    Client->>API: POST /api/interview/create (Multipart Form)
+    API->>API: Parse PDF via pdfjs-dist & Deduct Credits
+    API->>AI: Generate initial tailored question set
+    AI-->>API: Return JSON array of questions with categories
+    API->>DB: Save new Interview session (status: 'in-progress')
+    API-->>Client: Return sessionId & first question
+
+    loop For each interview question
+        Client->>Candidate: Display question text & play AI voice audio
+        Candidate->>Client: Speaks answer (Web Speech API / Mic) or types text
+        Client->>API: POST /api/interview/submit-answer (answerText, timeTaken)
+        API->>AI: Evaluate answer against 6 rubrics + determine next question
+        AI-->>API: Return rubric scores, qualitative feedback, & follow-up
+        API->>DB: Update question with scores, feedback & trajectory
+        API-->>Client: Return answer feedback & next question
+    end
+
+    Candidate->>Client: Clicks "Finish Interview"
+    Client->>API: POST /api/interview/finish
+    API->>AI: Compile Executive Scorecard & Study Roadmap
+    AI-->>API: Return comprehensive evaluation report
+    API->>DB: Update interview status to 'completed'
+    API-->>Client: Redirect to /report/:id (Comprehensive Scorecard)
+```
+
+---
+
+## 🔍 Deep Dive: Module 2 — Dedicated Cross-Examination & Deep-Dive Probing
+
+### 2.1 Overview & Architectural Separation
+Module 2 is an independent, high-pressure interrogation module designed to verify candidate authenticity and test deep architectural understanding. While Module 1 assesses general knowledge, Module 2 specifically probes claimed achievements, project architectures, and metrics listed on the candidate's resume.
+
+- **Dedicated Routing**: Fully decoupled into `/cross-examination` and `/cross-examination/:sessionId`, distinct from the standard `/interview` route.
+- **Dedicated History Tracking**: Candidates can view their dedicated Cross-Examination records separately from standard interviews in the dashboard.
+
+### 2.2 Project Opportunity Extraction
+1. **Claim Harvesting**: Scans the candidate resume for quantifiable metrics (e.g. *"reduced latency by 40%"*, *"handled 1M requests/day"*).
+2. **Anchor Project Selection**: Focuses on the most complex claimed project to construct a high-context interrogation persona.
+3. **Plausibility & Trap Generation**: Constructs targeted architectural questions to check if the candidate genuinely built the system or merely listed buzzwords.
+
+### 2.3 Progressive Pressure Escalation Ladder
+The cross-examination engine escalates questioning through four distinct pressure tiers based on candidate responses:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Tier1_Clarification: Project Anchor Identified
+    
+    Tier1_Clarification --> Tier2_TechnicalDrilldown: Direct Architecture Answer
+    Tier1_Clarification --> Tier1_Clarification: Vague Answer (Re-prompt)
+
+    Tier2_TechnicalDrilldown --> Tier3_ArchitectureChallenge: Confident Technical Defense
+    Tier2_TechnicalDrilldown --> Tier1_Clarification: High Hesitation / Retreat
+
+    Tier3_ArchitectureChallenge --> Tier4_StressAndTradeoffs: Edge-Case Validated
+    Tier3_ArchitectureChallenge --> Tier2_TechnicalDrilldown: Partial Concession
+
+    Tier4_StressAndTradeoffs --> [*]: Interrogation Complete (Report Generated)
+
+    state Tier1_Clarification {
+        description: "Verify role, tech stack choices, team size, and core architecture."
+    }
+    state Tier2_TechnicalDrilldown {
+        description: "Deep dive into data models, concurrency, caching, and API contracts."
+    }
+    state Tier3_ArchitectureChallenge {
+        description: "Simulate system failures, traffic spikes, and state synchronization bugs."
+    }
+    state Tier4_StressAndTradeoffs {
+        description: "Force candidate to defend unpopular trade-offs and alternative designs."
+    }
+```
+
+### 2.4 Hallucination-Resistant Transcript Grounding
+To prevent AI hallucination during intense cross-examination, the evaluation engine enforces **transcript substring grounding**:
+- Every identified strength, technical gap, or inconsistency must cite verbatim substrings from the candidate's actual answers.
+- Any critique without direct textual evidence is pruned during schema sanitization.
+
+---
+
+## ⚡ Deep Dive: Module 3 — Adaptive Questioning & Real-Time Steering Engine
+
+### 3.1 Dynamic Difficulty Tiers
+Rather than delivering a static, predetermined list of questions, Prepper AI continuously evaluates candidate mastery after each answer and dynamically recalibrates the interview trajectory across three difficulty tiers:
+
+- **Beginner**: Foundational definitions, syntax, basic APIs, core patterns.
+- **Intermediate**: Real-world application, failure modes, trade-offs, standard architecture.
+- **Advanced**: Internal runtimes, concurrency hazards, distributed failure recovery, high-scale optimization.
+
+### 3.2 Streak Rules & State Transition Mechanics
+The difficulty engine (`adaptiveQuestion.service.js`) tracks consecutive score streaks:
+- **Promotion Threshold**: Two consecutive scores $\ge 80$ automatically elevate the interview to the next difficulty tier.
+- **Demotion Threshold**: Two consecutive scores $< 50$ lower the difficulty to provide scaffolded support and isolate specific knowledge gaps.
+- **Maintenance**: Mixed scores ($50 \le \text{Score} < 80$) sustain the current difficulty level while exploring adjacent technical domains.
+
+```mermaid
+flowchart TD
+    StartQ["Candidate Submits Answer"] --> Eval["Evaluate Answer Score (0-100)"]
+    Eval --> CheckStreak{"Score Streak Analysis"}
+
+    CheckStreak -->|Score >= 80 for 2 consecutive questions| LevelUp["Promote Tier: Beginner -> Intermediate -> Advanced"]
+    CheckStreak -->|Score < 50 for 2 consecutive questions| LevelDown["Demote Tier: Advanced -> Intermediate -> Beginner"]
+    CheckStreak -->|Mixed or Single Outlier| Maintain["Maintain Current Tier"]
+
+    LevelUp --> CheckLoop{"Anti-Loop Guard Check"}
+    LevelDown --> CheckLoop
+    Maintain --> CheckLoop
+
+    CheckLoop -->|Topic Explored >= 2 times| PivotTopic["Pivot to Untested Topic (Cool-Down Activated)"]
+    CheckLoop -->|Topic Explored < 2 times| KeepTopic["Deepen Current Topic or Steer to Sub-Topic"]
+
+    PivotTopic --> Formulate["Generate Contextual Transition Phrase & Next Question"]
+    KeepTopic --> Formulate
+
+    Formulate --> Emit["Send to Candidate with UI Transition Banner"]
+```
+
+### 3.3 Contextual Transition Phrases
+To make steering feel human and natural, the engine selects context-aware transition banners that display live in the candidate's UI:
+- *Level Up*: "Excellent depth on system boundaries! Let's elevate the challenge with an advanced architectural scenario."
+- *Scaffold Down*: "Let's pause and solidify the fundamental mechanics before moving to complex scaling scenarios."
+- *Pivot Topic*: "You've demonstrated consistent mastery here. Let's switch gears and explore concurrency and state synchronization."
+
+### 3.4 Grounded Topic Mastery & Section F Trajectory Report
+At the conclusion of the interview, the report generates **Section F: Adaptive Trajectory & Competency Insights**:
+- Visual question-by-question progression graph showing difficulty changes.
+- Topic mastery radar and weakness heat-map.
+- Full interviewer steering decision audit trail detailing why each question was selected.
+
+---
+
+## 💻 Deep Dive: Module 4 — Secure Isolated Live Coding Execution Engine
+
+### 4.1 Zero-Budget Architecture Constraint
+Module 4 was engineered under strict zero-cost constraints (₹0 infrastructure budget):
+- **No Docker containers** required in production.
+- **No virtual machines (VMs)**.
+- **No external paid execution APIs** (such as Judge0 cloud or RapidAPI).
+- **No separate microservices, Redis, or PostgreSQL instances**.
+- Everything runs seamlessly inside the existing Node.js + Express backend and host environment!
+
+### 4.2 Dynamic Language Registry & Discovery
+The backend dynamically checks host executable availability on startup (`languageRegistry.js`):
+
+| Language | Target Runtime | Command / Compiler Discovery | Sandboxed Execution File |
+| :--- | :--- | :--- | :--- |
+| **JavaScript** | Node.js | `node -v` | `solution.js` |
+| **Python** | Python 3 | `python --version` or `python3 --version` | `solution.py` |
+| **C++** | GCC (G++) | `g++ --version` | `solution.cpp` $\rightarrow$ `solution.exe` / `solution.out` |
+| **C** | GCC | `gcc --version` | `solution.c` $\rightarrow$ `solution.exe` / `solution.out` |
+| **Java** | OpenJDK | `javac -version` & `java -version` | `Main.java` $\rightarrow$ `Main.class` |
+| **TypeScript**| ts-node | `ts-node -v` | `solution.ts` |
+| **Go** | Go Compiler | `go version` | `solution.go` $\rightarrow$ `solution.exe` |
+
+### 4.3 Pluggable Provider Architecture & Fail-Closed Security
+Execution requests are routed through a provider abstraction (`executionAdapter.service.js`):
+1. **Local Provider (`local.provider.js`)**: Executes code on locally verified compilers in development.
+2. **Go-Judge / Piston Providers**: Ready for external workers if infrastructure becomes available.
+3. **Fail-Closed Production Guard**: In production, unverified or insecure local execution is strictly prohibited. If an execution backend is not safely provisioned, the endpoint fails closed with a controlled `HTTP 503 Service Unavailable`, masking all internal errors and keeping Monaco Editor functional for offline editing.
+
+```mermaid
+flowchart TD
+    Req["POST /api/coding/run or /run-tests or /submit"] --> AuthCheck["Auth & IDOR Verification"]
+    AuthCheck --> ValCheck["ExecutionValidator (Max 64KB, Valid Lang)"]
+    ValCheck --> ConcurrencyCheck{"Semaphore Limit (Max 3 Concurrent)"}
+    
+    ConcurrencyCheck -->|Busy| Reject503["HTTP 503: Execution Busy, Retry Later"]
+    ConcurrencyCheck -->|Slot Available| EnvCheck{"Environment Mode"}
+
+    EnvCheck -->|Production without isolate| FailClosed["Fail-Closed HTTP 503 (Safe Notice)"]
+    EnvCheck -->|Development / Local Provider| Dispatch["Dispatch to local.provider.js"]
+
+    Dispatch --> EphemeralDir["Create Temp Directory: /tmp/coding-exec-..."]
+    EphemeralDir --> WriteSrc["Write Solution Source Code & Input"]
+    WriteSrc --> IsolateEnv["Strip process.env (Remove Secrets, DB URIs)"]
+
+    IsolateEnv --> CompileStep{"Is Compiled Language (C++, C, Java)?"}
+    CompileStep -->|Yes| SpawnCompiler["Spawn Compiler with 5000ms Timeout"]
+    SpawnCompiler -->|Compilation Error| ReturnCompileErr["Capture stderr & Cleanup Files"]
+    SpawnCompiler -->|Success| SpawnRunner["Spawn Executable"]
+    CompileStep -->|No| SpawnRunner
+
+    SpawnRunner --> EnforceLimits["Enforce 5000ms Timeout & 64KB Max Output"]
+    EnforceLimits --> Cleanup["Guarantee Immediate Directory & Process Deletion"]
+    Cleanup --> FormatOutput["Mask Hidden Tests & Return Safe Verdict"]
+```
+
+### 4.4 Ephemeral Sandboxing & Security Boundaries
+Every code submission is isolated using defense-in-depth principles:
+- **Environment Sanitization**: Host `process.env` is stripped; sensitive tokens (MongoDB URIs, JWT secrets, Razorpay keys) are completely removed from child process environments.
+- **Filesystem Isolation**: Code runs inside an ephemeral, uniquely generated temporary directory (`crypto.randomUUID()`) that is automatically erased in a `finally` block even if the execution crashes.
+- **Resource Limits**:
+  - **Execution Timeout**: Hard kill after `5000ms` via `tree-kill` or process tree termination.
+  - **Output Cap**: Standard output and error streams are truncated at `64KB` (`MAX_OUTPUT_BYTES`) to prevent memory flood attacks.
+  - **Memory Limits**: V8 JavaScript execution enforces `--max-old-space-size=256` to kill memory bombs.
+- **Hidden Test Case Masking**: Visible sample test cases show inputs and expected outputs. Hidden benchmark test cases evaluate strictly server-side; candidate responses only receive pass/fail counts and verdicts (`Accepted`, `Wrong Answer`, `Time Limit Exceeded`, `Memory Limit Exceeded`), preventing test case leakage.
+
+### 4.5 Resizable Monaco Coding Workspace
+The frontend coding interface (`CodingWorkspace.jsx`) includes dynamic candidate layout controls:
+- **Horizontal Draggable Splitter**: Move between Problem Description and Editor with real-time percentage snapping.
+- **Vertical Draggable Splitter**: Resize between Monaco Editor and the Bottom Console Drawer.
+- **One-Click Drawer Collapse**: Fold the console down to 42px for unobstructed coding.
+- **Double-Click Reset**: Instant reset of dimensions to default proportions.
+- **`localStorage` Persistence**: Retains layout configurations across reloads.
+- **Transparent Drag Shield**: Prevents Monaco's iframe/canvas layer from capturing mouse events during drag.
+- **3 Execution Modes**:
+  1. *Run Code*: Executes against arbitrary candidate `stdin`.
+  2. *Run Sample Tests*: Tests code against visible example test cases.
+  3. *Submit Solution*: Evaluates all test cases (visible + hidden) and persists official submission record to MongoDB.
+
+---
+
+## 🗄️ Database Schemas & Entity-Relationship Architecture
+
+The platform uses MongoDB with strict Mongoose schemas to support complex nested interview trajectories, evidence evaluations, and code submissions:
+
+```mermaid
+erDiagram
+    User ||--o{ Interview : conducts
+    User ||--o{ CodingSubmission : submits
+    User ||--o{ Payment : purchases
+    Interview ||--o{ Question : contains
+    Interview ||--o{ CodingProblem : references
+    CodingProblem ||--o{ CodingSubmission : receives
+
+    User {
+        ObjectId _id PK
+        string name
+        string email
+        string password
+        number credits
+        string role
+        date createdAt
+    }
+
+    Interview {
+        ObjectId _id PK
+        ObjectId userId FK
+        string role
+        string experienceLevel
+        string sessionType "standard | cross-examination | coding"
+        string status "in-progress | completed | abandoned"
+        number overallScore
+        number selectedDurationMinutes
+        date expiresAt
+        object adaptiveState "currentTier, streak, steeringHistory"
+        object analytics "competencyGaps, rubricBreakdown"
+    }
+
+    Question {
+        ObjectId _id PK
+        string questionText
+        string category
+        string difficultyTier
+        string candidateAnswer
+        number score
+        object rubricScores
+        object evidenceEvaluation
+        string transitionPhrase
+    }
+
+    CodingProblem {
+        ObjectId _id PK
+        string title
+        string slug
+        string difficulty "Easy | Medium | Hard"
+        string category
+        string description
+        array constraints
+        array visibleTestCases
+        array hiddenTestCases
+        object driverCode
+    }
+
+    CodingSubmission {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId interviewId FK
+        ObjectId problemId FK
+        string language
+        string code
+        string verdict "Accepted | Wrong Answer | TLE | MLE | Error"
+        number passedCount
+        number totalCount
+        number maxTimeMs
+        number maxMemoryKb
+        date createdAt
+    }
+
+    Payment {
+        ObjectId _id PK
+        ObjectId userId FK
+        string razorpayOrderId
+        string razorpayPaymentId
+        number amount
+        number creditsAdded
+        string status "created | success | failed"
+    }
+```
+
+---
+
+## 🌐 Complete REST API Endpoint Reference
+
+### 🔐 Authentication (`/api/auth`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/auth/register` | Register new user account with initial credits | No |
+| `POST` | `/api/auth/login` | Authenticate candidate & issue HTTP-only JWT cookie | No |
+| `POST` | `/api/auth/logout` | Clear auth token cookie & terminate session | Yes |
+| `GET`  | `/api/auth/me` | Fetch authenticated user profile & credit balance | Yes |
+
+### 🎙️ Standard Interview & Trajectory (`/api/interview`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/interview/create` | Create new interview, parse resume PDF, deduct credits | Yes |
+| `POST` | `/api/interview/submit-answer` | Submit answer, run adaptive evaluation & get next question | Yes |
+| `POST` | `/api/interview/finish` | Finalize interview, compute Section F analytics & scorecard | Yes |
+| `GET`  | `/api/interview/session/:id` | Fetch full interview session data & transcript | Yes |
+| `GET`  | `/api/interview/report/:id` | Retrieve comprehensive evaluation report & radar chart | Yes |
+| `GET`  | `/api/interview/history` | List candidate interview history with pagination | Yes |
+
+### 🔍 Dedicated Cross-Examination (`/api/cross-examination`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/cross-examination/create` | Analyze resume projects & generate claim anchor points | Yes |
+| `POST` | `/api/cross-examination/submit-answer` | Submit defense, escalate pressure tier, ground transcript | Yes |
+| `POST` | `/api/cross-examination/finish` | Compile project defense score & claim authenticity report | Yes |
+| `GET`  | `/api/cross-examination/history` | Fetch separate dedicated cross-examination history | Yes |
+
+### 💻 Live Coding & Execution Engine (`/api/coding`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET`  | `/api/coding/languages` | Discover active compiler runtimes on host | Yes |
+| `POST` | `/api/coding/create-session` | Initialize coding round, select problems & duration | Yes |
+| `POST` | `/api/coding/run` | Execute code against arbitrary candidate stdin | Yes |
+| `POST` | `/api/coding/run-tests` | Run code against visible example test cases | Yes |
+| `POST` | `/api/coding/submit` | Evaluate against visible + hidden test cases & persist | Yes |
+| `GET`  | `/api/coding/history/:interviewId` | Retrieve past submissions for the coding interview | Yes |
+
+### 💳 Payment & Credits (`/api/payment`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/payment/create-order` | Generate Razorpay order for purchasing interview credits | Yes |
+| `POST` | `/api/payment/verify` | Verify cryptographic HMAC signature & credit wallet | Yes |
+| `GET`  | `/api/payment/transactions` | Retrieve candidate payment & credit transaction log | Yes |
+
+---
+
+## 💰 Credit Economics & Pricing Policy
+
+To maintain fair platform economics and prevent resource starvation:
+- **Module 1 (Standard Voice Interview)**: `10 Credits` (Base 5 questions + AI voice + full scorecard).
+- **Module 2 (Dedicated Cross-Examination)**: `10 Credits` (Full project defense + pressure escalation).
+- **Module 4 (Live Coding Session)**: Dynamic formula calibrated by question count and time limit:
+  $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
+- **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
+
+---
+
+## ⚙️ Installation & Development Setup
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher (`v20+` recommended)
+- **MongoDB**: Local MongoDB community server or MongoDB Atlas cluster URI
+- **OpenRouter API Key**: For LLM generation ([OpenRouter.ai](https://openrouter.ai/))
+- **Razorpay Account**: For credit payments (Test mode keys suffice for development)
+- **Language Compilers** *(Optional for local Module 4 testing)*: `python`, `g++`, `gcc`, `javac`/`java`, `go`
+
+### 1. Clone & Install Dependencies
+```bash
+# Clone the repository
+git clone https://github.com/KRISHNA-0425/Prepper.git
+cd Prepper
+
+# Install backend dependencies
+cd Backend
+npm install
+
+# Install frontend dependencies
+cd ../Frontend
+npm install
+```
+
+### 2. Environment Variables Configuration
+
+#### Backend Environment (`Backend/.env`)
+```env
+PORT=5000
+NODE_ENV=development
+SERVER_URL=http://localhost:5173
+MONGO_URL=mongodb+srv://<username>:<password>@cluster0.mongodb.net/prepper?retryWrites=true&w=majority
+JWT_SECRET=your_super_secret_jwt_key_here
+
+# OpenRouter AI Configuration
+OPEN_ROUTER_URL=https://openrouter.ai/api/v1/chat/completions
+OPEN_ROUTER_APIKEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPEN_ROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+
+# Razorpay Payment Gateway
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Live Code Execution Engine (Module 4)
+CODE_EXECUTION_ENABLED=true
+CODE_EXECUTION_PROVIDER=local
+MAX_CONCURRENT_EXECUTIONS=3
+```
+
+#### Frontend Environment (`Frontend/.env`)
+```env
+VITE_SERVER_URL=http://localhost:5000
+VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+```
+
+### 3. Running Development Servers
+```bash
+# In Terminal 1: Start Backend (with nodemon)
+cd Backend
+npm run dev
+
+# In Terminal 2: Start Frontend (with Vite HMR)
+cd Frontend
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser to access the application.
+
+---
+
+## 🧪 Comprehensive Verification & Test Suites
+
+The platform includes exhaustive unit, integration, and security regression test suites across both frontend and backend layers:
+
+### Running Test Suites
+```bash
+# Run complete frontend test suite (187 tests)
+npm --prefix Frontend test
+
+# Run frontend production build
+npm --prefix Frontend run build
+
+# Run backend execution & security test suites
+node --test Backend/tests/localCodeExecution.test.js Backend/tests/securityAndProductionAudit.test.js Backend/tests/codingSecurityMatrix.test.js
+
+# Run cross-examination tests
+node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnalysis.service.test.js
+```
+
+### Verification Matrix Summary
+- **Frontend Regression Suite**: **187 / 187 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, dual splitters, localStorage persistence, 503 error handling).
+- **Backend Execution Engine Suite**: **15 / 15 tests passing** (Host compiler registry, stdout/stdin, C/C++/Java/Python/JS execution, infinite loop timeouts, output capping, memory limits, test case runner).
+- **Security & Production Audit Suite**: **12 / 12 tests passing** (Anti-IDOR, secrets isolation, ephemeral directory cleanup, network egress blocking, concurrency semaphore, fail-closed production guard).
+- **Vite Production Bundler**: **Passed cleanly in 11.2s** with 0 errors.
+
+---
+
+## 📁 Repository Directory Structure
 
 ```text
 Prepper/
+├── Backend/                             # Express REST API Server
+│   ├── config/                          # Database connection & runtime setup
+│   ├── controllers/                     # Business logic controllers
+│   │   ├── auth.controller.js           # Auth & JWT management
+│   │   ├── interview.controller.js      # Module 1 standard interview
+│   │   ├── crossExamination.controller.js # Module 2 cross-examination
+│   │   ├── coding.controller.js         # Module 4 live coding endpoints
+│   │   └── payment.controller.js        # Razorpay payment verification
+│   ├── middleware/                      # Auth guards, upload & rate limiting
+│   ├── models/                          # Mongoose schemas
+│   │   ├── User.js                      # User profile & credit balance
+│   │   ├── Interview.js                 # Unified interview sessions & trajectory
+│   │   ├── CodingProblem.js             # Problem descriptions & test cases
+│   │   ├── CodingSubmission.js          # Execution attempts & verdicts
+│   │   └── Payment.js                   # Razorpay transaction log
+│   ├── services/                        # Domain logic services
+│   │   ├── openRouter.service.js        # LLM integration & fault-tolerant retries
+│   │   ├── interviewPricing.service.js  # Dynamic credit computation & refund guards
+│   │   ├── adaptiveQuestion.service.js  # Module 3 dynamic difficulty & steering
+│   │   ├── answerAnalysis.service.js    # Module 2 project probing & claims
+│   │   ├── answerEvaluation.service.js  # 6-rubric evidence grounding
+│   │   ├── codeExecution/               # In-backend zero-cost execution
+│   │   │   ├── execution.service.js     # Sandboxed process spawning & timeouts
+│   │   │   ├── languageRegistry.js      # Dynamic host compiler discovery
+│   │   │   ├── testCaseRunner.js        # Test case evaluation & hidden masking
+│   │   │   ├── executionLimits.js       # Hard caps (5000ms, 64KB, 256MB)
+│   │   │   └── executionValidator.js    # Payload size & language validation
+│   │   └── coding/
+│   │       ├── executionAdapter.service.js # Pluggable provider router
+│   │       └── providers/
+│   │           └── local.provider.js    # Local sandboxed execution provider
+│   ├── tests/                           # Unit, integration & security test suites
+│   └── server.js                        # Express app entrypoint
 │
-├── Backend/                 # Express Server & API logic ([Backend README](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/Backend/README.md))
-│   ├── config/              # Database connection configuration
-│   ├── controllers/         # API business logic (e.g., payment, auth)
-│   ├── middleware/          # Custom middlewares (e.g., auth verification)
-│   ├── models/              # Mongoose database schemas 
-│   ├── routes/              # API endpoints (auth, user, interview, payment)
-│   ├── services/            # OpenRouter AI & Razorpay services
-│   ├── server.js            # Entry point for the backend server
-│   ├── README.md            # Backend documentation
-│   └── package.json
-│
-├── Frontend/                # Vite + React Application ([Frontend README](file:///c:/Users/263237/Desktop/MERN/AI-Interview-II/Frontend/README.md))
+├── Frontend/                            # React 19 + Vite Single Page Application
 │   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── pages/           # Route components (Home, Dashboard, Pricing, Interview)
-│   │   ├── redux/           # Redux slices and store configuration
-│   │   ├── App.jsx          # Main application component & routing logic
-│   │   └── main.jsx         # React application mounting
-│   ├── README.md            # Frontend documentation
+│   │   ├── components/                  # Modular UI components
+│   │   │   ├── Navbar.jsx               # Navigation bar with dedicated pills
+│   │   │   ├── coding/
+│   │   │   │   └── CodingWorkspace.jsx  # Monaco editor, splitters, drawer, modes
+│   │   │   └── cross-examination/       # Probing cards & claim inspectors
+│   │   ├── pages/                       # Primary route views
+│   │   │   ├── Home.jsx                 # Landing page & feature showcase
+│   │   │   ├── Step1Setup.jsx           # Module 1 interview setup form
+│   │   │   ├── Step2Interview.jsx       # Module 1 live conversational session
+│   │   │   ├── Step3Report.jsx          # Scorecard, trajectory, study roadmap
+│   │   │   ├── CrossExaminationSetup.jsx# Module 2 setup & claim anchor review
+│   │   │   ├── CrossExaminationPage.jsx # Module 2 high-pressure interrogation
+│   │   │   ├── CodingSetup.jsx          # Module 4 setup, questions & timer selector
+│   │   │   ├── CodingSessionPage.jsx    # Module 4 live coding session mount
+│   │   │   └── InterViewHistory.jsx     # Unified session history & discriminators
+│   │   ├── redux/                       # Redux store & slices
+│   │   ├── App.jsx                      # Route registry
+│   │   └── main.jsx                     # Vite root mount
+│   ├── tests/                           # Frontend integration test suites
 │   └── package.json
 │
-└── README.md                # Project documentation
+└── README.md                            # Comprehensive Platform Documentation
 ```
 
-## 🚀 Installation & Setup
+---
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [MongoDB](https://www.mongodb.com/) (Local instance or Atlas URI)
-- [Firebase](https://firebase.google.com/) (Project setup for Auth integration)
-- [Razorpay](https://razorpay.com/) (Account for payment gateway keys)
-- [OpenRouter](https://openrouter.ai/) (API key for AI generation)
+## 🤝 Contributing & Code of Conduct
 
-### 1. Clone the repository
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes with descriptive commit messages following Conventional Commits format.
+4. Verify all tests pass (`npm --prefix Frontend test` and `node --test Backend/tests/*.test.js`).
+5. Open a Pull Request for review.
 
-```bash
-git clone https://github.com/KRISHNA-0425/Prepper.git
-cd Prepper
-```
+---
 
-### 2. Backend Setup
-
-1. Open a terminal and navigate to the backend directory:
-   ```bash
-   cd Backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the `Backend` directory:
-   ```env
-   PORT=5000
-   MONGO_URL=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret_key
-   SERVER_URL=http://localhost:5173
-   OPEN_ROUTER_URL=https://openrouter.ai/api/v1/chat/completions
-   OPEN_ROUTER_APIKEY=your_openrouter_api_key
-   OPEN_ROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
-   RAZORPAY_KEY_ID=your_razorpay_key_id
-   RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-   NODE_ENV=development
-   ```
-4. Start the backend development server:
-   ```bash
-   npm run dev
-   ```
-   *The server should now be running (default: http://localhost:3000).*
-
-### 3. Frontend Setup
-
-1. Open a new terminal and navigate to the frontend directory:
-   ```bash
-   cd Frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the `Frontend` directory:
-   ```env
-   VITE_SERVER_URL=http://localhost:3000
-   VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
-   # Add your Firebase Web SDK config keys if needed
-   ```
-4. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend application should now be accessible at http://localhost:5173.*
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are always welcome! Feel free to explore the code, understand the architecture, or suggest improvements to make this platform even better.
-
-## 📝 License
+## 📜 License
 
 This project is licensed under the **ISC License**.

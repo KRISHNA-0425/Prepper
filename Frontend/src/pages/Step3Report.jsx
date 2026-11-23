@@ -18,6 +18,7 @@ import {
   HiOutlineCodeBracket,
 } from 'react-icons/hi2';
 import { useNavigate } from 'react-router-dom';
+import CodingReportSection from '../components/coding/CodingReportSection';
 import {
   Radar,
   RadarChart,
@@ -499,6 +500,9 @@ function Step3Report({ report }) {
             ))}
           </div>
         </section>
+
+        {/* SECTION: Live Coding Evaluation & Test Results */}
+        <CodingReportSection report={report} />
 
         {/* SECTION E: Question-Wise Deep Dive with Expandable Evidence Inspector */}
         <section className="space-y-4">
