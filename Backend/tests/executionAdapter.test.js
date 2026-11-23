@@ -223,3 +223,59 @@ test('7. CodingExecutionService - Security, Ownership & 64KB Payload Limit', asy
     });
   }, /exceeds maximum allowed size of 64KB/);
 });
+
+test('8. Execution Adapter - Fail-Closed Security Policy (No silent fallback to mock)', () => {
+  const origProvider = process.env.CODE_EXECUTION_PROVIDER;
+  const origEnabled = process.env.CODE_EXECUTION_ENABLED;
+
+  try {
+    // A. Rejection when CODE_EXECUTION_ENABLED = 'false'
+    process.env.CODE_EXECUTION_ENABLED = 'false';
+    assert.throws(() => {
+      executionAdapter.getActiveProvider();
+    }, { message: /disabled by administrator configuration/ });
+
+    // B. Rejection when unknown provider specified (never silent fallback to mock!)
+    process.env.CODE_EXECUTION_ENABLED = 'true';
+    process.env.CODE_EXECUTION_PROVIDER = 'unknown-cloud-sandbox';
+    assert.throws(() => {
+      executionAdapter.getActiveProvider();
+    }, { message: /never silently falling back to mock/i });
+  } finally {
+    process.env.CODE_EXECUTION_PROVIDER = origProvider;
+    process.env.CODE_EXECUTION_ENABLED = origEnabled;
+  }
+});
+
+test('9. CodingExecutionService - Bounded Concurrency Limit Guard', async () => {
+  let executionCount = 0;
+  // Test concurrency guard allows operations under limit
+  const res = await codingExecutionService.withConcurrencyGuard(async () => {
+    executionCount++;
+    return 'success';
+  });
+  assert.equal(res, 'success');
+  assert.equal(executionCount, 1);
+});
+
+test('10. TestCaseService - Outage Propagation (Never masks 503 as candidate failure)', async () => {
+  const origExec = executionAdapter.execute;
+  try {
+    executionAdapter.execute = async () => {
+      const err = new Error('Connection refused to remote Go-Judge sandbox at 10.0.0.5:5050');
+      err.statusCode = 503;
+      err.code = 'EXECUTION_PROVIDER_UNAVAILABLE';
+      throw err;
+    };
+
+    await assert.rejects(async () => {
+      await testCaseService.executeTestCases({
+        language: 'python',
+        sourceCode: 'print(1)',
+        testCases: [{ input: '1', expectedOutput: '1' }]
+      });
+    }, { statusCode: 503, code: 'EXECUTION_PROVIDER_UNAVAILABLE' });
+  } finally {
+    executionAdapter.execute = origExec;
+  }
+});
