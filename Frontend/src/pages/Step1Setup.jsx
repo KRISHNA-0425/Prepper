@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
 import { IoArrowBackOutline } from "react-icons/io5";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function Step1Setup({ onStart }) {
     const [loading, setLoading] = useState(false);
@@ -32,6 +32,19 @@ function Step1Setup({ onStart }) {
     const activeExtractionIdRef = useRef(0);
     const resumeDerivedValuesRef = useRef({ role: '', experience: '' });
     const isSubmittingRef = useRef(false);
+
+    const location = useLocation();
+
+    // Cross-module bridge integration (Module 7 ATS -> Module 1 Interview prefill)
+    useEffect(() => {
+        if (location.state?.prefillRole) {
+            setRole(location.state.prefillRole);
+            userEditedFieldsRef.current.role = true;
+        }
+        if (location.state?.prefillSkills && Array.isArray(location.state.prefillSkills)) {
+            setSkills(location.state.prefillSkills);
+        }
+    }, [location.state]);
 
     // Derived validation: cross-questioning is strictly enabled only when a valid resume has been parsed
     const hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0);
