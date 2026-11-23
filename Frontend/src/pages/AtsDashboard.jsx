@@ -51,20 +51,20 @@ export default function AtsDashboard() {
   const getBadgeStyle = (category) => {
     switch (category) {
       case 'Excellent Match':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30';
       case 'Strong Match':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30';
       case 'Moderate Match':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30';
       case 'Weak Match':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
+        return 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30';
       default:
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/30';
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-poppins transition-colors duration-200">
       <Navbar />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-10">
@@ -72,17 +72,17 @@ export default function AtsDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 Module 7
               </span>
-              <span className="text-xs font-bold text-slate-400">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 Resume-to-Job ATS Intelligence
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-800">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
               ATS Compatibility & Application Intelligence
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
               Match your resume against exact job descriptions, discover prioritized skill gaps, and get grounded, non-hallucinated bullet rewrites.
             </p>
           </div>
@@ -90,7 +90,7 @@ export default function AtsDashboard() {
           <div className="flex items-center gap-3">
             <Link
               to="/ats/history"
-              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <RiHistoryLine className="text-sm" />
               <span>History</span>
@@ -107,35 +107,35 @@ export default function AtsDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl shrink-0">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl shrink-0">
               <RiFileSearchLine />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">Analyses Run</p>
-              <p className="text-2xl font-black text-slate-800">{totalAnalyses}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{totalAnalyses}</p>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shrink-0">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl shrink-0">
               <RiSparklingLine />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">Average ATS Score</p>
-              <p className="text-2xl font-black text-slate-800">
+              <p className="text-2xl font-black text-slate-800 dark:text-white">
                 {avgScore !== null ? `${avgScore}%` : '—'}
               </p>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-yellow-50 text-yellow-600 flex items-center justify-center text-2xl shrink-0">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 flex items-center justify-center text-2xl shrink-0">
               <RiCoinsLine />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">Available Credits</p>
-              <p className="text-2xl font-black text-slate-800">{userData?.credits ?? 0}</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{userData?.credits ?? 0}</p>
             </div>
           </div>
         </div>
@@ -143,13 +143,13 @@ export default function AtsDashboard() {
         {/* Recent Analyses & Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent List */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
-              <h3 className="font-black text-slate-800 text-base">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-black text-slate-800 dark:text-white text-base">
                 Recent Job Matches
               </h3>
               {analyses.length > 0 && (
-                <Link to="/ats/history" className="text-xs font-bold text-blue-600 hover:underline">
+                <Link to="/ats/history" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
                   View all
                 </Link>
               )}
@@ -162,10 +162,10 @@ export default function AtsDashboard() {
               </div>
             ) : analyses.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
-                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl mx-auto mb-3">
+                <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-2xl mx-auto mb-3">
                   <RiFileSearchLine />
                 </div>
-                <p className="font-bold text-slate-700 text-sm">No job matches run yet</p>
+                <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">No job matches run yet</p>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">
                   Upload your resume and paste a target job description to compute your ATS compatibility score.
                 </p>
@@ -182,15 +182,15 @@ export default function AtsDashboard() {
                   <div
                     key={item._id}
                     onClick={() => navigate(`/ats/analysis/${item._id}`)}
-                    className="p-4 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/60 transition-all cursor-pointer flex items-center justify-between gap-4 group"
+                    className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-all cursor-pointer flex items-center justify-between gap-4 group"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">
+                        <span className="font-bold text-slate-800 dark:text-slate-100 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {item.jobDetails?.jobTitle}
                         </span>
                         {item.jobDetails?.companyName && (
-                          <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
                             <RiBuilding4Line className="text-slate-400" />
                             {item.jobDetails.companyName}
                           </span>
@@ -204,7 +204,7 @@ export default function AtsDashboard() {
 
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <span className="font-black text-slate-800 text-base">
+                        <span className="font-black text-slate-800 dark:text-white text-base">
                           {item.scoring?.overallScore}%
                         </span>
                         <span
@@ -215,7 +215,7 @@ export default function AtsDashboard() {
                           {item.scoring?.matchCategory}
                         </span>
                       </div>
-                      <RiArrowRightLine className="text-slate-300 group-hover:text-slate-700 group-hover:translate-x-1 transition-all" />
+                      <RiArrowRightLine className="text-slate-300 dark:text-slate-600 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-1 transition-all" />
                     </div>
                   </div>
                 ))}

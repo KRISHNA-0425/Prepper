@@ -185,11 +185,6 @@ function Step1Setup({ onStart }) {
         await performResumeExtraction(resumeFile);
     };
 
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-    //     onStart();
-    // };
-
     const calculateCreditCost = () => {
         if (interviewMode === 'time_based') {
             if (timePackage === '30') return 50;
@@ -264,9 +259,9 @@ function Step1Setup({ onStart }) {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className='min-h-screen w-full flex items-center justify-center bg-[#F5EC5A] p-3 sm:p-4 md:p-6 lg:p-8 font-poppins overflow-y-auto'
+                className='min-h-screen w-full flex items-center justify-center bg-[#F5EC5A] dark:bg-slate-950 p-3 sm:p-4 md:p-6 lg:p-8 font-poppins overflow-y-auto transition-colors duration-200'
             >
-                <div className='w-full max-w-6xl bg-white rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] grid grid-cols-1 md:grid-cols-2 overflow-hidden my-auto md:h-[90vh] md:max-h-[840px]'>
+                <div className='w-full max-w-6xl bg-white dark:bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] md:rounded-[3rem] shadow-[0_32px_80px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-transparent dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 overflow-hidden my-auto md:h-[90vh] md:max-h-[840px]'>
 
                     {/* --- Left Column: Branding --- */}
                     <motion.div
@@ -277,7 +272,7 @@ function Step1Setup({ onStart }) {
                         <button
                             type="button" 
                             aria-label="Back to home"
-                            className='absolute top-5 left-5 md:top-8 md:left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                            className='absolute top-5 left-5 md:top-8 md:left-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer'
                             onClick={() => navigate("/")}
                         >
                             <IoArrowBackOutline size={26} className='text-yellow-500' />
@@ -330,43 +325,43 @@ function Step1Setup({ onStart }) {
                     </motion.div>
 
                     {/* --- Right Column: Form --- */}
-                    <motion.div className='p-6 md:px-8 md:py-6 lg:p-10 flex flex-col bg-white overflow-y-auto min-h-0 custom-scrollbar'>
+                    <motion.div className='p-6 md:px-8 md:py-6 lg:p-10 flex flex-col bg-white dark:bg-slate-900 overflow-y-auto min-h-0 custom-scrollbar'>
                         <motion.div
                             layout
                             className='max-w-md mx-auto w-full space-y-5 my-auto py-2'
                         >
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                                <h2 className='text-2xl font-black text-slate-900 tracking-tighter uppercase'>Interview Setup</h2>
-                                <p className='text-slate-500 font-medium text-xs'>Fill details or let AI handle it</p>
+                                <h2 className='text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase'>Interview Setup</h2>
+                                <p className='text-slate-500 dark:text-slate-400 font-medium text-xs'>Fill details or let AI handle it</p>
                             </motion.div>
 
                             <form className='space-y-4'>
                                 <motion.div layout className='group space-y-1'>
-                                    <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 group-focus-within:text-yellow-600 transition-colors'><HiBriefcase /> Job Role</label>
+                                    <label className='flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400 group-focus-within:text-yellow-600 transition-colors'><HiBriefcase /> Job Role</label>
                                     <input
                                         required
                                         type="text"
                                         placeholder="e.g. Frontend Engineer"
                                         value={role}
                                         onChange={(e) => { userEditedFieldsRef.current.role = true; setRole(e.target.value); }}
-                                        className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
+                                        className='h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold text-slate-800 dark:text-slate-100 text-sm'
                                     />
                                 </motion.div>
 
                                 <motion.div className='flex flex-col gap-2'>
                                     <div className='space-y-1'>
-                                        <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><HiTrendingUp /> Level</label>
+                                        <label className='flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400'><HiTrendingUp /> Level</label>
                                         <input
                                             type="text"
-                                            className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 focus:bg-white transition-all font-semibold text-slate-800'
+                                            className='h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold text-slate-800 dark:text-slate-100 text-sm'
                                             placeholder='Experience e.g.-2 years '
                                             onChange={(e) => { userEditedFieldsRef.current.experience = true; setExperience(e.target.value); }}
                                             value={experience}
                                         />
                                     </div>
                                     <div className='space-y-1'>
-                                        <label className='flex items-center gap-2 text-[10px] font-black uppercase text-slate-400'><RiUserVoiceLine /> Mode</label>
-                                        <select value={mode} onChange={(e) => setMode(e.target.value)} className='w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2.5 font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'>
+                                        <label className='flex items-center gap-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400'><RiUserVoiceLine /> Mode</label>
+                                        <select value={mode} onChange={(e) => setMode(e.target.value)} className='h-11 w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-sm outline-none focus:border-yellow-400 dark:focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 cursor-pointer'>
                                             <option value="Technical">Technical</option>
                                             <option value="HR">HR/Behavioral</option>
                                         </select>
@@ -374,7 +369,7 @@ function Step1Setup({ onStart }) {
                                 </motion.div>
 
                                 {/* Feature D: Optional Cross-Questioning Option */}
-                                <motion.div layout className={`p-3.5 border-2 rounded-xl transition-colors space-y-2.5 ${!hasValidResume ? 'bg-slate-50/60 border-slate-100 opacity-80' : 'bg-slate-50 border-slate-100 hover:border-yellow-400/60'}`}>
+                                <motion.div layout className={`p-3.5 border rounded-xl transition-colors space-y-2.5 ${!hasValidResume ? 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-80' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-yellow-400/60'}`}>
                                     <label htmlFor="enableCrossQuestioning" className={`flex items-start gap-3 select-none ${hasValidResume ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                         <input
                                             type="checkbox"
@@ -383,17 +378,17 @@ function Step1Setup({ onStart }) {
                                             checked={enableCrossQuestioning}
                                             disabled={!hasValidResume}
                                             onChange={(e) => setEnableCrossQuestioning(e.target.checked)}
-                                            className={`mt-0.5 w-4 h-4 rounded border-slate-300 focus:ring-yellow-400 accent-yellow-500 ${hasValidResume ? 'cursor-pointer text-yellow-500' : 'cursor-not-allowed opacity-60 text-slate-400'}`}
+                                            className={`mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-600 focus:ring-yellow-400 accent-yellow-500 ${hasValidResume ? 'cursor-pointer text-yellow-500' : 'cursor-not-allowed opacity-60 text-slate-400'}`}
                                         />
                                         <div className='flex-1'>
-                                            <span className='text-xs font-black text-slate-800 block'>
+                                            <span className='text-xs font-black text-slate-800 dark:text-slate-200 block'>
                                                 Enable cross-questioning
                                             </span>
-                                            <span className='text-[10px] text-slate-500 leading-tight block mt-0.5'>
+                                            <span className='text-[10px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5'>
                                                 Allows the AI to ask relevant follow-up questions based on your answers to test depth and clarity.
                                             </span>
                                             {!hasValidResume && (
-                                                <span className='text-[11px] font-semibold text-amber-600 block mt-1.5'>
+                                                <span className='text-[11px] font-semibold text-amber-600 dark:text-amber-400 block mt-1.5'>
                                                     Upload your resume to enable cross-questioning.
                                                 </span>
                                             )}
@@ -405,9 +400,9 @@ function Step1Setup({ onStart }) {
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: 'auto' }}
                                             exit={{ opacity: 0, height: 0 }}
-                                            className='pt-2.5 border-t border-slate-200/80 flex items-center justify-between gap-3'
+                                            className='pt-2.5 border-t border-slate-200/80 dark:border-slate-700 flex items-center justify-between gap-3'
                                         >
-                                            <label htmlFor="crossQuestioningType" className='text-[10px] font-black uppercase text-slate-500'>
+                                            <label htmlFor="crossQuestioningType" className='text-[10px] font-black uppercase text-slate-500 dark:text-slate-400'>
                                                 Cross-Questioning Type
                                             </label>
                                             <select
@@ -415,7 +410,7 @@ function Step1Setup({ onStart }) {
                                                 name="crossQuestioningType"
                                                 value={crossQuestioningType}
                                                 onChange={(e) => setCrossQuestioningType(e.target.value)}
-                                                className='bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 outline-none focus:border-yellow-400 cursor-pointer'
+                                                className='bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-yellow-400 cursor-pointer'
                                             >
                                                 <option value="Technical">Technical</option>
                                                 <option value="Behavioral">Behavioral</option>
@@ -425,25 +420,25 @@ function Step1Setup({ onStart }) {
                                 </motion.div>
 
                                 {/* --- Interview Format & Packaging Selector --- */}
-                                <motion.div layout className="p-4 bg-slate-50 border-2 border-slate-100 rounded-xl space-y-3">
+                                <motion.div layout className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                                             <HiSparkles className="text-yellow-500 text-xs" /> Interview Format
                                         </label>
-                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-yellow-400/20 text-yellow-800 rounded-md border border-yellow-400/40">
+                                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-yellow-400/20 text-yellow-800 dark:text-yellow-300 rounded-md border border-yellow-400/40">
                                             Medium Difficulty
                                         </span>
                                     </div>
 
                                     {/* Mode Toggle Tabs */}
-                                    <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                                    <div className="grid grid-cols-2 gap-2 bg-slate-200/70 dark:bg-slate-900/80 p-1 rounded-xl">
                                         <button
                                             type="button"
                                             onClick={() => setInterviewMode('question_based')}
                                             className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
                                                 interviewMode === 'question_based'
-                                                    ? 'bg-slate-900 text-yellow-400 shadow-md'
-                                                    : 'text-slate-600 hover:text-slate-900'
+                                                    ? 'bg-slate-900 dark:bg-slate-800 text-yellow-400 shadow-md'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                             }`}
                                         >
                                             Question-Based
@@ -453,8 +448,8 @@ function Step1Setup({ onStart }) {
                                             onClick={() => setInterviewMode('time_based')}
                                             className={`py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
                                                 interviewMode === 'time_based'
-                                                    ? 'bg-slate-900 text-yellow-400 shadow-md'
-                                                    : 'text-slate-600 hover:text-slate-900'
+                                                    ? 'bg-slate-900 dark:bg-slate-800 text-yellow-400 shadow-md'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                             }`}
                                         >
                                             Time-Based
@@ -466,12 +461,12 @@ function Step1Setup({ onStart }) {
                                         <div className="space-y-3 pt-1">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <span className="text-xs font-black text-slate-800 block">Question Allocation</span>
-                                                    <span className="text-[10px] text-slate-500">5 to 20 questions (5 credits / question)</span>
+                                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 block">Question Allocation</span>
+                                                    <span className="text-[10px] text-slate-500 dark:text-slate-400">5 to 20 questions (5 credits / question)</span>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className="text-lg font-black text-slate-900">{selectedQuestionCount}</span>
-                                                    <span className="text-[10px] font-bold text-slate-500 ml-1">Questions</span>
+                                                    <span className="text-lg font-black text-slate-900 dark:text-white">{selectedQuestionCount}</span>
+                                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Questions</span>
                                                 </div>
                                             </div>
 
@@ -481,7 +476,7 @@ function Step1Setup({ onStart }) {
                                                     type="button"
                                                     onClick={() => setSelectedQuestionCount(prev => Math.max(5, prev - 1))}
                                                     disabled={selectedQuestionCount <= 5}
-                                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
+                                                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
                                                 >
                                                     -
                                                 </button>
@@ -492,21 +487,21 @@ function Step1Setup({ onStart }) {
                                                     step="1"
                                                     value={selectedQuestionCount}
                                                     onChange={(e) => setSelectedQuestionCount(Number(e.target.value))}
-                                                    className="flex-1 accent-yellow-400 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                                                    className="flex-1 accent-yellow-400 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={() => setSelectedQuestionCount(prev => Math.min(20, prev + 1))}
                                                     disabled={selectedQuestionCount >= 20}
-                                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-black text-slate-700 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
+                                                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-black text-slate-700 dark:text-slate-200 hover:bg-yellow-400 hover:border-yellow-400 disabled:opacity-40 transition-colors cursor-pointer text-sm"
                                                 >
                                                     +
                                                 </button>
                                             </div>
 
-                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-[10px]">
-                                                <span className="font-bold text-slate-500">Strict 60s per answer</span>
-                                                <span className="font-black text-slate-800">No overall session cap</span>
+                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 dark:border-slate-700 text-[10px]">
+                                                <span className="font-bold text-slate-500 dark:text-slate-400">Strict 60s per answer</span>
+                                                <span className="font-black text-slate-800 dark:text-slate-200">No overall session cap</span>
                                             </div>
                                         </div>
                                     ) : (
@@ -523,10 +518,10 @@ function Step1Setup({ onStart }) {
                                                         <div
                                                             key={pkg.key}
                                                             onClick={() => setTimePackage(pkg.key)}
-                                                            className={`p-2.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                                                            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                                                                 isSelected
-                                                                    ? 'bg-slate-900 text-white border-yellow-400 shadow-md'
-                                                                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                                                                    ? 'bg-slate-900 text-white border-yellow-400 shadow-md ring-1 ring-yellow-400/40'
+                                                                    : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200'
                                                             }`}
                                                         >
                                                             <div>
@@ -534,17 +529,17 @@ function Step1Setup({ onStart }) {
                                                                     {pkg.label}
                                                                 </span>
                                                                 <span className="text-xs font-black block mt-0.5">{pkg.duration}</span>
-                                                                <span className={`text-[9px] font-semibold block ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{pkg.target}</span>
+                                                                <span className={`text-[9px] font-semibold block ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>{pkg.target}</span>
                                                             </div>
-                                                            <div className="mt-2 pt-1 border-t border-white/10 flex items-baseline justify-between">
-                                                                <span className={`text-xs font-black ${isSelected ? 'text-yellow-400' : 'text-slate-900'}`}>{pkg.credits}</span>
+                                                            <div className="mt-2 pt-1 border-t border-slate-200/50 dark:border-white/10 flex items-baseline justify-between">
+                                                                <span className={`text-xs font-black ${isSelected ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>{pkg.credits}</span>
                                                                 <span className="text-[8px] font-bold uppercase text-slate-400">credits</span>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
                                             </div>
-                                            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
+                                            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 dark:text-slate-400">
                                                 <span className="font-bold">Strict 60s per answer</span>
                                                 <span className="font-bold">Session ends at time or question target</span>
                                             </div>
@@ -554,21 +549,21 @@ function Step1Setup({ onStart }) {
                                     {/* Pricing & Credit Balance Summary */}
                                     <div className={`p-3 rounded-xl border flex items-center justify-between ${
                                         hasSufficientCredits
-                                            ? 'bg-white border-slate-200'
-                                            : 'bg-red-50/70 border-red-200'
+                                            ? 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-700'
+                                            : 'bg-red-50/70 dark:bg-red-950/30 border-red-200 dark:border-red-800'
                                     }`}>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-black text-slate-800">
-                                                    Cost: <span className="text-yellow-600 font-black">{requiredCredits} Credits</span>
+                                                <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                                                    Cost: <span className="text-yellow-600 dark:text-yellow-400 font-black">{requiredCredits} Credits</span>
                                                 </span>
                                                 <span className="text-[10px] text-slate-400">•</span>
-                                                <span className="text-[10px] font-bold text-slate-500">
-                                                    Balance: <span className={hasSufficientCredits ? 'font-bold text-slate-700' : 'font-bold text-red-600'}>{userBalance} Credits</span>
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                                    Balance: <span className={hasSufficientCredits ? 'font-bold text-slate-700 dark:text-slate-300' : 'font-bold text-red-600 dark:text-red-400'}>{userBalance} Credits</span>
                                                 </span>
                                             </div>
                                             {!hasSufficientCredits && (
-                                                <p className="text-[10px] font-semibold text-red-600 mt-0.5">
+                                                <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mt-0.5">
                                                     Insufficient balance. Need {requiredCredits - userBalance} more credits.
                                                 </p>
                                             )}
@@ -593,7 +588,7 @@ function Step1Setup({ onStart }) {
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             layout
-                                            className='border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:bg-yellow-50/50 hover:border-yellow-400 transition-all group'
+                                            className='border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:bg-yellow-50/50 dark:hover:bg-yellow-400/5 hover:border-yellow-400 transition-all group'
                                             onClick={() => document.getElementById("resumeUpload").click()}
                                         >
                                             <FaFileArrowUp className='text-2xl mx-auto text-slate-400 group-hover:text-yellow-600 group-hover:scale-110 transition-all mb-1' />
@@ -603,7 +598,7 @@ function Step1Setup({ onStart }) {
                                                     performResumeExtraction(file);
                                                 }
                                             }} />
-                                            <p className='text-xs font-bold text-slate-600 truncate'>{resumeFile ? resumeFile.name : "Upload resume (optional)"}</p>
+                                            <p className='text-xs font-bold text-slate-600 dark:text-slate-300 truncate'>{resumeFile ? resumeFile.name : "Upload resume (optional)"}</p>
                                             {resumeFile && (
                                                 <motion.button
                                                     whileHover={{ scale: 1.05 }}
@@ -652,7 +647,7 @@ function Step1Setup({ onStart }) {
                                                         }
                                                         resumeDerivedValuesRef.current = { role: '', experience: '' };
                                                     }}
-                                                    className='p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-colors'
+                                                    className='p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-colors cursor-pointer'
                                                 >
                                                     <HiX size={16} />
                                                 </motion.button>
@@ -723,10 +718,10 @@ function Step1Setup({ onStart }) {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     type="submit"
-                                    className='w-full bg-slate-900 text-white py-3.5 md:py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-slate-800 transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2'
+                                    className='w-full bg-[#F7D63A] hover:bg-[#ffe04d] text-slate-950 py-3.5 md:py-4 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-3 shadow-xl transition-all group disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 cursor-pointer'
                                 >
                                     {loading ? "Starting..." : !hasSufficientCredits ? "Insufficient Credits" : "Start Interview"}
-                                    <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
+                                    <HiArrowRight className='text-slate-950 group-hover:translate-x-1 transition-transform' />
                                 </motion.button>
                             </form>
                         </motion.div>

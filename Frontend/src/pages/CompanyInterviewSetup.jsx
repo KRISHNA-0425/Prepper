@@ -159,9 +159,9 @@ export default function CompanyInterviewSetup() {
         targetDesignation,
         jobCategory,
         experienceLevel,
-        interviewRound: selectedRound,
         requiredSkills: requiredSkills.split(',').map((s) => s.trim()).filter(Boolean),
         jobDescription: jobDescription.trim(),
+        selectedRound,
       };
 
       const res = await axios.post(
@@ -171,53 +171,49 @@ export default function CompanyInterviewSetup() {
       );
 
       if (res.data?.success && res.data?.data) {
-        // Deduct 50 credits locally in Redux
-        dispatch(setUserData({
-          ...userData,
-          credits: Math.max(0, (userData.credits || 0) - 50),
-        }));
-
-        toast.success('Simulation initialized! Starting interview...');
-        navigate(`/company-interview/${res.data.data.sessionId}`);
+        const session = res.data.data;
+        if (typeof res.data.creditsLeft === 'number') {
+          dispatch(setUserData({ ...userData, credits: res.data.creditsLeft }));
+        }
+        toast.success(`Simulation initialized for ${session.companyName}!`);
+        navigate(`/company-interview/${session._id}`, {
+          state: { sessionData: session },
+        });
       }
     } catch (err) {
-      console.error('Failed to launch simulation:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to start company simulation.';
-      toast.error(errorMsg);
+      console.error('Error initializing company simulation:', err);
+      toast.error(err.response?.data?.message || 'Failed to start simulation.');
     } finally {
       setIsStarting(false);
     }
   };
 
-  const currentRounds = companyIntelligence?.supportedRounds || [
-    { roundId: 'online_assessment', name: 'Online Assessment (OA)', format: 'coding', typicalQuestionCount: 3, recommendedDuration: 60, focusAreas: ['DSA', 'LeetCode'] },
-    { roundId: 'technical_round_1', name: 'Technical Round 1', format: 'conceptual', typicalQuestionCount: 4, recommendedDuration: 45, focusAreas: ['Algorithms', 'Data Structures'] },
-    { roundId: 'technical_round_2', name: 'Technical Round 2', format: 'conceptual', typicalQuestionCount: 4, recommendedDuration: 45, focusAreas: ['System Principles', 'Architecture'] },
-    { roundId: 'system_design', name: 'System Design Round', format: 'system_design', typicalQuestionCount: 2, recommendedDuration: 60, focusAreas: ['Scalability', 'Distributed Systems'] },
-    { roundId: 'hiring_manager', name: 'Hiring Manager Round', format: 'behavioral', typicalQuestionCount: 4, recommendedDuration: 45, focusAreas: ['Ownership', 'Past Impact'] },
-    { roundId: 'behavioral', name: 'Behavioral & Leadership', format: 'behavioral', typicalQuestionCount: 4, recommendedDuration: 45, focusAreas: ['Leadership Principles', 'Culture Fit'] },
+  const currentRounds = companyIntelligence?.supportedRounds || selectedCompany?.supportedRounds || [
+    { roundId: 'technical_round_1', name: 'Technical Round 1: Algorithms', format: 'coding', focusAreas: ['DSA', 'Complexity'] },
+    { roundId: 'system_design', name: 'Technical Round 2: Architecture', format: 'system_design', focusAreas: ['Scalability', 'Distributed Systems'] },
+    { roundId: 'behavioral', name: 'Cultural & Leadership Fit', format: 'behavioral', focusAreas: ['Culture', 'Conflict Management'] },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-poppins pb-20 selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-900 dark:text-white font-poppins pb-20 transition-colors duration-200 selection:bg-yellow-400 selection:text-slate-950">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 pt-8 space-y-8">
         {/* Banner Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-yellow-400/10 via-slate-900 to-indigo-500/10 border border-slate-800 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 relative overflow-hidden shadow-sm">
           <div className="space-y-2 z-10">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-yellow-400 text-slate-950 flex items-center gap-1.5 shadow-sm">
                 <RiSparklingLine /> Module 6
               </span>
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Company-Specific Interview Simulation
               </span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
               Simulate Interviews at Premier Tech Companies
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
               Experience authentic round-by-round interviews tailored to engineering expectations, company-specific evaluation principles, and role seniority at Google, Amazon, Microsoft, and custom companies.
             </p>
           </div>
@@ -225,12 +221,12 @@ export default function CompanyInterviewSetup() {
           <div className="flex sm:flex-col items-center sm:items-end justify-between gap-3 z-10 shrink-0">
             <Link
               to="/company-interview/history"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
             >
-              <RiHistoryLine className="text-yellow-400 text-sm" />
+              <RiHistoryLine className="text-yellow-600 dark:text-yellow-400 text-sm" />
               Past Simulations
             </Link>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-yellow-400/30 text-yellow-400 text-xs font-bold">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 dark:bg-slate-900 border border-yellow-300/80 dark:border-yellow-400/30 text-yellow-900 dark:text-yellow-400 text-xs font-bold">
               <RiCoinsLine className="text-sm" />
               50 Credits / Session
             </div>
@@ -238,7 +234,7 @@ export default function CompanyInterviewSetup() {
         </div>
 
         {/* 1. Target Company Selection */}
-        <section className="bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+        <section className="bg-white dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-6 shadow-sm">
           <CompanySelector
             companies={companies}
             selectedCompany={selectedCompany}
@@ -260,16 +256,16 @@ export default function CompanyInterviewSetup() {
         </section>
 
         {/* 2. Role, Category & Seniority Configuration */}
-        <section className="bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
-          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <RiBriefcaseLine className="text-yellow-400 text-base" />
+        <section className="bg-white dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-6 shadow-sm">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+            <RiBriefcaseLine className="text-yellow-600 dark:text-yellow-400 text-base" />
             2. Configure Role & Seniority
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Target Designation */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
                 Target Designation / Title
               </label>
               <input
@@ -277,19 +273,19 @@ export default function CompanyInterviewSetup() {
                 value={targetDesignation}
                 onChange={(e) => setTargetDesignation(e.target.value)}
                 placeholder="e.g. Senior Software Engineer - L5"
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-yellow-400 transition"
+                className="h-11 w-full px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition"
               />
             </div>
 
             {/* Job Category */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
                 Engineering Discipline
               </label>
               <select
                 value={jobCategory}
                 onChange={(e) => setJobCategory(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-yellow-400 transition cursor-pointer"
+                className="h-11 w-full px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition cursor-pointer"
               >
                 <option value="Fullstack">Fullstack Engineering</option>
                 <option value="Backend">Backend Engineering</option>
@@ -304,13 +300,13 @@ export default function CompanyInterviewSetup() {
 
             {/* Experience Level */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
                 Experience Level
               </label>
               <select
                 value={experienceLevel}
                 onChange={(e) => setExperienceLevel(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-yellow-400 transition cursor-pointer"
+                className="h-11 w-full px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition cursor-pointer"
               >
                 <option value="Entry">Entry Level (0 - 2 years)</option>
                 <option value="Mid-Level">Mid-Level (3 - 5 years)</option>
@@ -322,7 +318,7 @@ export default function CompanyInterviewSetup() {
 
           {/* Required Skills */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
               Primary Skills & Tech Stacks (comma-separated)
             </label>
             <input
@@ -330,13 +326,13 @@ export default function CompanyInterviewSetup() {
               value={requiredSkills}
               onChange={(e) => setRequiredSkills(e.target.value)}
               placeholder="e.g. Distributed Systems, Go, Kubernetes, Kafka, High-Throughput APIs"
-              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-yellow-400 transition"
+              className="h-11 w-full px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition"
             />
           </div>
 
           {/* Optional Job Description */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-2 flex items-center justify-between">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <RiFileList3Line className="text-slate-400" />
                 Job Description or Company Preparation Notes (Optional)
@@ -348,13 +344,13 @@ export default function CompanyInterviewSetup() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste specific requirements from the target company's job posting or team requirements..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-white focus:outline-none focus:border-yellow-400 transition placeholder-slate-600 resize-none"
+              className="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition placeholder-slate-400 dark:placeholder-slate-500 resize-none"
             />
           </div>
         </section>
 
         {/* 3. Interview Round Selection */}
-        <section className="bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+        <section className="bg-white dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-6 shadow-sm">
           <RoundSelector
             rounds={currentRounds}
             selectedRound={selectedRound}
@@ -364,17 +360,17 @@ export default function CompanyInterviewSetup() {
         </section>
 
         {/* 4. Launch Simulation Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white">
+              <span className="text-sm font-bold text-slate-900 dark:text-white">
                 Ready to simulate {selectedCompany?.name || 'Company'} interview?
               </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 font-bold">
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-900 dark:text-yellow-300 border border-yellow-400/40 font-bold">
                 50 Credits
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Session includes AI speech audio, live rubric evaluation, readiness scorecard, and Module 5 recovery plan integration.
             </p>
           </div>
@@ -383,7 +379,7 @@ export default function CompanyInterviewSetup() {
             type="button"
             disabled={isStarting}
             onClick={handleLaunchSimulation}
-            className="px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider bg-yellow-400 hover:bg-yellow-300 text-slate-950 shadow-xl shadow-yellow-400/20 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 shrink-0"
+            className="h-12 px-8 rounded-2xl text-sm font-black uppercase tracking-wider bg-[#F7D63A] hover:bg-[#ffe04d] text-slate-950 shadow-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 shrink-0 border border-yellow-400/80"
           >
             {isStarting ? (
               <>
@@ -392,9 +388,9 @@ export default function CompanyInterviewSetup() {
               </>
             ) : (
               <>
-                <RiSparklingLine className="text-lg" />
+                <RiSparklingLine className="text-lg text-slate-950" />
                 Launch Simulation
-                <RiArrowRightLine className="text-lg" />
+                <RiArrowRightLine className="text-lg text-slate-950" />
               </>
             )}
           </button>

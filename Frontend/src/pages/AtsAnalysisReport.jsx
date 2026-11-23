@@ -83,12 +83,12 @@ export default function AtsAnalysisReport() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+      <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 flex flex-col font-poppins text-slate-800 dark:text-slate-100 transition-colors duration-200">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <div className="w-8 h-8 border-3 border-yellow-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <h2 className="text-base font-bold text-slate-800">Loading ATS Compatibility Report...</h2>
-          <p className="text-xs text-slate-400 mt-1">Retrieving 7-dimension scoring breakdown and skill gaps.</p>
+          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Loading ATS Compatibility Report...</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Retrieving 7-dimension scoring breakdown and skill gaps.</p>
         </div>
       </div>
     );
@@ -96,14 +96,14 @@ export default function AtsAnalysisReport() {
 
   if (error || !analysis) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+      <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 flex flex-col font-poppins text-slate-800 dark:text-slate-100 transition-colors duration-200">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
-          <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl mb-4">
+          <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center text-2xl mb-4">
             <RiCloseLine />
           </div>
-          <h2 className="text-lg font-black text-slate-800 mb-2">Analysis Report Not Found</h2>
-          <p className="text-xs text-slate-500 mb-6">{error || 'This report may have been deleted or belongs to another user.'}</p>
+          <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-2">Analysis Report Not Found</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">{error || 'This report may have been deleted or belongs to another user.'}</p>
           <Link
             to="/ats"
             className="px-5 py-2.5 bg-yellow-400 text-slate-900 font-black rounded-xl text-xs"
@@ -120,7 +120,7 @@ export default function AtsAnalysisReport() {
   const prefSkills = jobDetails?.extractedRequirements?.preferredTechnicalSkills || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 flex flex-col font-poppins text-slate-800 dark:text-slate-100 transition-colors duration-200">
       <Navbar />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-10 space-y-8">
@@ -129,21 +129,21 @@ export default function AtsAnalysisReport() {
           <div className="flex items-center gap-3">
             <Link
               to="/ats"
-              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shadow-xs"
+              className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-xs"
               title="Back to Dashboard"
             >
               <RiArrowLeftLine className="text-base" />
             </Link>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-yellow-100 text-yellow-800">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-yellow-100 dark:bg-yellow-400/20 text-yellow-800 dark:text-yellow-400">
                   ATS Scorecard
                 </span>
                 <span className="text-xs text-slate-400">
                   {new Date(analysis.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 {jobDetails?.jobTitle}
                 {jobDetails?.companyName && (
                   <span className="text-slate-400 text-base font-normal">
@@ -157,7 +157,7 @@ export default function AtsAnalysisReport() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleDelete}
-              className="px-3.5 py-2 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-red-200 dark:border-red-900/40 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <RiDeleteBinLine className="text-sm" />
               <span>Delete</span>
@@ -173,7 +173,7 @@ export default function AtsAnalysisReport() {
 
         {/* Top Summary Banner */}
         {readinessReport?.summary && (
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex items-start gap-3">
+          <div className="bg-white dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0 mt-0.5">
               <RiSparklingLine />
             </div>

@@ -46,7 +46,7 @@ function Pricing() {
         {
             id: 'arsenal',
             name: 'Arsenal Pack',
-            icon: <HiSparkles className="text-2xl text-yellow-400" />,
+            icon: <HiSparkles className="text-2xl text-yellow-500 dark:text-yellow-400" />,
             credits: 500,
             price: 999,
             description: 'The ideal stack for active candidates applying to multiple roles.',
@@ -56,7 +56,7 @@ function Pricing() {
         {
             id: 'bulk',
             name: 'Command Center',
-            icon: <HiCircleStack className="text-2xl text-emerald-400" />,
+            icon: <HiCircleStack className="text-2xl text-emerald-500 dark:text-emerald-400" />,
             credits: 2000,
             price: 3499,
             description: 'Massive volume for serious preparers or career coaches.',
@@ -128,7 +128,7 @@ function Pricing() {
     };
 
     return (
-        <div className='min-h-screen bg-slate-950 text-slate-200 font-poppins p-4 md:p-12 overflow-x-hidden relative'>
+        <div className='min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-poppins p-4 md:p-12 overflow-x-hidden relative transition-colors duration-200'>
             <div className='max-w-7xl mx-auto relative z-10'>
                 
                 {/* Back Button */}
@@ -136,7 +136,7 @@ function Pricing() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     onClick={() => navigate(-1)}
-                    className='flex items-center gap-2 text-slate-500 hover:text-yellow-400 transition-colors mb-12 group w-max'
+                    className='flex items-center gap-2 text-slate-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors mb-12 group w-max cursor-pointer'
                 >
                     <HiOutlineArrowLeft className="text-lg group-hover:scale-110 transition-transform" />
                     <span className='text-[10px] font-black uppercase tracking-[0.2em]'>Return to Dashboard</span>
@@ -144,10 +144,10 @@ function Pricing() {
 
                 {/* Header */}
                 <div className='flex flex-col items-center text-center mb-16'>
-                    <h1 className='text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4'>
-                        Recharge <span className='text-yellow-400'>Credits</span>
+                    <h1 className='text-4xl md:text-6xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4'>
+                        Recharge <span className='text-yellow-500 dark:text-yellow-400'>Credits</span>
                     </h1>
-                    <p className='text-slate-400 max-w-xl mx-auto text-sm md:text-base'>
+                    <p className='text-slate-600 dark:text-slate-400 max-w-xl mx-auto text-sm md:text-base'>
                         One standard AI interview consumes <strong>50 credits</strong>. No subscriptions required.
                     </p>
                 </div>
@@ -164,40 +164,42 @@ function Pricing() {
                             key={tier.id}
                             variants={cardVars}
                             whileHover={{ y: -10 }}
-                            className={`relative group bg-slate-900/40 backdrop-blur-xl border rounded-[2.5rem] p-8 flex flex-col h-full transition-all duration-500 ${
-                                tier.isPopular ? 'border-yellow-400/50 lg:-mt-8 lg:mb-8' : 'border-slate-800'
+                            className={`relative group bg-white dark:bg-slate-900/80 backdrop-blur-xl border rounded-[2.5rem] p-8 flex flex-col h-full shadow-lg transition-all duration-500 ${
+                                tier.isPopular 
+                                    ? 'border-yellow-400 shadow-yellow-400/10 ring-2 ring-yellow-400/20 lg:-mt-8 lg:mb-8' 
+                                    : 'border-slate-200/90 dark:border-slate-800'
                             }`}
                         >
                             {tier.isPopular && (
-                                <div className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full z-20'>
+                                <div className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full z-20 shadow-sm'>
                                     Recommended
                                 </div>
                             )}
 
                             <div className='relative z-10 flex-1 flex flex-col'>
                                 <div className='flex items-center justify-between mb-4'>
-                                    <h3 className='text-xl font-black uppercase tracking-tighter'>{tier.name}</h3>
-                                    <div className='w-10 h-10 rounded-2xl bg-slate-950 flex items-center justify-center border border-white/5'>
+                                    <h3 className='text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white'>{tier.name}</h3>
+                                    <div className='w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-white/5'>
                                         {tier.icon}
                                     </div>
                                 </div>
-                                <p className='text-slate-500 text-xs mb-6'>{tier.description}</p>
+                                <p className='text-slate-500 dark:text-slate-400 text-xs mb-6'>{tier.description}</p>
 
                                 <div className='mb-8'>
                                     <div className='flex items-end gap-1 mb-2'>
-                                        <span className='text-5xl font-black text-white'>₹{tier.price}</span>
+                                        <span className='text-5xl font-black text-slate-900 dark:text-white'>₹{tier.price}</span>
                                         <span className='text-slate-500 text-sm font-bold'>INR</span>
                                     </div>
-                                    <div className='inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-lg border border-white/10'>
+                                    <div className='inline-flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-lg border border-slate-200 dark:border-white/10'>
                                         <span className='w-2 h-2 rounded-full bg-yellow-400 animate-pulse' />
-                                        <p className='text-[10px] font-black text-slate-300 uppercase'>+{tier.credits} Credits</p>
+                                        <p className='text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase'>+{tier.credits} Credits</p>
                                     </div>
                                 </div>
 
                                 <ul className='space-y-4 mb-10 flex-1'>
                                     {tier.features.map((feat, idx) => (
-                                        <li key={idx} className='flex items-start gap-3 text-sm text-slate-300'>
-                                            <HiOutlineCheckCircle className={`shrink-0 text-lg ${tier.isPopular ? 'text-yellow-400' : 'text-emerald-400'}`} />
+                                        <li key={idx} className='flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300'>
+                                            <HiOutlineCheckCircle className={`shrink-0 text-lg ${tier.isPopular ? 'text-yellow-500 dark:text-yellow-400' : 'text-emerald-500 dark:text-emerald-400'}`} />
                                             <span>{feat}</span>
                                         </li>
                                     ))}
@@ -206,10 +208,10 @@ function Pricing() {
                                 <button
                                     disabled={loading}
                                     onClick={() => handlePayment(tier)}
-                                    className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-300 ${
+                                    className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-300 cursor-pointer ${
                                         tier.isPopular 
-                                        ? 'bg-yellow-400 text-slate-950 hover:bg-yellow-300 disabled:opacity-50' 
-                                        : 'bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50'
+                                        ? 'bg-[#F7D63A] hover:bg-[#ffe04d] text-slate-950 shadow-lg disabled:opacity-50' 
+                                        : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white disabled:opacity-50'
                                     }`}
                                 >
                                     {loading ? 'Processing...' : `Buy ${tier.credits} Credits`}

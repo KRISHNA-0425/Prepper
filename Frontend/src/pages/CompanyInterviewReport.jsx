@@ -77,7 +77,7 @@ export default function CompanyInterviewReport() {
   const fitLevel = readiness.fitLevel || 'Meets Expectations';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-poppins pb-24 selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-white font-poppins pb-24 selection:bg-yellow-400 selection:text-slate-950 transition-colors duration-200">
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-8">
@@ -85,7 +85,7 @@ export default function CompanyInterviewReport() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Link
             to="/company-interview"
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
           >
             <RiArrowLeftLine />
             Back to Company Simulation Hub
@@ -94,9 +94,9 @@ export default function CompanyInterviewReport() {
           <div className="flex items-center gap-3">
             <Link
               to="/company-interview/history"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-xs"
             >
-              <RiHistoryLine className="text-yellow-400" />
+              <RiHistoryLine className="text-yellow-500 dark:text-yellow-400" />
               All Simulations
             </Link>
 
@@ -128,11 +128,11 @@ export default function CompanyInterviewReport() {
         {/* Question-by-Question Deep Dive */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <RiFileTextLine className="text-yellow-400" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <RiFileTextLine className="text-yellow-500 dark:text-yellow-400" />
               Round Performance & Answers ({session.questions?.length || 0})
             </h3>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Evaluated against {companySim.companyName} rubrics
             </span>
           </div>
@@ -141,41 +141,41 @@ export default function CompanyInterviewReport() {
             {session.questions?.map((q, idx) => (
               <div
                 key={idx}
-                className="p-5 sm:p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4"
+                className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-sm"
               >
                 {/* Question Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800/80">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-yellow-400">
+                    <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
                       Q{idx + 1}.
                     </span>
-                    <span className="text-xs font-semibold text-slate-300">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       {q.competency || 'Technical Knowledge'}
                     </span>
                   </div>
 
-                  <div className="px-2.5 py-1 rounded-lg text-xs font-black bg-slate-800 text-yellow-400 border border-yellow-400/20 self-start sm:self-auto">
+                  <div className="px-2.5 py-1 rounded-lg text-xs font-black bg-slate-100 dark:bg-slate-800 text-yellow-600 dark:text-yellow-400 border border-slate-200 dark:border-yellow-400/20 self-start sm:self-auto">
                     Score: {q.score ?? 0} / 100
                   </div>
                 </div>
 
                 {/* Question Prompt */}
-                <p className="text-sm sm:text-base font-medium text-slate-200">
+                <p className="text-sm sm:text-base font-medium text-slate-800 dark:text-slate-200">
                   {q.question}
                 </p>
 
                 {/* Candidate Answer */}
-                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs text-slate-300 leading-relaxed font-mono">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-mono">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                     Your Response:
                   </span>
-                  {q.candidateAnswer || <span className="text-slate-600 italic">No answer submitted.</span>}
+                  {q.candidateAnswer || <span className="text-slate-400 dark:text-slate-600 italic">No answer submitted.</span>}
                 </div>
 
                 {/* Qualitative Feedback */}
                 {q.evaluation?.feedback && (
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    <span className="font-bold text-slate-300">Feedback: </span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Feedback: </span>
                     {q.evaluation.feedback}
                   </p>
                 )}

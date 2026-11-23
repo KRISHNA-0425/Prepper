@@ -83,35 +83,35 @@ export default function ResumeUploadDropzone({
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center ${
             isDragOver
-              ? 'border-yellow-500 bg-yellow-50/50 scale-[1.01]'
-              : 'border-slate-200 hover:border-yellow-400 hover:bg-slate-50/60 bg-white/50'
+              ? 'border-yellow-500 bg-yellow-50/50 dark:bg-yellow-400/10 scale-[1.01]'
+              : 'border-slate-200 dark:border-slate-700 hover:border-yellow-400 dark:hover:border-yellow-400 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 bg-white/50 dark:bg-slate-900/40'
           }`}
         >
-          <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-3xl mb-4 shadow-inner">
+          <div className="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-400/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 text-3xl mb-4 shadow-inner">
             <RiUploadCloud2Line />
           </div>
-          <h3 className="font-bold text-slate-800 text-base mb-1">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base mb-1">
             Upload Candidate Resume
           </h3>
-          <p className="text-xs text-slate-500 mb-4 max-w-xs">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-xs">
             Drag and drop your resume file here or click to browse.
           </p>
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400">
-            <span className="px-2 py-0.5 bg-slate-100 rounded-md">PDF</span>
-            <span className="px-2 py-0.5 bg-slate-100 rounded-md">DOCX</span>
-            <span className="px-2 py-0.5 bg-slate-100 rounded-md">TXT</span>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-400">
+            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md">PDF</span>
+            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md">DOCX</span>
+            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md">TXT</span>
             <span>• Max 10MB</span>
           </div>
         </div>
       ) : (
-        <div className="border border-slate-200 bg-white rounded-2xl p-5 shadow-xs">
+        <div className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 rounded-2xl p-5 shadow-xs">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 text-2xl shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shrink-0">
                 <RiFileTextLine />
               </div>
               <div>
-                <p className="font-bold text-slate-800 text-sm truncate max-w-[200px] sm:max-w-[260px]">
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate max-w-[200px] sm:max-w-[260px]">
                   {file.name}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -121,7 +121,7 @@ export default function ResumeUploadDropzone({
             </div>
             <button
               onClick={handleRemoveFile}
-              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
               title="Remove file"
             >
               <RiCloseLine className="text-lg" />
@@ -129,15 +129,15 @@ export default function ResumeUploadDropzone({
           </div>
 
           {isParsing && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-yellow-600 font-medium">
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400 font-medium">
               <div className="w-3.5 h-3.5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin shrink-0" />
               <span>Analyzing resume content and extracting technical skills...</span>
             </div>
           )}
 
           {parsedData && !isParsing && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-semibold mb-2">
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold mb-2">
                 <span className="flex items-center gap-1">
                   <RiCheckLine /> Resume extracted successfully
                 </span>
@@ -149,13 +149,13 @@ export default function ResumeUploadDropzone({
                 {(parsedData.structuredData?.technicalSkills || []).slice(0, 10).map((skill, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[11px] font-medium"
+                    className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md text-[11px] font-medium"
                   >
                     {skill}
                   </span>
                 ))}
                 {(parsedData.structuredData?.technicalSkills || []).length > 10 && (
-                  <span className="px-2 py-0.5 bg-slate-50 text-slate-400 rounded-md text-[11px]">
+                  <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-700/60 text-slate-400 rounded-md text-[11px]">
                     +{parsedData.structuredData.technicalSkills.length - 10} more
                   </span>
                 )}
@@ -164,7 +164,7 @@ export default function ResumeUploadDropzone({
           )}
 
           {error && (
-            <div className="mt-3 pt-3 border-t border-red-100 flex items-center gap-1.5 text-xs text-red-600">
+            <div className="mt-3 pt-3 border-t border-red-100 dark:border-red-900/50 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
               <RiAlertLine className="shrink-0" />
               <span>{error}</span>
             </div>

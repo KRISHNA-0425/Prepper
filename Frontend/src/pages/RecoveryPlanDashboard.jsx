@@ -130,7 +130,7 @@ export default function RecoveryPlanDashboard() {
       plan.reassessment?.status === 'completed');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-poppins selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-white font-poppins selection:bg-yellow-400 selection:text-slate-950 transition-colors duration-200">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -138,7 +138,7 @@ export default function RecoveryPlanDashboard() {
         <div className="flex items-center justify-between gap-4 mb-6">
           <Link
             to="/recovery-plans"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
           >
             <RiArrowLeftLine className="text-sm" />
             Back to Recovery Plans
@@ -159,7 +159,7 @@ export default function RecoveryPlanDashboard() {
             <button
               type="button"
               onClick={fetchPlan}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer shadow-xs"
               title="Refresh"
             >
               <RiRefreshLine />

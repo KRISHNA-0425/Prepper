@@ -73,25 +73,25 @@ export default function CompanyInterviewHistory() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-poppins pb-24 selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-white font-poppins pb-24 selection:bg-yellow-400 selection:text-slate-950 transition-colors duration-200">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 pt-8 space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-slate-950">
                 Module 6
               </span>
-              <span className="text-xs font-semibold text-slate-400">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Performance Tracking
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Company Simulation History
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Track your interview readiness across target companies, roles, and interview rounds.
             </p>
           </div>
@@ -118,8 +118,8 @@ export default function CompanyInterviewHistory() {
                 onClick={() => setFilterVerdict(v)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
                   isActive
-                    ? 'bg-yellow-400 text-slate-950 border-yellow-400'
-                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800'
+                    ? 'bg-yellow-400 text-slate-950 border-yellow-400 font-black'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border-slate-200 dark:border-slate-800'
                 }`}
               >
                 {label}
@@ -135,9 +135,9 @@ export default function CompanyInterviewHistory() {
             <p className="text-xs text-slate-400">Loading simulations...</p>
           </div>
         ) : filteredSimulations.length === 0 ? (
-          <div className="p-12 rounded-3xl bg-slate-900/40 border border-slate-800 text-center space-y-3">
-            <RiBuilding4Line className="text-4xl text-slate-600 mx-auto" />
-            <h3 className="text-base font-bold text-slate-300">No company simulations found</h3>
+          <div className="p-12 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800 text-center space-y-3 shadow-sm">
+            <RiBuilding4Line className="text-4xl text-slate-400 dark:text-slate-600 mx-auto" />
+            <h3 className="text-base font-bold text-slate-700 dark:text-slate-300">No company simulations found</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Simulate technical, behavioral, or system design interviews for companies like Google, Microsoft, and Amazon.
             </p>
@@ -161,7 +161,7 @@ export default function CompanyInterviewHistory() {
               return (
                 <div
                   key={sim._id}
-                  className="p-5 sm:p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between gap-4"
+                  className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/70 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition flex flex-col justify-between gap-4 shadow-sm"
                 >
                   <div>
                     {/* Top Row: Company & Date */}

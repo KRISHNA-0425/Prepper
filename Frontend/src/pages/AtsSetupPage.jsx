@@ -124,20 +124,20 @@ export default function AtsSetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 flex flex-col font-poppins transition-colors duration-200">
       <Navbar />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 sm:py-10">
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-800 border border-yellow-200">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-100 text-yellow-800 dark:bg-yellow-400/15 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-400/30">
               Module 7 Configuration
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-800">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white">
             Configure ATS Job Compatibility Match
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Upload your resume and provide target job details to generate an evidence-based match scorecard.
           </p>
         </div>
@@ -145,28 +145,28 @@ export default function AtsSetupPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column: Resume Selection */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
               <div>
-                <h3 className="text-base font-black text-slate-800 mb-1">
+                <h3 className="text-base font-black text-slate-800 dark:text-white mb-1">
                   1. Candidate Resume
                 </h3>
-                <p className="text-xs text-slate-500 mb-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                   Select a previously uploaded resume or upload a new PDF, DOCX, or TXT file.
                 </p>
 
                 {pastResumes.length > 0 && !file && (
                   <div className="mb-4">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                       Select Previous Resume
                     </label>
                     <select
                       value={selectedResumeId}
                       onChange={(e) => setSelectedResumeId(e.target.value)}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      className="h-11 w-full text-xs px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer"
                     >
-                      <option value="">— Or upload a new file below —</option>
+                      <option value="" className="dark:bg-slate-900">— Or upload a new file below —</option>
                       {pastResumes.map((r) => (
-                        <option key={r._id} value={r._id}>
+                        <option key={r._id} value={r._id} className="dark:bg-slate-900">
                           {r.originalFileName} ({r.fileType.toUpperCase()})
                         </option>
                       ))}
@@ -184,58 +184,58 @@ export default function AtsSetupPage() {
                 />
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                 <span>Free document extraction (0 credits)</span>
                 <span>Max 10MB</span>
               </div>
             </div>
 
             {/* Right Column: Job Description Input */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
               <div>
-                <h3 className="text-base font-black text-slate-800 mb-1">
+                <h3 className="text-base font-black text-slate-800 dark:text-white mb-1">
                   2. Target Job Description
                 </h3>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                   Paste the requirements, responsibilities, and role description.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Job Title *
                 </label>
                 <div className="relative">
-                  <RiBriefcaseLine className="absolute left-3.5 top-3 text-slate-400 text-sm" />
+                  <RiBriefcaseLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                   <input
                     type="text"
                     required
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
                     placeholder="e.g. Senior Full Stack Engineer"
-                    className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
+                    className="h-11 w-full text-xs pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Company Name (Optional)
                 </label>
                 <div className="relative">
-                  <RiBuilding4Line className="absolute left-3.5 top-3 text-slate-400 text-sm" />
+                  <RiBuilding4Line className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                   <input
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Google, Microsoft, Amazon, or Startup"
-                    className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
+                    className="h-11 w-full text-xs pl-9 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Full Job Description Text *
                 </label>
                 <textarea
@@ -244,20 +244,20 @@ export default function AtsSetupPage() {
                   value={rawJobDescription}
                   onChange={(e) => setRawJobDescription(e.target.value)}
                   placeholder="Paste complete job description, requirements, responsibilities, and qualifications..."
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono leading-relaxed"
+                  className="w-full text-xs p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono leading-relaxed custom-scrollbar"
                 />
               </div>
             </div>
           </div>
 
           {/* Action Footer */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 shrink-0">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-400/20 flex items-center justify-center text-yellow-700 dark:text-yellow-400 shrink-0">
                 <RiCoinsLine className="text-base" />
               </div>
               <div>
-                <p className="font-bold text-slate-800">
+                <p className="font-bold text-slate-800 dark:text-slate-200">
                   Cost: 10 Credits per Complete Analysis
                 </p>
                 <p className="text-[11px] text-slate-400">
@@ -269,7 +269,7 @@ export default function AtsSetupPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full sm:w-auto px-8 py-3 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-transform active:scale-95 cursor-pointer ${
+              className={`h-12 w-full sm:w-auto px-8 rounded-xl bg-[#F7D63A] hover:bg-[#ffe04d] text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-95 cursor-pointer border border-yellow-400/80 ${
                 loading ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >
