@@ -210,8 +210,17 @@ export class CodingExecutionService {
       })
     );
 
+    const sanitizedResults = testCaseService.sanitizeResultsForClient(summary.results);
+    const resultsSummary = {
+      total: summary.totalCount,
+      passed: summary.passedCount,
+      failed: Math.max(0, summary.totalCount - summary.passedCount),
+    };
+    Object.assign(sanitizedResults, resultsSummary);
+
     return {
       success: true,
+      status: 'completed',
       mode: 'sample-tests',
       problemIndex,
       language: langSlug,
@@ -219,8 +228,12 @@ export class CodingExecutionService {
       totalCount: summary.totalCount,
       allPassed: summary.allPassed,
       maxTimeMs: summary.maxTimeMs,
+      executionTime: summary.maxTimeMs,
       maxMemoryKb: summary.maxMemoryKb,
-      results: testCaseService.sanitizeResultsForClient(summary.results)
+      testCases: sanitizedResults,
+      testResults: sanitizedResults,
+      results: sanitizedResults,
+      summary: resultsSummary
     };
   }
 
@@ -342,8 +355,16 @@ export class CodingExecutionService {
     interview.codingSubmissions.push(submission._id);
     await interview.save();
 
+    const resultsSummary = {
+      total: executionSummary.totalCount,
+      passed: executionSummary.passedCount,
+      failed: Math.max(0, executionSummary.totalCount - executionSummary.passedCount),
+    };
+    Object.assign(clientSafeResults, resultsSummary);
+
     return {
       success: true,
+      status: 'completed',
       submissionId: submission._id,
       problemIndex,
       language: langSlug,
@@ -352,8 +373,12 @@ export class CodingExecutionService {
       totalCount: executionSummary.totalCount,
       allPassed: executionSummary.allPassed,
       maxTimeMs: executionSummary.maxTimeMs,
+      executionTime: executionSummary.maxTimeMs,
       maxMemoryKb: executionSummary.maxMemoryKb,
+      testCases: clientSafeResults,
       testResults: clientSafeResults,
+      results: clientSafeResults,
+      summary: resultsSummary,
       aiEvaluation: submission.aiEvaluation
     };
   }

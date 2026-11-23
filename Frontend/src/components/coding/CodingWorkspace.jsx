@@ -45,10 +45,27 @@ export default function CodingWorkspace({
   expiresAt = null,
 }) {
   const [activeProblemIdx, setActiveProblemIdx] = useState(currentProblemIndex);
+  const [availableLanguages, setAvailableLanguages] = useState(SUPPORTED_LANGUAGES);
   const [selectedLang, setSelectedLang] = useState(() => {
     const found = SUPPORTED_LANGUAGES.find((l) => l.slug === initialLanguage);
     return found || SUPPORTED_LANGUAGES[4]; // Default JavaScript
   });
+
+  // Dynamically load languages verified by backend
+  useEffect(() => {
+    let mounted = true;
+    axios
+      .get(`${backendServerUrl}/api/coding/languages`, { withCredentials: true })
+      .then((res) => {
+        if (mounted && Array.isArray(res.data?.languages) && res.data.languages.length > 0) {
+          setAvailableLanguages(res.data.languages);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const currentProblem = problems[activeProblemIdx] || null;
 
@@ -360,13 +377,13 @@ export default function CodingWorkspace({
           <select
             value={selectedLang.slug}
             onChange={(e) => {
-              const lang = SUPPORTED_LANGUAGES.find((l) => l.slug === e.target.value);
+              const lang = availableLanguages.find((l) => l.slug === e.target.value);
               if (lang) setSelectedLang(lang);
             }}
             className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-medium cursor-pointer"
           >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option key={lang.id} value={lang.slug}>
+            {availableLanguages.map((lang) => (
+              <option key={lang.slug || lang.id} value={lang.slug}>
                 {lang.name}
               </option>
             ))}

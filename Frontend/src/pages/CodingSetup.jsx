@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -65,10 +65,27 @@ export default function CodingSetup() {
   const [role, setRole] = useState('Full Stack Developer');
   const [experience, setExperience] = useState('1-3 years');
   const [codingLanguage, setCodingLanguage] = useState('javascript');
+  const [languageOptions, setLanguageOptions] = useState(LANGUAGE_OPTIONS);
   const [codingCategory, setCodingCategory] = useState('Problem Solving');
   const [codingDifficulty, setCodingDifficulty] = useState('medium');
   const [questionCount, setQuestionCount] = useState(2); // 1 to 5
   const [durationMinutes, setDurationMinutes] = useState('45'); // '30' | '45' | '60' | '90' | 'untimed'
+
+  // Fetch dynamically available languages from backend
+  useEffect(() => {
+    let mounted = true;
+    axios
+      .get(`${backendServerUrl}/api/coding/languages`, { withCredentials: true })
+      .then((res) => {
+        if (mounted && Array.isArray(res.data?.languages) && res.data.languages.length > 0) {
+          setLanguageOptions(res.data.languages);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -262,7 +279,7 @@ export default function CodingSetup() {
                   onChange={(e) => setCodingLanguage(e.target.value)}
                   className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer"
                 >
-                  {LANGUAGE_OPTIONS.map((lang) => (
+                  {languageOptions.map((lang) => (
                     <option key={lang.slug} value={lang.slug}>
                       {lang.name}
                     </option>

@@ -6,6 +6,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+// Set up mock provider environment for executionAdapter unit tests
+process.env.CODE_EXECUTION_ENABLED = 'true';
+process.env.CODE_EXECUTION_PROVIDER = 'mock';
+
 import executionAdapter, { SUPPORTED_LANGUAGES } from '../services/coding/executionAdapter.service.js';
 import testCaseService from '../services/coding/testCase.service.js';
 import codingExecutionService, { MAX_CODE_SIZE_BYTES } from '../services/coding/codingExecution.service.js';

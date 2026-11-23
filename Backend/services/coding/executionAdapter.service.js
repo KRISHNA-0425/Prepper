@@ -8,6 +8,8 @@
 import mockProvider from './providers/mock.provider.js';
 import goJudgeProvider from './providers/goJudge.provider.js';
 import pistonProvider from './providers/piston.provider.js';
+import localProvider from './providers/local.provider.js';
+import languageRegistry from '../codeExecution/languageRegistry.js';
 
 export const SUPPORTED_LANGUAGES = [
   {
@@ -138,7 +140,8 @@ export class CodeExecutionAdapter {
     this.providers = {
       mock: mockProvider,
       'go-judge': goJudgeProvider,
-      piston: pistonProvider
+      piston: pistonProvider,
+      local: localProvider,
     };
   }
 
@@ -178,6 +181,10 @@ export class CodeExecutionAdapter {
    * Returns list of supported language configurations.
    */
   getLanguages() {
+    const available = languageRegistry.getAvailableLanguages();
+    if (available && available.length > 0) {
+      return available;
+    }
     return SUPPORTED_LANGUAGES;
   }
 
