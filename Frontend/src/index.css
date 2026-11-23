@@ -1,4 +1,69 @@
 @import 'tailwindcss';
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Prepper AI Light Theme: Warm Yellow / Cream Aesthetic */
+  --theme-bg-page: #fbf9f4;
+  --theme-bg-secondary: #f4efe4;
+  --theme-bg-card: #ffffff;
+  --theme-bg-elevated: #fefefe;
+  --theme-bg-muted: #f5f0e6;
+  --theme-text-primary: #0f172a;
+  --theme-text-secondary: #475569;
+  --theme-text-muted: #94a3b8;
+  --theme-accent: #F7D63A;
+  --theme-accent-hover: #eab308;
+  --theme-accent-subtle: rgba(247, 214, 58, 0.18);
+  --theme-border: rgba(226, 232, 240, 0.9);
+  --theme-border-subtle: rgba(241, 245, 249, 0.9);
+  --theme-border-accent: rgba(247, 214, 58, 0.45);
+  --theme-input-bg: #ffffff;
+  --theme-input-border: #cbd5e1;
+  --theme-input-focus: #eab308;
+  --theme-shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.dark {
+  /* Prepper AI Dark Theme: Cyber Dark Aesthetic */
+  --theme-bg-page: #020617;
+  --theme-bg-secondary: #0b0f1e;
+  --theme-bg-card: #0f172a;
+  --theme-bg-elevated: #1e293b;
+  --theme-bg-muted: #1e293b;
+  --theme-text-primary: #f8fafc;
+  --theme-text-secondary: #cbd5e1;
+  --theme-text-muted: #64748b;
+  --theme-accent: #F7D63A;
+  --theme-accent-hover: #fde047;
+  --theme-accent-subtle: rgba(247, 214, 58, 0.12);
+  --theme-border: rgba(30, 41, 59, 0.85);
+  --theme-border-subtle: rgba(51, 65, 85, 0.5);
+  --theme-border-accent: rgba(247, 214, 58, 0.35);
+  --theme-input-bg: #090e1a;
+  --theme-input-border: #334155;
+  --theme-input-focus: #facc15;
+  --theme-shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+}
+
+body {
+  background-color: var(--theme-bg-page);
+  color: var(--theme-text-primary);
+  transition: background-color 0.25s ease, color 0.25s ease;
+  min-height: 100vh;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Sleek custom scrollbars for bounded panels and setup form */
 .custom-scrollbar {
   scrollbar-width: thin;
