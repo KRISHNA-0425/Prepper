@@ -45,7 +45,7 @@ export default function RecoveryPlansListPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-poppins selection:bg-yellow-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-poppins selection:bg-yellow-400 selection:text-slate-950 transition-colors duration-200">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -53,21 +53,21 @@ export default function RecoveryPlansListPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-yellow-400/15 text-yellow-400 border border-yellow-400/30">
+              <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-400/30">
                 Module 5
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 Personalized Recovery Plans
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Track your day-by-day remediation roadmaps, review notes, and validate measurable score improvement.
             </p>
           </div>
 
           <Link
             to="/history"
-            className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-yellow-400 border border-yellow-400/30 flex items-center gap-2 self-start sm:self-center transition shadow-md"
+            className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-yellow-400 border border-slate-200 dark:border-yellow-400/30 flex items-center gap-2 self-start sm:self-center transition shadow-sm cursor-pointer"
           >
             <RiHistoryLine />
             Select from Interview History
@@ -76,21 +76,21 @@ export default function RecoveryPlansListPage() {
 
         {/* ATS Bridge Active Banner */}
         {atsBridgeData && (
-          <div className="mb-8 p-5 rounded-2xl bg-blue-500/10 border border-blue-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="mb-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block mb-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block mb-0.5">
                 ATS Analysis Bridge Active
               </span>
-              <h3 className="font-bold text-sm text-white">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                 Remediating gaps for: {atsBridgeData.prefillRole}
               </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 {atsBridgeData.weaknesses?.length || 0} missing technical requirements identified in your ATS report.
               </p>
             </div>
             <Link
               to="/history"
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white shrink-0 transition"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shrink-0 transition"
             >
               Select Interview Session to Link
             </Link>
@@ -107,11 +107,11 @@ export default function RecoveryPlansListPage() {
 
         {/* Error State */}
         {error && (
-          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-center max-w-md mx-auto">
-            <p className="text-xs text-red-300 mb-3">{error}</p>
+          <div className="p-6 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-center max-w-md mx-auto">
+            <p className="text-xs text-red-600 dark:text-red-300 mb-3">{error}</p>
             <button
               onClick={fetchPlans}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white"
+              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white cursor-pointer"
             >
               Retry
             </button>
@@ -130,38 +130,38 @@ export default function RecoveryPlansListPage() {
                 <motion.div
                   key={p._id}
                   whileHover={{ y: -4 }}
-                  className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 shadow-xl flex flex-col justify-between transition-all"
+                  className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm flex flex-col justify-between transition-all"
                 >
                   <div>
                     {/* Top Badges */}
                     <div className="flex items-center justify-between mb-3">
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+                      <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {p.scheduleDurationDays}-Day Plan
                       </span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                         isCompleted
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                          : (isInProgress ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700')
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40'
+                          : (isInProgress ? 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700')
                       }`}>
                         {p.status.replace('_', ' ')}
                       </span>
                     </div>
 
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 line-clamp-1">
                       {p.targetRole}
                     </h3>
 
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
                       {p.overallAssessment}
                     </p>
 
                     {/* Progress bar */}
                     <div className="space-y-1.5 mb-5">
                       <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-400">Progress</span>
-                        <span className="text-emerald-400">{progress.completionPercentage}%</span>
+                        <span className="text-slate-500 dark:text-slate-400">Progress</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{progress.completionPercentage}%</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-emerald-400"
                           style={{ width: `${progress.completionPercentage}%` }}
@@ -174,14 +174,14 @@ export default function RecoveryPlansListPage() {
                   </div>
 
                   {/* Card Action Link */}
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 font-medium">
-                      Baseline: <strong className="text-yellow-400">{p.reassessment?.originalScore ?? 0}/100</strong>
+                      Baseline: <strong className="text-yellow-600 dark:text-yellow-400">{p.reassessment?.originalScore ?? 0}/100</strong>
                     </span>
 
                     <Link
                       to={`/recovery-plans/${p._id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-yellow-400 hover:text-yellow-300 transition"
+                      className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-yellow-600 dark:text-yellow-400 hover:text-yellow-500 transition"
                     >
                       Open Plan <RiArrowRightLine />
                     </Link>
@@ -194,13 +194,13 @@ export default function RecoveryPlansListPage() {
 
         {/* Empty State */}
         {!loading && !error && plans.length === 0 && (
-          <div className="p-12 sm:p-16 rounded-3xl bg-slate-900 border border-slate-800/80 text-center max-w-xl mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 flex items-center justify-center mx-auto text-3xl">
+          <div className="p-12 sm:p-16 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-600 dark:text-yellow-400 flex items-center justify-center mx-auto text-3xl">
               <RiCompass3Line />
             </div>
 
-            <h3 className="text-xl font-black text-white">No Recovery Plans Yet</h3>
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">No Recovery Plans Yet</h3>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Complete an interview session or select an existing evaluated interview from your history to generate a personalized recovery roadmap.
             </p>
 
@@ -213,7 +213,7 @@ export default function RecoveryPlansListPage() {
               </Link>
               <Link
                 to="/interview"
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition"
               >
                 Start New Interview
               </Link>
