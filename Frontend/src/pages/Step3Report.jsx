@@ -683,6 +683,128 @@ function Step3Report({ report }) {
             })}
           </div>
         </section>
+
+        {/* SECTION F: Real-Time Adaptive Trajectory & Topic Performance */}
+        <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 lg:p-8 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="p-1.5 rounded-lg bg-yellow-400/10 text-yellow-400">
+                  <HiOutlineAcademicCap className="text-lg" />
+                </span>
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300">
+                  Adaptive Trajectory & Competency Steering
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400">
+                Traceable log of real-time difficulty adaptation, topic pivots, and knowledge-gap diagnostics throughout the interview.
+              </p>
+            </div>
+            {report.adaptiveState?.currentDifficulty && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Final Difficulty Tier:</span>
+                <span className={`font-black uppercase tracking-wider ${
+                  report.adaptiveState.currentDifficulty === 'advanced' ? 'text-purple-400' :
+                  report.adaptiveState.currentDifficulty === 'beginner' ? 'text-emerald-400' : 'text-yellow-400'
+                }`}>
+                  {report.adaptiveState.currentDifficulty}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Difficulty Trajectory Step Graph */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Question-by-Question Difficulty Progression
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {(report.questions || []).map((q, idx) => {
+                const diff = (q.difficulty || 'intermediate').toLowerCase();
+                const score = typeof q.score === 'number' ? q.score : 0;
+                let colorClass = 'border-yellow-400/30 bg-yellow-400/5 text-yellow-400';
+                if (diff === 'beginner' || diff === 'easy') {
+                  colorClass = 'border-emerald-400/30 bg-emerald-400/5 text-emerald-400';
+                } else if (diff === 'advanced' || diff === 'hard') {
+                  colorClass = 'border-purple-400/30 bg-purple-400/5 text-purple-400';
+                }
+
+                return (
+                  <div key={idx} className={`p-3 rounded-2xl border ${colorClass} space-y-1.5`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400">Q{idx + 1}</span>
+                      <span className="text-xs font-mono font-black">{score}/10</span>
+                    </div>
+                    <p className="text-[11px] font-black uppercase tracking-wider">{diff}</p>
+                    <p className="text-[10px] text-slate-400 truncate" title={q.topic || 'General'}>
+                      {q.topic || 'General'}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Topic Performance Grid */}
+          {Array.isArray(report.adaptiveState?.topicPerformance) && report.adaptiveState.topicPerformance.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Topic Mastery & Knowledge Breakdown
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {report.adaptiveState.topicPerformance.map((tp, idx) => {
+                  let statusBg = 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20';
+                  if (tp.status === 'strong') statusBg = 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
+                  else if (tp.status === 'weak') statusBg = 'bg-rose-400/10 text-rose-400 border-rose-400/20';
+
+                  return (
+                    <div key={idx} className="p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-slate-200">{tp.topic}</p>
+                        <p className="text-[10px] text-slate-500">{tp.totalQuestions} question{tp.totalQuestions > 1 ? 's' : ''} evaluated</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusBg}`}>
+                          {tp.status}
+                        </span>
+                        <p className="text-xs font-mono font-bold text-slate-300">{tp.avgScore}/10</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Steering Decision History */}
+          {Array.isArray(report.adaptiveState?.decisionHistory) && report.adaptiveState.decisionHistory.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Interviewer Steering Decision Trail
+              </h4>
+              <div className="space-y-2">
+                {report.adaptiveState.decisionHistory.map((d, idx) => (
+                  <div key={idx} className="p-3 bg-slate-950/40 rounded-xl border border-slate-800/60 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-yellow-400">
+                        Q{d.questionIndex + 1}
+                      </span>
+                      <span className="font-bold text-slate-200 uppercase tracking-wider text-[11px]">
+                        {d.action ? d.action.replace(/_/g, ' ') : 'Steering Action'}
+                      </span>
+                      <span className="text-slate-400">• {d.reason}</span>
+                    </div>
+                    {d.targetTopic && (
+                      <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                        Target: {d.targetTopic}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
