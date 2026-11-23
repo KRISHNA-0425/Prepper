@@ -86,7 +86,7 @@ export default function AtsHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-poppins">
+    <div className="min-h-screen bg-[#fbf9f4] dark:bg-slate-950 flex flex-col font-poppins text-slate-800 dark:text-slate-100 transition-colors duration-200">
       <Navbar />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-10">
@@ -95,15 +95,15 @@ export default function AtsHistoryPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/ats"
-              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer shadow-xs"
+              className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-xs"
             >
               <RiArrowLeftLine className="text-base" />
             </Link>
             <div>
-              <h1 className="text-2xl font-black text-slate-800">
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white">
                 ATS Analysis History
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Review and manage your past resume-to-job compatibility scorecards.
               </p>
             </div>
@@ -118,7 +118,7 @@ export default function AtsHistoryPage() {
         </div>
 
         {/* Filters & Search */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="bg-white dark:bg-slate-900/60 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-80">
             <RiSearchLine className="absolute left-3.5 top-3 text-slate-400 text-sm" />
             <input
@@ -126,7 +126,7 @@ export default function AtsHistoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by job title or company..."
-              className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
+              className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium"
             />
           </div>
 
@@ -138,7 +138,7 @@ export default function AtsHistoryPage() {
                 setCategoryFilter(e.target.value);
                 setPage(1);
               }}
-              className="text-xs p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium cursor-pointer"
+              className="text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 font-medium cursor-pointer"
             >
               <option value="">All Categories</option>
               <option value="Excellent Match">Excellent Match (85%+)</option>
@@ -151,7 +151,7 @@ export default function AtsHistoryPage() {
         </div>
 
         {/* Analyses List */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs">
+        <div className="bg-white dark:bg-slate-900/60 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           {loading ? (
             <div className="py-16 text-center text-slate-400 text-xs">
               <div className="w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -159,11 +159,11 @@ export default function AtsHistoryPage() {
             </div>
           ) : filteredAnalyses.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
-              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl mx-auto mb-3">
+              <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xl mx-auto mb-3">
                 <RiFileSearchLine />
               </div>
-              <p className="font-bold text-slate-700 text-sm">No analysis reports found</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+              <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">No analysis reports found</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
                 No analyses match your search criteria. Try clearing the filter.
               </p>
             </div>
@@ -173,11 +173,11 @@ export default function AtsHistoryPage() {
                 <div
                   key={item._id}
                   onClick={() => navigate(`/ats/analysis/${item._id}`)}
-                  className="p-4 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                 >
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-yellow-400 transition-colors">
                         {item.jobDetails?.jobTitle}
                       </span>
                       {item.jobDetails?.companyName && (
