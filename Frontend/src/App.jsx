@@ -20,6 +20,10 @@ import CompanyInterviewSetup from './pages/CompanyInterviewSetup'
 import CompanyInterviewSession from './pages/CompanyInterviewSession'
 import CompanyInterviewReport from './pages/CompanyInterviewReport'
 import CompanyInterviewHistory from './pages/CompanyInterviewHistory'
+import AtsDashboard from './pages/AtsDashboard'
+import AtsSetupPage from './pages/AtsSetupPage'
+import AtsAnalysisReport from './pages/AtsAnalysisReport'
+import AtsHistoryPage from './pages/AtsHistoryPage'
 
 
 
@@ -79,6 +83,10 @@ function App() {
         <Route path='/company-interview/:sessionId' element={<CompanyInterviewSession />} />
         <Route path='/company-interview/report/:id' element={<CompanyInterviewReport />} />
         <Route path='/company-interview/history' element={<CompanyInterviewHistory />} />
+        <Route path='/ats' element={<AtsDashboard />} />
+        <Route path='/ats/new' element={<AtsSetupPage />} />
+        <Route path='/ats/analysis/:id' element={<AtsAnalysisReport />} />
+        <Route path='/ats/history' element={<AtsHistoryPage />} />
       </Routes>
     </>
   )

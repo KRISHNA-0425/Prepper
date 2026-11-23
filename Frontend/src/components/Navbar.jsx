@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine, RiCodeSSlashLine, RiRoadMapLine, RiBuilding4Line } from "react-icons/ri";
+import { RiCoinsLine, RiLogoutBoxRLine, RiArrowDownSLine, RiFlashlightLine, RiHistoryLine, RiShieldFlashLine, RiCodeSSlashLine, RiRoadMapLine, RiBuilding4Line, RiFileSearchLine } from "react-icons/ri";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { backendServerUrl } from '../App';
@@ -22,6 +22,7 @@ function Navbar() {
     const isLiveCodingActive = location.pathname.startsWith('/coding');
     const isRecoveryPlanActive = location.pathname.startsWith('/recovery-plans');
     const isCompanyActive = location.pathname.startsWith('/company-interview');
+    const isAtsActive = location.pathname.startsWith('/ats');
 
 
     const handleLogout = async () => {
@@ -118,6 +119,22 @@ function Navbar() {
                         <span className="hidden sm:inline">Company Prep</span>
                         <span className="sm:hidden text-[11px]">Company</span>
                     </Link>
+
+                    {/* Module 7: AI ATS & Job Match Navigation Item */}
+                    <Link 
+                        to="/ats" 
+                        aria-label="ATS Intelligence"
+                        aria-current={isAtsActive ? "page" : undefined}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-all shadow-xs border ${
+                            isAtsActive 
+                                ? 'bg-blue-400/30 text-blue-950 border-blue-400/70 shadow-sm ring-1 ring-blue-400/40' 
+                                : 'bg-white/50 hover:bg-white/80 text-slate-800 border-white/70'
+                        }`}
+                    >
+                        <RiFileSearchLine className="text-blue-600 text-sm shrink-0" />
+                        <span className="hidden sm:inline">ATS Intelligence</span>
+                        <span className="sm:hidden text-[11px]">ATS</span>
+                    </Link>
                 </div>
 
                 {/* User Actions */}
@@ -209,6 +226,12 @@ function Navbar() {
                                                 className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
                                             >
                                                 <RiShieldFlashLine size={18} className="text-yellow-600 shrink-0" /> Cross-Exam History
+                                            </button>
+                                            <button 
+                                                onClick={() => { navigate('/ats/history'); setIsDropdownOpen(false); }} 
+                                                className='w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-yellow-50 rounded-xl font-bold transition-all cursor-pointer'
+                                            >
+                                                <RiFileSearchLine size={18} className="text-blue-600 shrink-0" /> ATS Analyses
                                             </button>
                                             <button 
                                                 onClick={handleLogout} 
