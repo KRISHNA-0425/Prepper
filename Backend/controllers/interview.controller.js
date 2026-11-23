@@ -28,6 +28,23 @@ import {
     aggregateInterviewAnalytics,
     detectQuestionCategory
 } from '../services/evidenceEvaluation.service.js';
+import {
+    DIFFICULTY_LEVELS,
+    STEERING_ACTIONS,
+    getTransitionPhrase
+} from '../contracts/adaptiveContracts.js';
+import {
+    calculateDifficultyDecision
+} from '../services/adaptiveDifficulty.service.js';
+import {
+    deriveApprovedCompetencies,
+    updateTopicPerformanceRecord,
+    detectKnowledgeGapsAndStrengths
+} from '../services/knowledgeGap.service.js';
+import {
+    selectNextFocusTopic,
+    generateAdaptiveQuestion
+} from '../services/adaptiveSteering.service.js';
 
 export { INTERVIEW_CREDIT_COST, STANDARDIZED_DIFFICULTY, ANSWER_TIME_LIMIT_SECONDS, TIME_PACKAGES };
 
@@ -457,6 +474,13 @@ export const generateQuestions = async (req, res) => {
             expiresAt
         });
 
+        const approvedCompetencies = deriveApprovedCompetencies({
+            role,
+            skills,
+            projects,
+            mode: safeMode
+        });
+
         let interview;
         try {
             interview = await Interview.create({
@@ -479,12 +503,28 @@ export const generateQuestions = async (req, res) => {
                 currentQuestionIndex: 0,
                 currentQuestionStartedAt,
                 currentQuestionDeadline,
-                questions: questionArray.map((q) => ({
+                adaptiveState: {
+                    currentDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                    previousDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                    consecutiveStrongAnswers: 0,
+                    consecutiveWeakAnswers: 0,
+                    topicPerformance: [],
+                    identifiedKnowledgeGaps: [],
+                    identifiedStrengths: [],
+                    decisionHistory: [],
+                    coveredTopics: [],
+                    followUpCount: 0,
+                    approvedCompetencies
+                },
+                questions: questionArray.map((q, idx) => ({
                     question: q,
-                    difficulty: "medium", // Medium difficulty exclusively
+                    difficulty: "medium", // Default medium baseline
+                    topic: approvedCompetencies[idx % approvedCompetencies.length] || 'General',
+                    category: detectQuestionCategory(q, safeMode),
                     timeLimit: 60,        // Strict 60-second limit
                     isFollowUp: false,
                     depth: 0,
+                    transitionPhrase: idx === 0 ? "Let's begin with our first question." : ""
                 }))
             });
         } catch (createErr) {
@@ -501,6 +541,7 @@ export const generateQuestions = async (req, res) => {
             userName: creditCheck.user?.name || "Candidate",
             questions: interview.questions,
             mode: safeMode,
+            adaptiveState: interview.adaptiveState,
             enableCrossQuestioning: interview.enableCrossQuestioning,
             crossQuestioningType: interview.crossQuestioningType,
             interviewMode: interview.interviewMode,
@@ -646,6 +687,97 @@ export const submitAnswer = async (req, res) => {
             currentQuestion.answer = "";
             currentQuestion.evidenceEvaluation = emptyEval;
 
+            // Initialize adaptiveState if missing
+            if (!lockedDoc.adaptiveState) {
+                lockedDoc.adaptiveState = {
+                    currentDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                    previousDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                    consecutiveStrongAnswers: 0,
+                    consecutiveWeakAnswers: 0,
+                    topicPerformance: [],
+                    identifiedKnowledgeGaps: [],
+                    identifiedStrengths: [],
+                    decisionHistory: [],
+                    coveredTopics: [],
+                    followUpCount: 0,
+                    approvedCompetencies: deriveApprovedCompetencies({ role: lockedDoc.role, mode: lockedDoc.mode })
+                };
+            }
+
+            const currentTopic = currentQuestion.topic || 'General';
+            lockedDoc.adaptiveState.topicPerformance = updateTopicPerformanceRecord(
+                lockedDoc.adaptiveState.topicPerformance,
+                currentTopic,
+                0,
+                expectedIndex
+            );
+            lockedDoc.adaptiveState.coveredTopics.push(currentTopic);
+
+            const isFinalQuestion = expectedIndex >= (lockedDoc.targetQuestionCount || lockedDoc.questions.length) - 1;
+            const decision = calculateDifficultyDecision({
+                currentDifficulty: lockedDoc.adaptiveState.currentDifficulty,
+                score: 0,
+                evidenceEvaluation: emptyEval,
+                consecutiveStrong: lockedDoc.adaptiveState.consecutiveStrongAnswers,
+                consecutiveWeak: lockedDoc.adaptiveState.consecutiveWeakAnswers,
+                followUpCount: lockedDoc.adaptiveState.followUpCount || 0,
+                currentQuestionDepth: currentQuestion.depth || 0,
+                isFinalQuestion
+            });
+
+            lockedDoc.adaptiveState.currentDifficulty = decision.newDifficulty;
+            lockedDoc.adaptiveState.previousDifficulty = decision.previousDifficulty;
+            lockedDoc.adaptiveState.consecutiveStrongAnswers = decision.consecutiveStrongAnswers;
+            lockedDoc.adaptiveState.consecutiveWeakAnswers = decision.consecutiveWeakAnswers;
+
+            let transitionPhrase = "";
+            if (!isFinalQuestion && expectedIndex + 1 < lockedDoc.questions.length) {
+                const nextTopic = selectNextFocusTopic({
+                    approvedCompetencies: lockedDoc.adaptiveState.approvedCompetencies,
+                    coveredTopics: lockedDoc.adaptiveState.coveredTopics,
+                    topicPerformance: lockedDoc.adaptiveState.topicPerformance,
+                    knowledgeGaps: lockedDoc.adaptiveState.identifiedKnowledgeGaps,
+                    action: decision.action,
+                    currentTopic
+                });
+
+                const nextAdaptiveQ = await generateAdaptiveQuestion({
+                    role: lockedDoc.role,
+                    mode: lockedDoc.mode,
+                    previousQuestion: currentQuestion.question,
+                    previousAnswer: "",
+                    topic: nextTopic,
+                    difficulty: decision.newDifficulty,
+                    action: decision.action,
+                    reason: decision.reason,
+                    approvedCompetencies: lockedDoc.adaptiveState.approvedCompetencies,
+                    askAIFn: askAI,
+                    nextPreGeneratedQuestion: lockedDoc.questions[expectedIndex + 1]
+                });
+
+                transitionPhrase = nextAdaptiveQ.transitionPhrase || getTransitionPhrase(decision.action, nextTopic);
+
+                lockedDoc.adaptiveState.decisionHistory.push({
+                    questionIndex: expectedIndex,
+                    previousDifficulty: decision.previousDifficulty,
+                    newDifficulty: decision.newDifficulty,
+                    action: decision.action,
+                    reason: decision.reason,
+                    targetTopic: nextTopic,
+                    transitionPhrase,
+                    timestamp: new Date()
+                });
+
+                // In-place replacement ensures strict allocation preservation
+                lockedDoc.questions[expectedIndex + 1].question = nextAdaptiveQ.question;
+                lockedDoc.questions[expectedIndex + 1].difficulty = nextAdaptiveQ.difficulty;
+                lockedDoc.questions[expectedIndex + 1].topic = nextAdaptiveQ.topic;
+                lockedDoc.questions[expectedIndex + 1].category = nextAdaptiveQ.category;
+                lockedDoc.questions[expectedIndex + 1].transitionPhrase = transitionPhrase;
+                lockedDoc.questions[expectedIndex + 1].adaptiveReason = nextAdaptiveQ.adaptiveReason;
+                lockedDoc.questions[expectedIndex + 1].isFollowUp = nextAdaptiveQ.isFollowUp;
+            }
+
             lockedDoc.currentQuestionIndex = expectedIndex + 1;
             lockedDoc.currentQuestionStartedAt = new Date();
             lockedDoc.currentQuestionDeadline = calculateQuestionDeadline({
@@ -665,6 +797,8 @@ export const submitAnswer = async (req, res) => {
                 feedback: currentQuestion.feedback,
                 score: 0,
                 evidenceEvaluation: emptyEval,
+                adaptiveState: lockedDoc.adaptiveState,
+                transitionPhrase,
                 questions: lockedDoc.questions,
                 currentQuestionIndex: lockedDoc.currentQuestionIndex,
                 currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
@@ -716,95 +850,161 @@ export const submitAnswer = async (req, res) => {
         currentQuestion.feedback = evidenceEval.summaryFeedback;
         currentQuestion.evidenceEvaluation = evidenceEval;
 
-        // 8. Adaptive Cross-Questioning (Phase 4: Follow-up replaces unasked primary question, allocation strictly capped)
+        // 8. Adaptive Steering & Real-Time Performance Steering
         let followUpQuestion = null;
-        const isCrossQuestioningEnabled = Boolean(lockedDoc.enableCrossQuestioning);
         const targetAllocation = lockedDoc.targetQuestionCount || lockedDoc.questions.length;
-        const existingFollowUpsCount = lockedDoc.questions.filter(q => q.isFollowUp).length;
-        const currentDepth = Number(currentQuestion.depth) || 0;
 
-        // Check if there are unasked primary questions later in the sequence that can be replaced
-        let lastUnaskedPrimaryIndex = -1;
-        for (let i = lockedDoc.questions.length - 1; i > expectedIndex; i--) {
-            if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
-                lastUnaskedPrimaryIndex = i;
-                break;
-            }
+        // Ensure adaptiveState exists (for legacy/in-flight records)
+        if (!lockedDoc.adaptiveState) {
+            lockedDoc.adaptiveState = {
+                currentDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                previousDifficulty: DIFFICULTY_LEVELS.INTERMEDIATE,
+                consecutiveStrongAnswers: 0,
+                consecutiveWeakAnswers: 0,
+                topicPerformance: [],
+                identifiedKnowledgeGaps: [],
+                identifiedStrengths: [],
+                decisionHistory: [],
+                coveredTopics: [],
+                followUpCount: 0,
+                approvedCompetencies: deriveApprovedCompetencies({ role: lockedDoc.role, mode: lockedDoc.mode })
+            };
         }
 
-        const isEligibleForProbe =
-            isCrossQuestioningEnabled &&
-            !deadlineCheck.isTimedOut &&
-            currentDepth < 1 &&
-            existingFollowUpsCount < 2 &&
-            lastUnaskedPrimaryIndex > expectedIndex &&
-            answer.trim().length >= 20 &&
-            parsed.finalScore >= 2 &&
-            parsed.finalScore <= 8;
+        const currentTopic = currentQuestion.topic || 'General';
 
-        if (isEligibleForProbe) {
-            try {
-                const crossType = lockedDoc.crossQuestioningType || 'Technical';
-                const isBehavioral = crossType === 'Behavioral';
-                const probeSystemPrompt = isBehavioral
-                    ? `You are an expert interviewer specializing in behavioral probing.
-Based on the candidate's answer, decide whether a targeted behavioral follow-up question is warranted.
-Probe into concrete situations, individual ownership, decisions, collaboration, conflicts, actions taken, and outcomes.
-Return ONLY valid JSON:
-{
-  "warranted": true,
-  "followUpQuestion": "A single direct behavioral follow-up question (15-25 words)",
-  "difficulty": "medium"
-} or { "warranted": false }`
-                    : `You are an expert interviewer specializing in technical probing.
-Based on the candidate's answer, decide whether a targeted technical follow-up question is warranted to probe technical specifics, architectural trade-offs, debugging, and performance.
-Return ONLY valid JSON:
-{
-  "warranted": true,
-  "followUpQuestion": "A single direct technical follow-up question (15-25 words)",
-  "difficulty": "medium"
-} or { "warranted": false }`;
+        // 1. Update topic performance metrics
+        lockedDoc.adaptiveState.topicPerformance = updateTopicPerformanceRecord(
+            lockedDoc.adaptiveState.topicPerformance,
+            currentTopic,
+            finalScore,
+            expectedIndex
+        );
+        lockedDoc.adaptiveState.coveredTopics.push(currentTopic);
 
-                const probeMessages = [
-                    { role: "system", content: probeSystemPrompt },
-                    { role: "user", content: `Role: ${lockedDoc.role}\nOriginal Question: ${currentQuestion.question}\nCandidate Answer: ${answer}\nFeedback: ${parsed.feedback}` }
-                ];
+        // 2. Extract grounded knowledge gaps and strengths
+        const { newGaps, newStrengths } = detectKnowledgeGapsAndStrengths({
+            topic: currentTopic,
+            score: finalScore,
+            evidenceEvaluation: evidenceEval,
+            questionIndex: expectedIndex
+        });
+        if (newGaps.length > 0) {
+            lockedDoc.adaptiveState.identifiedKnowledgeGaps.push(...newGaps);
+        }
+        if (newStrengths.length > 0) {
+            lockedDoc.adaptiveState.identifiedStrengths.push(...newStrengths);
+        }
 
-                const probeResponse = await askAI(probeMessages);
-                const { data: probeData } = safeParseJson(probeResponse);
+        // 3. Evaluate adaptive difficulty policy
+        const isFinalQuestion = expectedIndex >= targetAllocation - 1;
 
-                if (probeData && probeData.warranted && probeData.followUpQuestion) {
-                    const qText = String(probeData.followUpQuestion).trim();
-                    if (qText.length >= 15 && qText.toLowerCase() !== currentQuestion.question.toLowerCase()) {
-                        followUpQuestion = {
-                            question: qText,
-                            difficulty: "medium", // Strictly medium difficulty
-                            timeLimit: 60,        // Strict 60s
-                            isFollowUp: true,
-                            parentQuestionIndex: expectedIndex,
-                            depth: currentDepth + 1,
-                            answer: "",
-                            feedback: "",
-                            score: 0,
-                            confidence: 0,
-                            communication: 0,
-                            correctness: 0
-                        };
+        const decision = calculateDifficultyDecision({
+            currentDifficulty: lockedDoc.adaptiveState.currentDifficulty,
+            score: finalScore,
+            evidenceEvaluation: evidenceEval,
+            consecutiveStrong: lockedDoc.adaptiveState.consecutiveStrongAnswers,
+            consecutiveWeak: lockedDoc.adaptiveState.consecutiveWeakAnswers,
+            followUpCount: lockedDoc.adaptiveState.followUpCount || 0,
+            currentQuestionDepth: currentQuestion.depth || 0,
+            isFinalQuestion
+        });
 
-                        // Insert follow-up directly after current question
-                        lockedDoc.questions.splice(expectedIndex + 1, 0, followUpQuestion);
+        lockedDoc.adaptiveState.currentDifficulty = decision.newDifficulty;
+        lockedDoc.adaptiveState.previousDifficulty = decision.previousDifficulty;
+        lockedDoc.adaptiveState.consecutiveStrongAnswers = decision.consecutiveStrongAnswers;
+        lockedDoc.adaptiveState.consecutiveWeakAnswers = decision.consecutiveWeakAnswers;
 
-                        // Displace / pop the last unasked primary question to ensure total questions never exceeds targetAllocation
-                        for (let i = lockedDoc.questions.length - 1; i > expectedIndex + 1; i--) {
-                            if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
-                                lockedDoc.questions.splice(i, 1);
-                                break;
-                            }
-                        }
+        let transitionPhrase = "";
+
+        // 4. If not final question, steer and replace next question in sequence
+        if (!isFinalQuestion && expectedIndex + 1 < lockedDoc.questions.length) {
+            const nextTopic = selectNextFocusTopic({
+                approvedCompetencies: lockedDoc.adaptiveState.approvedCompetencies,
+                coveredTopics: lockedDoc.adaptiveState.coveredTopics,
+                topicPerformance: lockedDoc.adaptiveState.topicPerformance,
+                knowledgeGaps: lockedDoc.adaptiveState.identifiedKnowledgeGaps,
+                action: decision.action,
+                currentTopic
+            });
+
+            const nextAdaptiveQ = await generateAdaptiveQuestion({
+                role: lockedDoc.role,
+                mode: lockedDoc.mode,
+                previousQuestion: currentQuestion.question,
+                previousAnswer: answer,
+                topic: nextTopic,
+                difficulty: decision.newDifficulty,
+                action: decision.action,
+                reason: decision.reason,
+                approvedCompetencies: lockedDoc.adaptiveState.approvedCompetencies,
+                askAIFn: askAI,
+                nextPreGeneratedQuestion: lockedDoc.questions[expectedIndex + 1]
+            });
+
+            transitionPhrase = nextAdaptiveQ.transitionPhrase || getTransitionPhrase(decision.action, nextTopic);
+
+            if (nextAdaptiveQ.isFollowUp) {
+                lockedDoc.adaptiveState.followUpCount = (lockedDoc.adaptiveState.followUpCount || 0) + 1;
+                followUpQuestion = nextAdaptiveQ;
+            }
+
+            lockedDoc.adaptiveState.decisionHistory.push({
+                questionIndex: expectedIndex,
+                previousDifficulty: decision.previousDifficulty,
+                newDifficulty: decision.newDifficulty,
+                action: decision.action,
+                reason: decision.reason,
+                targetTopic: nextTopic,
+                transitionPhrase,
+                timestamp: new Date()
+            });
+
+            // Strict Allocation Preservation: If inserting a follow-up probe, displace the last unasked primary question
+            let lastUnaskedPrimaryIndex = -1;
+            for (let i = lockedDoc.questions.length - 1; i > expectedIndex + 1; i--) {
+                if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
+                    lastUnaskedPrimaryIndex = i;
+                    break;
+                }
+            }
+
+            if (nextAdaptiveQ.isFollowUp && lastUnaskedPrimaryIndex > expectedIndex + 1) {
+                lockedDoc.questions.splice(expectedIndex + 1, 0, {
+                    question: nextAdaptiveQ.question,
+                    difficulty: nextAdaptiveQ.difficulty,
+                    topic: nextAdaptiveQ.topic,
+                    category: nextAdaptiveQ.category,
+                    timeLimit: 60,
+                    isFollowUp: true,
+                    parentQuestionIndex: expectedIndex,
+                    depth: (currentQuestion.depth || 0) + 1,
+                    transitionPhrase,
+                    adaptiveReason: nextAdaptiveQ.adaptiveReason,
+                    answer: "",
+                    feedback: "",
+                    score: 0,
+                    confidence: 0,
+                    communication: 0,
+                    correctness: 0
+                });
+
+                // Displace the last unasked primary question
+                for (let i = lockedDoc.questions.length - 1; i > expectedIndex + 1; i--) {
+                    if (!lockedDoc.questions[i].isFollowUp && !lockedDoc.questions[i].answer) {
+                        lockedDoc.questions.splice(i, 1);
+                        break;
                     }
                 }
-            } catch (probeErr) {
-                console.warn("[submitAnswer] Follow-up generation non-fatal error:", probeErr.message);
+            } else {
+                // In-place replacement
+                lockedDoc.questions[expectedIndex + 1].question = nextAdaptiveQ.question;
+                lockedDoc.questions[expectedIndex + 1].difficulty = nextAdaptiveQ.difficulty;
+                lockedDoc.questions[expectedIndex + 1].topic = nextAdaptiveQ.topic;
+                lockedDoc.questions[expectedIndex + 1].category = nextAdaptiveQ.category;
+                lockedDoc.questions[expectedIndex + 1].transitionPhrase = transitionPhrase;
+                lockedDoc.questions[expectedIndex + 1].adaptiveReason = nextAdaptiveQ.adaptiveReason;
+                lockedDoc.questions[expectedIndex + 1].isFollowUp = nextAdaptiveQ.isFollowUp;
             }
         }
 
@@ -827,6 +1027,8 @@ Return ONLY valid JSON:
             feedback: currentQuestion.feedback,
             score: currentQuestion.score,
             evidenceEvaluation: currentQuestion.evidenceEvaluation,
+            adaptiveState: lockedDoc.adaptiveState,
+            transitionPhrase,
             followUpQuestion,
             questions: lockedDoc.questions,
             currentQuestionIndex: lockedDoc.currentQuestionIndex,
@@ -900,6 +1102,7 @@ export const finishInterview = async (req, res) => {
             communication: totalQuestions ? Math.round(totalCommunication / totalQuestions) : 0,
             correctness: totalQuestions ? Math.round(totalCorrectness / totalQuestions) : 0,
             analytics,
+            adaptiveState: interview.adaptiveState || null,
             questions: interview.questions,
             role: interview.role,
             experience: interview.experience,
@@ -946,6 +1149,7 @@ export const normalizeStandardInterview = (doc) => {
         enableCrossQuestioning: isCross,
         crossQuestioningType: isCross ? (doc.crossQuestioningType || 'Technical') : null,
         analytics: doc.analytics || null,
+        adaptiveState: doc.adaptiveState || null,
         questions: Array.isArray(doc.questions) ? doc.questions : [],
         totalQuestions: Array.isArray(doc.questions) ? doc.questions.length : 0,
         interviewMode: doc.interviewMode || 'question_based',
@@ -1166,6 +1370,7 @@ export const getInterviewReport = async (req, res) => {
             communication: avgCommunication,
             correctness: avgCorrectness,
             analytics,
+            adaptiveState: interview.adaptiveState || null,
             questions: interview.questions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
             crossQuestioningType: interview.crossQuestioningType || 'Technical',
@@ -1218,6 +1423,7 @@ export const getInterviewSession = async (req, res) => {
             status: interview.status,
             isSessionExpired,
             analytics: interview.analytics || null,
+            adaptiveState: interview.adaptiveState || null,
             questions: interview.questions,
             enableCrossQuestioning: interview.enableCrossQuestioning || false,
             crossQuestioningType: interview.crossQuestioningType || 'Technical',
