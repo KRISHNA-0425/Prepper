@@ -67,3 +67,47 @@ export const verifyExcerptInAnswer = (excerpt = '', candidateAnswer = '') => {
  * @param {object} params
  * @returns {object}
  */
+export const createEmptyAnswerEvaluation = ({
+  questionText = '',
+  category = QUESTION_CATEGORIES.TECHNICAL,
+  isTimedOut = false,
+}) => {
+  const weights = getCriteriaWeights(category);
+  const reasoning = isTimedOut
+    ? 'Time expired before an answer was submitted.'
+    : 'No response was recorded for this question.';
+
+  const criteria = ALL_CRITERIA_NAMES.map((name) => ({
+    name,
+    score: 0,
+    maxScore: 10,
+    weight: weights[name] || 0.16,
+    reasoning,
+    evidence: [
+      {
+        text: '',
+        classification: EVIDENCE_CLASSIFICATIONS.MISSING,
+        explanation: reasoning,
+      },
+    ],
+    missingConcepts: ['Complete answer to: ' + questionText.slice(0, 80)],
+    improvements: ['Formulate and articulate an answer within the allocated time limit.'],
+  }));
+
+  return {
+    overallScore: 0,
+    maxScore: 10,
+    category,
+    criteria,
+    strengths: [],
+    weaknesses: ['Question was left unanswered.'],
+    missingConcepts: ['Entire topic of: ' + questionText.slice(0, 80)],
+    improvements: ['Ensure each question is attempted, even with partial or high-level reasoning.'],
+    summaryFeedback: isTimedOut ? 'Time expired. No response submitted.' : 'Unanswered question.',
+    evaluationConfidence: 1.0,
+  };
+};
+
+/**
+ * Builds system prompt for evidence-based evaluation.
+ */
