@@ -21,7 +21,7 @@ export class CodingExecutionService {
   /**
    * Validates code execution payload and security constraints.
    */
-  validatePayload({ sourceCode, language, interviewId, problemIndex }) {
+  validatePayload({ sourceCode, language, languageId, interviewId, problemIndex }) {
     if (!interviewId) {
       throw new Error('Interview ID is required');
     }
@@ -30,7 +30,8 @@ export class CodingExecutionService {
       throw new Error('Valid problem index is required');
     }
 
-    if (!language || typeof language !== 'string' || language.trim().length === 0) {
+    const lang = language || languageId;
+    if (!lang || (typeof lang === 'string' && lang.trim().length === 0)) {
       throw new Error('Valid programming language is required');
     }
 

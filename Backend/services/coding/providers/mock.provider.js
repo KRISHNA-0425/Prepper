@@ -78,8 +78,8 @@ export class MockExecutionProvider extends BaseExecutionProvider {
     }
 
     // Normal deterministic execution
-    // If output is specifically requested via comments:
-    const outputMatch = sourceCode.match(/\/\/\s*OUTPUT:\s*(.+)$/m);
+    // If output is specifically requested via comments (supports // and # styles):
+    const outputMatch = sourceCode.match(/(?:\/\/|#)\s*OUTPUT:\s*(.+)$/m);
     let mockOutput = '';
     if (outputMatch) {
       mockOutput = outputMatch[1].trim();
