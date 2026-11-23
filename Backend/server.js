@@ -11,6 +11,7 @@ import paymentRouter from './routes/payment.routes.js'
 import crossExaminationRouter from './routes/crossExamination.routes.js'
 import codingRouter from './routes/coding.routes.js'
 import recoveryPlanRouter from './routes/recoveryPlan.routes.js'
+import companyInterviewRouter from './routes/companyInterview.routes.js'
 
 dotenv.config()
 
@@ -40,6 +41,7 @@ app.use("/api/payment", paymentRouter)
 app.use("/api/cross-examination", crossExaminationRouter)
 app.use("/api/coding", codingRouter)
 app.use("/api/recovery-plans", recoveryPlanRouter)
+app.use("/api/company-interview", companyInterviewRouter)
 
 const startServer = async () => {
   try {
