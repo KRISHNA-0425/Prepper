@@ -43,3 +43,10 @@ export * as recoveryPlanValidator from './recoveryPlan/recoveryPlanValidator.js'
 export * as recoveryPlanFallback from './recoveryPlan/recoveryPlanFallback.js';
 export * as reassessmentService from './recoveryPlan/reassessment.service.js';
 
+// 7. Module 6: Company-Specific Interview Simulation Services
+export * as companyIntelligenceService from './companySimulation/companyIntelligence.service.js';
+export * as companyQuestionGeneratorService from './companySimulation/companyQuestionGenerator.service.js';
+export * as companyEvaluationService from './companySimulation/companyEvaluation.service.js';
+export * as companyInterviewService from './companySimulation/companyInterview.service.js';
+export { getCuratedProfiles, findCuratedProfile } from './companySimulation/curatedCompanyProfiles.js';
+
