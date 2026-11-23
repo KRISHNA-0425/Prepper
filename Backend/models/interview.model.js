@@ -207,6 +207,67 @@ const interviewSchema = new mongoose.Schema({
         default: "Technical"
     },
 
+    // --- Module 6: Company-Specific Simulation Fields ---
+    companySimulation: {
+        isCompanySimulation: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        companyId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "CompanyProfile",
+            default: null
+        },
+        companyName: {
+            type: String,
+            default: "",
+            index: true
+        },
+        companyTier: {
+            type: String,
+            default: ""
+        },
+        interviewRound: {
+            type: String,
+            default: "technical_round_1"
+        },
+        roundTitle: {
+            type: String,
+            default: "Technical Round 1"
+        },
+        jobCategory: {
+            type: String,
+            default: "Software Engineering"
+        },
+        targetDesignation: {
+            type: String,
+            default: ""
+        },
+        requiredSkills: {
+            type: [String],
+            default: []
+        },
+        jobDescription: {
+            type: String,
+            default: ""
+        },
+        companyPreparationNotes: {
+            type: String,
+            default: ""
+        },
+        readinessAssessment: {
+            readinessScore: { type: Number, default: null },
+            verdict: { type: String, default: null },
+            fitLevel: { type: String, default: null },
+            strengths: { type: [String], default: [] },
+            criticalGaps: { type: [String], default: [] },
+            recommendedTopics: { type: [String], default: [] },
+            nextRoundRecommendation: { type: String, default: "" },
+            companyCultureFit: { type: String, default: "" }
+        }
+    },
+
     // --- Packaging, Pricing & Timing Fields ---
     interviewMode: {
         type: String,
