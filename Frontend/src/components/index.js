@@ -37,3 +37,12 @@ export { default as CompanyIntelligenceCard } from './company/CompanyIntelligenc
 export { default as RoundSelector } from './company/RoundSelector';
 export { default as CompanyReadinessCard } from './company/CompanyReadinessCard';
 
+// 6. Module 7: AI Resume-to-Job ATS & Application Intelligence Components
+export { default as ResumeUploadDropzone } from './ats/ResumeUploadDropzone';
+export { default as AtsScoreGauge } from './ats/AtsScoreGauge';
+export { default as AtsDimensionBreakdown } from './ats/AtsDimensionBreakdown';
+export { default as SkillGapTable } from './ats/SkillGapTable';
+export { default as ResumeImprovementWorkspace } from './ats/ResumeImprovementWorkspace';
+export { default as CrossModuleBridgeBar } from './ats/CrossModuleBridgeBar';
+
+
