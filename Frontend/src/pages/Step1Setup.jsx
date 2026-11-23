@@ -31,6 +31,7 @@ function Step1Setup({ onStart }) {
     const uploadedFileRef = useRef(null);
     const activeExtractionIdRef = useRef(0);
     const resumeDerivedValuesRef = useRef({ role: '', experience: '' });
+    const isSubmittingRef = useRef(false);
 
     // Derived validation: cross-questioning is strictly enabled only when a valid resume has been parsed
     const hasValidResume = Boolean(resumeFile && anaylsisDone && resumeText && resumeText.trim().length > 0);
@@ -191,11 +192,13 @@ function Step1Setup({ onStart }) {
     const hasSufficientCredits = userBalance >= requiredCredits;
 
     const handleStart = async () => {
+        if (loading || isSubmittingRef.current) return;
         if (!hasSufficientCredits) {
             toast.error(`Insufficient credits. You need ${requiredCredits} credits but currently have ${userBalance}.`);
             return;
         }
 
+        isSubmittingRef.current = true;
         setLoading(true);
         try {
             const result = await axios.post(backendServerUrl + '/api/interview/generateQuestions',
@@ -219,14 +222,25 @@ function Step1Setup({ onStart }) {
             if (userData) {
                 dispatch(setUserData({ ...userData, credits: result.data.creditsLeft }));
             }
-            setLoading(false);
-
             onStart(result.data);
 
         } catch (error) {
             console.log("error in handleStart", error);
-            const errMsg = error.response?.data?.message || "Failed to start interview. Please try again.";
-            toast.error(errMsg);
+            const data = error.response?.data;
+            let errMsg = data?.message || "Failed to start interview. Please try again.";
+
+            if (data?.errorCode === 'FREE_MODEL_DAILY_LIMIT_EXCEEDED') {
+                errMsg = "The AI provider's free daily model quota has been exhausted. Please try again tomorrow or later when the daily quota resets. Your interview credits have been fully refunded.";
+            }
+
+            // Immediately synchronize refunded balance with Redux state if returned
+            if (typeof data?.creditsLeft === 'number' && userData) {
+                dispatch(setUserData({ ...userData, credits: data.creditsLeft }));
+            }
+
+            toast.error(errMsg, { duration: 6000 });
+        } finally {
+            isSubmittingRef.current = false;
             setLoading(false);
         }
     };
