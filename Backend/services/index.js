@@ -48,5 +48,16 @@ export * as companyIntelligenceService from './companySimulation/companyIntellig
 export * as companyQuestionGeneratorService from './companySimulation/companyQuestionGenerator.service.js';
 export * as companyEvaluationService from './companySimulation/companyEvaluation.service.js';
 export * as companyInterviewService from './companySimulation/companyInterview.service.js';
+
+// 8. Module 7: AI Resume-to-Job ATS & Application Intelligence Services
+export * as atsService from './ats/index.js';
+export * as atsDocumentParser from './ats/atsDocumentParser.service.js';
+export * as atsSkillNormalizer from './ats/atsSkillNormalizer.js';
+export * as atsResumeExtractor from './ats/atsResumeExtractor.service.js';
+export * as atsJobAnalyzer from './ats/atsJobAnalyzer.service.js';
+export * as atsMatcher from './ats/atsMatcher.service.js';
+export * as atsResumeImprovement from './ats/atsResumeImprovement.service.js';
+export * as atsReportService from './ats/atsReport.service.js';
+
 export { getCuratedProfiles, findCuratedProfile } from './companySimulation/curatedCompanyProfiles.js';
 
