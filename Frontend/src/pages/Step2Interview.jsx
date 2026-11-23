@@ -401,9 +401,28 @@ function Step2Interview({ interviewData, onFinish }) {
                             <div className='inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-yellow-400 rounded-lg text-[9px] font-black uppercase tracking-widest'>
                                 <HiCheckBadge /> {mode} • {interviewMode === 'time_based' ? 'Time-Based' : 'Question-Based'}
                             </div>
-                            <span className='text-[8px] font-black uppercase tracking-wider px-2 py-0.5 bg-yellow-400/20 text-yellow-800 rounded-md border border-yellow-400/30'>
-                                Medium
-                            </span>
+                            {(() => {
+                                const qDiff = (currentQuestion?.difficulty || 'intermediate').toLowerCase();
+                                let diffBadgeClass = 'bg-yellow-400/20 text-yellow-800 border-yellow-400/30';
+                                let diffLabel = 'Intermediate';
+                                if (qDiff === 'beginner' || qDiff === 'easy') {
+                                    diffBadgeClass = 'bg-emerald-500/10 text-emerald-700 border-emerald-300';
+                                    diffLabel = 'Beginner';
+                                } else if (qDiff === 'advanced' || qDiff === 'hard') {
+                                    diffBadgeClass = 'bg-purple-500/10 text-purple-700 border-purple-300';
+                                    diffLabel = 'Advanced';
+                                }
+                                return (
+                                    <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${diffBadgeClass}`}>
+                                        {diffLabel}
+                                    </span>
+                                );
+                            })()}
+                            {currentQuestion?.topic && (
+                                <span className='text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md border border-slate-200 hidden sm:inline-block'>
+                                    {currentQuestion.topic}
+                                </span>
+                            )}
                             {currentQuestion?.isFollowUp && (
                                 <span className='inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-400 text-slate-950 font-black text-[9px] uppercase tracking-wider rounded-lg shadow-xs'>
                                     <RiQuestionAnswerLine /> Follow-up Probe
@@ -415,8 +434,22 @@ function Step2Interview({ interviewData, onFinish }) {
                         </span>
                     </div>
 
+                    {/* Progress Bar */}
+                    <div className='w-full bg-slate-100 h-1 rounded-full mb-3 overflow-hidden shrink-0'>
+                        <div
+                            className='bg-yellow-400 h-full rounded-full transition-all duration-300'
+                            style={{ width: `${Math.min(100, Math.round(((currentIndex + 1) / (targetQuestionCount || questionsList.length || 1)) * 100))}%` }}
+                        />
+                    </div>
+
                     {/* Active Question Display */}
                     <div className='mb-4 shrink-0'>
+                        {currentQuestion?.transitionPhrase && (
+                            <div className='mb-2.5 px-3 py-1.5 bg-amber-50/90 border border-amber-200/80 rounded-xl flex items-center gap-2 text-xs text-amber-900 font-medium italic shadow-2xs'>
+                                <span className='text-amber-600 font-black not-italic text-[9px] uppercase tracking-wider shrink-0'>Interviewer:</span>
+                                <span>"{currentQuestion.transitionPhrase}"</span>
+                            </div>
+                        )}
                         <div className='flex items-center justify-between mb-1'>
                             <p className='text-slate-400 font-bold text-[9px] uppercase tracking-widest'>
                                 Question {currentIndex + 1}
@@ -496,8 +529,8 @@ function Step2Interview({ interviewData, onFinish }) {
                                 aria-label={isListening ? "Stop voice input" : "Start voice input"}
                                 title={isAIPlaying ? "Microphone disabled while AI is speaking" : isListening ? "Stop voice recording" : "Click to speak your answer"}
                                 className={`w-14 h-14 flex items-center justify-center rounded-2xl shadow-lg shrink-0 transition-all ${
-                                    isListening 
-                                        ? 'bg-red-500 text-white animate-pulse shadow-red-500/30' 
+                                    isListening
+                                        ? 'bg-red-500 text-white animate-pulse shadow-red-500/30'
                                         : 'bg-slate-900 text-yellow-400 hover:bg-slate-800'
                                 } disabled:opacity-40 disabled:cursor-not-allowed`}
                             >
