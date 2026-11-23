@@ -17,11 +17,12 @@
 
 **Prepper AI** is an enterprise-grade, full-stack AI technical interview preparation and candidate evaluation platform built with the MERN stack (MongoDB, Express, React, Node.js). It simulates high-stakes technical, behavioral, project-defense, and live coding interviews with human-caliber AI feedback, real-time code execution, dynamic difficulty steering, and evidence-grounded performance analytics.
 
-The platform is designed around four tightly integrated core modules:
+The platform is designed around five tightly integrated core modules:
 1. **Module 1 — Conversational Mock Interview Engine**: Audio/speech-driven conceptual interviews based on candidate resumes and job roles with 6-criterion rubric scoring.
 2. **Module 2 — Dedicated Cross-Examination & Deep-Dive Probing**: Targeted resume project defense engine with progressive escalation, claim verification, and hallucination-resistant transcript grounding.
 3. **Module 3 — Adaptive Questioning & Real-Time Steering**: Dynamic difficulty adjustment (Beginner $\leftrightarrow$ Intermediate $\leftrightarrow$ Advanced) with streak-based state transitions, weak-area detection, and Section F Trajectory reporting.
 4. **Module 4 — Isolated Live Coding Execution Engine & Workspace**: A zero-cost (₹0 infrastructure), in-backend multi-language code execution engine with Monaco Editor, dynamic host compiler registry, ephemeral process sandboxing, hidden test case protection, concurrency limits, and a fully resizable dual-splitter workspace.
+5. **Module 5 — Personalized Interview Recovery Plan**: Transforms multi-source evaluation evidence into adaptive, day-by-day remediation curricula (7, 14, or 30-day schedules) with study time budgets, progress tracking, candidate notes, deterministic fallback, and authentic score-delta reassessment.
 
 ---
 
@@ -42,6 +43,7 @@ flowchart TD
             V_Cross["Module 2: Cross-Examination (/cross-examination)"]
             V_Coding["Module 4: Resizable Monaco Coding Workspace (/coding/:id)"]
             V_Report["Analytics & Scorecard (/report/:id)"]
+            V_Recovery["Module 5: Recovery Dashboard & Roadmap (/recovery-plans/:id)"]
         end
     end
 
@@ -55,6 +57,7 @@ flowchart TD
             C_Interview["interview.controller.js"]
             C_Cross["crossExamination.controller.js"]
             C_Coding["coding.controller.js"]
+            C_Recovery["recoveryPlan.controller.js (Module 5)"]
             C_Payment["payment.controller.js"]
         end
 
@@ -64,6 +67,7 @@ flowchart TD
             S_Adaptive["adaptiveQuestion.service.js (Module 3)"]
             S_CrossExam["answerAnalysis.service.js (Module 2)"]
             S_Evaluation["answerEvaluation.service.js (Evidence Scoring)"]
+            S_Recovery["recoveryPlan.service.js (Module 5)"]
         end
 
         subgraph CodeExecutionEngine["Module 4: Zero-Cost Execution Subsystem"]
@@ -107,6 +111,9 @@ flowchart TD
     S_Runner --> S_ExecService
     S_ExecService --> S_Registry
     S_ExecService --> S_Limits
+
+    C_Recovery --> S_Recovery
+    S_Recovery --> S_OpenRouter
 
     %% Services to External
     Controllers --> DB_Mongo
@@ -378,6 +385,53 @@ The frontend coding interface (`CodingWorkspace.jsx`) includes dynamic candidate
 
 ---
 
+## 📈 Deep Dive: Module 5 — Personalized Interview Recovery Plan
+
+### 5.1 Overview & Objective
+Module 5 closes the loop on candidate interview preparation by transforming multi-source evaluation results into an evidence-grounded, day-by-day recovery curriculum. Candidates no longer receive static scorecards; instead, Prepper AI extracts verifiable knowledge gaps and constructs an adaptive study roadmap with progress tracking, candidate notes, and authentic score-delta reassessment.
+
+### 5.2 Multi-Source Evidence Harvesting
+The evidence engine (`evidenceHarvester.service.js`) crawls all three evaluation engines without assuming all three exist for every candidate:
+1. **Standard Voice/Text Interviews**:
+   - `questions[].evidenceEvaluation`: Missing technical concepts, criterion rubric scores, and identified weaknesses.
+   - `adaptiveState.identifiedKnowledgeGaps`: Explicit topic knowledge gaps, severities, and misconception quotes.
+   - `adaptiveState.identifiedStrengths`: Demonstrable competencies and verified proficiency levels.
+2. **Cross-Examination Probing**:
+   - `CrossExaminationSession.report.preparationGaps`: Project architecture contradictions and unverified claims.
+   - `report.demonstratedStrengths`: Defended claims and architectural tradeoffs.
+3. **Live Coding Executions**:
+   - `CodingSubmission.verdict`: Test case failure rates, TLEs, runtime errors.
+   - `CodingSubmission.evaluation`: Algorithmic flaws, time/space complexity deficiencies, and optimization suggestions.
+
+### 5.3 Evidence Traceability & Anti-Hallucination
+Every generated task, weakness, and strength is traceable back to genuine interview records via `evidenceTraceSchema`:
+- `sourceType`: `'standard_interview' | 'cross_examination' | 'coding_interview'`
+- `sourceId`: MongoDB ObjectId of the source document
+- `questionOrProblemId`: Specific question index or problem slug
+- `competency`: Specific technical topic or criterion
+- `evidenceExcerpt`: Verbatim excerpt or failure verdict
+
+### 5.4 Adaptive Scheduling & Prerequisite Ordering
+- **Durations Supported**: 7-Day Sprint, 14-Day Balanced, 30-Day Mastery.
+- **Daily Study Time**: 30, 45, 60, or 90 minutes per day.
+- **Strict Pedagogical Sequencing**:
+  - *Days 1 to Math.floor(Days * 0.35)*: Core theory, misconception resolution, and fundamentals.
+  - *Middle Days*: Hands-on coding drills, edge-case hardening, and algorithmic practice.
+  - *Later Days*: System design, architectural tradeoffs, and claim defense.
+  - *Final Days*: Timed mock drills and comprehensive reassessment readiness.
+
+### 5.5 Deterministic Fallback & Zero-Cost Guardrails
+- **₹0 Infrastructure Overhead**: Operates entirely within the existing Node.js + Express backend and MongoDB database.
+- **Zero New Credit Charges**: Generating recovery plans is included with interview evaluation without credit deductions.
+- **Deterministic Fallback Engine (`recoveryPlanFallback.js`)**: If OpenRouter times out or daily free quota is exceeded, the system deterministically constructs an evidence-grounded study roadmap directly from verified knowledge gaps, guaranteeing zero application downtime or hallucination.
+
+### 5.6 Reassessment Integrity & Score Comparison Delta
+- **Comparable Rubrics**: Reassessment evaluates candidate answers on the identical 0-100 rubric scale.
+- **Measured Delta**: Computes $\Delta = \text{Reassessment Score} - \text{Original Baseline Score}$.
+- **Evidence Separation**: Stores original and reassessment findings in separate fields, recording observed improvements and remaining gaps.
+
+---
+
 ## 🗄️ Database Schemas & Entity-Relationship Architecture
 
 The platform uses MongoDB with strict Mongoose schemas to support complex nested interview trajectories, evidence evaluations, and code submissions:
@@ -387,8 +441,10 @@ erDiagram
     User ||--o{ Interview : conducts
     User ||--o{ CodingSubmission : submits
     User ||--o{ Payment : purchases
+    User ||--o{ RecoveryPlan : follows
     Interview ||--o{ Question : contains
     Interview ||--o{ CodingProblem : references
+    Interview ||--o{ RecoveryPlan : remediates
     CodingProblem ||--o{ CodingSubmission : receives
 
     User {
@@ -464,6 +520,22 @@ erDiagram
         number creditsAdded
         string status "created or success or failed"
     }
+
+    RecoveryPlan {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId interviewId FK
+        string targetRole
+        number scheduleDurationDays "7 or 14 or 30"
+        number dailyStudyMinutes "30 to 90"
+        string status "not_started or in_progress or completed"
+        boolean isFallbackGenerated
+        array strengths
+        array criticalWeaknesses
+        array tasks
+        object progress "completedTasks and completionPercentage"
+        object reassessment "scores and scoreDelta"
+    }
 ```
 
 ---
@@ -513,6 +585,17 @@ erDiagram
 | `POST` | `/api/payment/verify` | Verify cryptographic HMAC signature & credit wallet | Yes |
 | `GET`  | `/api/payment/transactions` | Retrieve candidate payment & credit transaction log | Yes |
 
+### 📈 Personalized Recovery Plan (`/api/recovery-plans`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `POST` | `/api/recovery-plans/generate` | Idempotent recovery plan synthesis from interview evaluation | Yes |
+| `GET`  | `/api/recovery-plans` | Retrieve all recovery programs for authenticated user | Yes |
+| `GET`  | `/api/recovery-plans/:planId` | Fetch individual recovery plan with anti-IDOR check | Yes |
+| `PATCH`| `/api/recovery-plans/:planId/start` | Activate recovery plan (`not_started` $\rightarrow$ `in_progress`) | Yes |
+| `PATCH`| `/api/recovery-plans/:planId/tasks/:taskId` | Update task status ('pending', 'in_progress', 'completed') & notes | Yes |
+| `POST` | `/api/recovery-plans/:planId/reassess/start` | Generate targeted reassessment questions tailored to weaknesses | Yes |
+| `POST` | `/api/recovery-plans/:planId/reassess/submit`| Submit reassessment answers, evaluate on 0-100 rubric & compute delta | Yes |
+
 ---
 
 ## 💰 Credit Economics & Pricing Policy
@@ -522,6 +605,7 @@ To maintain fair platform economics and prevent resource starvation:
 - **Module 2 (Dedicated Cross-Examination)**: `10 Credits` (Full project defense + pressure escalation).
 - **Module 4 (Live Coding Session)**: Dynamic formula calibrated by question count and time limit:
   $$\text{Cost} = 15 + (\text{Problems} - 1) \times 5 + (\text{Duration} > 30\text{m} \ ? \ 5 : 0)$$
+- **Module 5 (Personalized Recovery Plan)**: `0 Credits` (Included with every completed interview evaluation).
 - **Refund Safeguard**: If session creation fails due to AI rate limits or timeout, deducted credits are automatically and atomically refunded to the candidate's account.
 
 ---
@@ -634,6 +718,7 @@ Prepper/
 │   │   ├── interview.controller.js      # Module 1 standard conversational interview
 │   │   ├── crossExamination.controller.js # Module 2 resume project probing
 │   │   ├── coding.controller.js         # Module 4 live coding endpoints
+│   │   ├── recoveryPlan.controller.js   # Module 5 personalized recovery plans
 │   │   ├── payment.controller.js        # Razorpay payment verification
 │   │   └── user.controller.js           # Candidate profile & credit balance
 │   ├── middleware/                      # Auth verification, rate limiting, and uploads
@@ -643,12 +728,14 @@ Prepper/
 │   │   ├── crossExaminationSession.model.js # High-pressure project defense sessions
 │   │   ├── codingProblem.model.js       # Algorithmic problem bank & driver code
 │   │   ├── codingSubmission.model.js    # Code execution attempts, verdicts & memory
+│   │   ├── recoveryPlan.model.js        # Module 5 recovery schedules & task tracking
 │   │   └── payment.model.js             # Razorpay transactions & order audit log
 │   ├── routes/                          # Express REST API route definitions
 │   │   ├── auth.routes.js               # /api/auth routes
 │   │   ├── interview.routes.js          # /api/interview routes
 │   │   ├── crossExamination.routes.js   # /api/cross-examination routes
 │   │   ├── coding.routes.js             # /api/coding routes
+│   │   ├── recoveryPlan.routes.js       # /api/recovery-plans routes
 │   │   └── payment.routes.js            # /api/payment routes
 │   ├── services/                        # Domain logic services & registries
 │   │   ├── index.js                     # Domain-driven unified service export barrel
@@ -664,6 +751,13 @@ Prepper/
 │   │   ├── resumeIntelligence.service.js# In-memory PDF parsing via pdfjs-dist
 │   │   ├── evidenceEvaluation.service.js# 6-criterion evidence grounding
 │   │   ├── reportGeneration.service.js  # Executive scorecard & roadmap compiler
+│   │   ├── recoveryPlan/                # Module 5 recovery plan engines
+│   │   │   ├── recoveryPlan.service.js  # Main orchestration & progress lifecycle
+│   │   │   ├── evidenceHarvester.service.js # Multi-engine evidence crawler
+│   │   │   ├── recoveryPlanPrompt.js    # Structured pedagogical curriculum prompt
+│   │   │   ├── recoveryPlanValidator.js # Schema & task sanity verification
+│   │   │   ├── recoveryPlanFallback.js  # Grounded deterministic fallback engine
+│   │   │   └── reassessment.service.js  # Weakness-targeted test & score delta
 │   │   ├── codeExecution/               # Zero-cost in-backend process sandboxing
 │   │   │   ├── execution.service.js     # Sandboxed child process spawning & timeouts
 │   │   │   ├── languageRegistry.js      # Dynamic host compiler discovery
@@ -689,11 +783,17 @@ Prepper/
 │   │   │   ├── coding/                  # Live coding workspace components
 │   │   │   │   ├── CodingWorkspace.jsx  # Monaco editor, dual splitters, console drawer
 │   │   │   │   └── CodingReportSection.jsx # Report submission summary & verdict
-│   │   │   └── cross-examination/       # Cross-examination components
-│   │   │       ├── QuestionCard.jsx     # High-pressure question presenter
-│   │   │       ├── AnswerAnalysisCard.jsx # Claim analysis & grounding inspector
-│   │   │       ├── SessionProgress.jsx  # Pressure tier & progress indicator
-│   │   │       └── SessionSummaryModal.jsx # Interrogation defense summary
+│   │   │   ├── cross-examination/       # Cross-examination components
+│   │   │   │   ├── QuestionCard.jsx     # High-pressure question presenter
+│   │   │   │   ├── AnswerAnalysisCard.jsx # Claim analysis & grounding inspector
+│   │   │   │   ├── SessionProgress.jsx  # Pressure tier & progress indicator
+│   │   │   │   └── SessionSummaryModal.jsx # Interrogation defense summary
+│   │   │   └── recovery/                # Module 5 recovery plan components
+│   │   │       ├── RecoveryPlanSetupModal.jsx # Schedule & time budget selector
+│   │   │       ├── RecoveryPlanOverview.jsx   # Metrics, strengths/weaknesses cards
+│   │   │       ├── DailyTaskList.jsx          # Day selector & task status toggles
+│   │   │       ├── TaskDetailModal.jsx        # Outcomes, checklists & candidate notes
+│   │   │       └── ReassessmentModal.jsx      # Targeted drill & score delta gauge
 │   │   ├── pages/                       # Module route pages
 │   │   │   ├── index.js                 # Domain-driven page export registry
 │   │   │   ├── Home.jsx                 # Public landing page
@@ -706,7 +806,9 @@ Prepper/
 │   │   │   ├── CrossExaminationSetup.jsx# Module 2 setup & anchor selection
 │   │   │   ├── CrossExaminationSession.jsx # Module 2 interrogation arena
 │   │   │   ├── CodingSetup.jsx          # Module 4 setup, questions & timer selector
-│   │   │   └── CodingSessionPage.jsx    # Module 4 live coding session runner
+│   │   │   ├── CodingSessionPage.jsx    # Module 4 live coding session runner
+│   │   │   ├── RecoveryPlansListPage.jsx# Module 5 recovery programs list
+│   │   │   └── RecoveryPlanDashboard.jsx# Module 5 daily study & reassessment dashboard
 │   │   ├── hooks/                       # Custom React hooks (speech, timer)
 │   │   ├── redux/                       # Redux Toolkit store & user slices
 │   │   ├── utils/                       # API helpers & timer utilities
@@ -720,6 +822,7 @@ Prepper/
 │   ├── CROSS_EXAMINATION_REPORT.md      # Module 2 project probing specification
 │   ├── MODULE_3_ADAPTIVE_STEERING.md    # Module 3 dynamic difficulty mechanics
 │   ├── MODULE_4_LIVE_CODING_ENGINE.md   # Module 4 execution sandbox specification
+│   ├── MODULE_5_RECOVERY_PLAN.md        # Module 5 recovery curriculum specification
 │   └── SECURITY_HARDENING.md            # Zero-budget security audit & boundaries
 │
 ├── infrastructure/                      # Deployment & Worker Infrastructure
