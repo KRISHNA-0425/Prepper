@@ -9,6 +9,7 @@ import axios from 'axios';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useQuestionSpeech from '../hooks/useQuestionSpeech';
 import { formatTimeMMSS } from '../utils/interviewTimer';
+import CodingWorkspace from '../components/coding/CodingWorkspace';
 
 function Step2Interview({ interviewData, onFinish }) {
     const videoRef = useRef(null);
@@ -305,6 +306,40 @@ function Step2Interview({ interviewData, onFinish }) {
 
         return () => clearInterval(timer);
     }, [timeLeft, isAIPlaying, isSubmitting, isFinished]);
+
+    const isCodingMode = interviewData?.interviewType === 'coding' || interviewData?.mode === 'Coding';
+
+    if (isCodingMode) {
+        const handleFinishCoding = async () => {
+            const toastId = toast.loading("Finalizing coding interview report...");
+            try {
+                const res = await axios.post(`${backendServerUrl}/api/interview/finish`, {
+                    interviewId: interviewData.interviewId || interviewData._id
+                }, { withCredentials: true });
+                toast.dismiss(toastId);
+                onFinish(res.data);
+            } catch (err) {
+                toast.dismiss(toastId);
+                try {
+                    const r = await axios.get(`${backendServerUrl}/api/interview/report/${interviewData.interviewId || interviewData._id}`, { withCredentials: true });
+                    onFinish(r.data);
+                } catch {
+                    onFinish({ ...interviewData, interviewType: 'coding' });
+                }
+            }
+        };
+
+        return (
+            <div className="min-h-screen bg-slate-950 p-3 md:p-6 flex flex-col justify-center">
+                <CodingWorkspace
+                    interviewId={interviewData.interviewId || interviewData._id}
+                    problems={interviewData.codingProblems || []}
+                    initialLanguage={interviewData.codingLanguage || 'javascript'}
+                    onFinishInterview={handleFinishCoding}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className='h-screen w-full bg-[#F5EC5A] flex items-center justify-center p-4 md:p-6 font-poppins overflow-hidden'>
