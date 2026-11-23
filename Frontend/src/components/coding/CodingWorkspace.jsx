@@ -30,6 +30,8 @@ export const SUPPORTED_LANGUAGES = [
   { id: 3, name: 'Python 3', slug: 'python', monacoLang: 'python' },
   { id: 4, name: 'Java (OpenJDK)', slug: 'java', monacoLang: 'java' },
   { id: 5, name: 'JavaScript (Node.js)', slug: 'javascript', monacoLang: 'javascript' },
+  { id: 6, name: 'TypeScript', slug: 'typescript', monacoLang: 'typescript' },
+  { id: 7, name: 'Go', slug: 'go', monacoLang: 'go' },
 ];
 
 export default function CodingWorkspace({

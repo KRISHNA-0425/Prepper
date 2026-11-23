@@ -387,6 +387,8 @@ function Step1Setup({ onStart }) {
                                                     <option value="python">Python 3</option>
                                                     <option value="java">Java (OpenJDK)</option>
                                                     <option value="javascript">JavaScript (Node.js)</option>
+                                                    <option value="typescript">TypeScript</option>
+                                                    <option value="go">Go</option>
                                                 </select>
                                             </div>
                                             <div>
