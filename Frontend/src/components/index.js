@@ -30,3 +30,10 @@ export { default as RecoveryPlanOverview } from './recovery/RecoveryPlanOverview
 export { default as DailyTaskList } from './recovery/DailyTaskList';
 export { default as TaskDetailModal } from './recovery/TaskDetailModal';
 export { default as ReassessmentModal } from './recovery/ReassessmentModal';
+
+// 5. Module 6: Company-Specific Simulation Components
+export { default as CompanySelector } from './company/CompanySelector';
+export { default as CompanyIntelligenceCard } from './company/CompanyIntelligenceCard';
+export { default as RoundSelector } from './company/RoundSelector';
+export { default as CompanyReadinessCard } from './company/CompanyReadinessCard';
+
