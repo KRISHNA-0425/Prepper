@@ -259,9 +259,11 @@ const interviewSchema = new mongoose.Schema({
         readinessAssessment: {
             readinessScore: { type: Number, default: null },
             verdict: { type: String, default: null },
+            hireVerdict: { type: String, default: null },
             fitLevel: { type: String, default: null },
             strengths: { type: [String], default: [] },
             criticalGaps: { type: [String], default: [] },
+            gaps: { type: [String], default: [] },
             recommendedTopics: { type: [String], default: [] },
             nextRoundRecommendation: { type: String, default: "" },
             companyCultureFit: { type: String, default: "" }
