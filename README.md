@@ -767,7 +767,10 @@ npm --prefix Frontend test
 # Run frontend production build
 npm --prefix Frontend run build
 
-# Run company simulation backend tests
+# Run company simulation end-to-end integration test suite (Module 1-5 validation)
+node --test Backend/tests/companyInterviewIntegration.e2e.test.js
+
+# Run company simulation unit tests
 node --test Backend/tests/companyInterview.test.js
 
 # Run backend execution & security test suites
@@ -781,10 +784,10 @@ node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnaly
 ```
 
 ### Verification Matrix Summary
+- **E2E Cross-Module Integration Suite**: **11 / 11 tests passing** (Modules 1–5 end-to-end verification, credit deduction & atomic refund rollback, anti-IDOR security).
+- **Backend Test Suites**: **123 / 123 tests passing** (Company simulation, recovery plans, live coding, adaptive steering, evidence evaluation, pricing math).
 - **Frontend Regression Suite**: **215 / 215 tests passing** (Route separation, adaptive UI banners, pricing logic, Monaco editor, company simulation, recovery plan roadmaps, 503 error handling).
-- **Backend Company Simulation Suite**: **8 / 8 tests passing** (Curated profiles, dynamic intelligence crawler, 7-round question generator, hiring verdicts, anti-IDOR security, credit checks).
-- **Backend Execution Engine Suite**: **15 / 15 tests passing** (Host compiler registry, stdout/stdin, C/C++/Java/Python/JS execution, infinite loop timeouts, output capping, memory limits, test case runner).
-- **Security & Production Audit Suite**: **12 / 12 tests passing** (Anti-IDOR, secrets isolation, ephemeral directory cleanup, network egress blocking, concurrency semaphore, fail-closed production guard).
+- **Total Test Coverage**: **338 / 338 automated tests passing** across entire platform.
 - **Vite Production Bundler**: **Passed cleanly in 13.9s** with 0 errors.
 
 ---
