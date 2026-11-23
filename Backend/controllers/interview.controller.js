@@ -622,6 +622,13 @@ export const submitAnswer = async (req, res) => {
 
         // 6. Handle Empty Answer or Timeout Submission
         if (!answer || answer.trim() === "") {
+            const category = detectQuestionCategory(currentQuestion.question, lockedDoc.mode);
+            const emptyEval = createEmptyAnswerEvaluation({
+                questionText: currentQuestion.question,
+                category,
+                isTimedOut: deadlineCheck.isTimedOut
+            });
+
             currentQuestion.score = 0;
             currentQuestion.confidence = 0;
             currentQuestion.communication = 0;
@@ -630,6 +637,7 @@ export const submitAnswer = async (req, res) => {
                 ? "Time expired. No answer was submitted."
                 : "You didn't submit an answer for this question.";
             currentQuestion.answer = "";
+            currentQuestion.evidenceEvaluation = emptyEval;
 
             lockedDoc.currentQuestionIndex = expectedIndex + 1;
             lockedDoc.currentQuestionStartedAt = new Date();
@@ -649,6 +657,7 @@ export const submitAnswer = async (req, res) => {
             return res.json({
                 feedback: currentQuestion.feedback,
                 score: 0,
+                evidenceEvaluation: emptyEval,
                 questions: lockedDoc.questions,
                 currentQuestionIndex: lockedDoc.currentQuestionIndex,
                 currentQuestionStartedAt: lockedDoc.currentQuestionStartedAt,
