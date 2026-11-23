@@ -209,3 +209,145 @@ Provide the complete evidence-based evaluation JSON according to the rubric.`;
  * @param {string} category
  * @returns {number} Bounded to [0, 10], rounded to 1 decimal place
  */
+export const calculateAuthoritativeScore = (criteria = [], category = QUESTION_CATEGORIES.TECHNICAL) => {
+  const weights = getCriteriaWeights(category);
+  let totalScore = 0;
+  let totalWeight = 0;
+
+  for (const crit of criteria) {
+    const name = crit.name;
+    const w = weights[name] !== undefined ? weights[name] : 0.166;
+    const s = Math.max(0, Math.min(10, Number(crit.score) || 0));
+    totalScore += s * w;
+    totalWeight += w;
+  }
+
+  if (totalWeight <= 0) return 0;
+  const rawScore = totalScore / totalWeight;
+  return Math.round(rawScore * 10) / 10;
+};
+
+/**
+ * Validates and sanitizes a raw AI evaluation response.
+ * @param {object} raw
+ * @param {string} candidateAnswer
+ * @param {string} category
+ * @returns {{ isValid: boolean, sanitized: object, warnings: string[] }}
+ */
+export const validateAndSanitizeEvidenceEvaluation = (raw, candidateAnswer = '', category = QUESTION_CATEGORIES.TECHNICAL) => {
+  const warnings = [];
+
+  if (!raw || typeof raw !== 'object') {
+    return { isValid: false, sanitized: null, warnings: ['Evaluation response is not a valid object'] };
+  }
+
+  const weights = getCriteriaWeights(category);
+  const rawCriteria = Array.isArray(raw.criteria) ? raw.criteria : [];
+  const criteriaMap = new Map();
+
+  for (const c of rawCriteria) {
+    if (c && typeof c === 'object' && c.name) {
+      criteriaMap.set(String(c.name).trim(), c);
+    }
+  }
+
+  // Ensure all 6 required criteria are present
+  const sanitizedCriteria = ALL_CRITERIA_NAMES.map((name) => {
+    const rawCrit = criteriaMap.get(name) || {};
+    const weight = weights[name] || 0.16;
+    let score = Number(rawCrit.score);
+    if (isNaN(score)) {
+      score = 5;
+      warnings.push(`Missing score for criterion "${name}", defaulted to 5`);
+    }
+    score = Math.max(0, Math.min(10, Math.round(score * 10) / 10));
+
+    // Sanitize evidence items
+    const rawEvidence = Array.isArray(rawCrit.evidence) ? rawCrit.evidence : [];
+    const sanitizedEvidence = rawEvidence.map((ev) => {
+      const excerpt = String(ev?.text || '').trim();
+      const isGrounded = verifyExcerptInAnswer(excerpt, candidateAnswer);
+      const classification = Object.values(EVIDENCE_CLASSIFICATIONS).includes(ev?.classification)
+        ? ev.classification
+        : EVIDENCE_CLASSIFICATIONS.CORRECT;
+
+      return {
+        text: excerpt.slice(0, 300),
+        classification,
+        explanation: String(ev?.explanation || '').trim().slice(0, 300),
+        isGrounded,
+      };
+    });
+
+    const toStringArray = (arr, maxLen = 200) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.filter((item) => typeof item === 'string' && item.trim()).map((s) => s.trim().slice(0, maxLen));
+    };
+
+    return {
+      name,
+      score,
+      maxScore: 10,
+      weight,
+      reasoning: String(rawCrit.reasoning || '').trim().slice(0, 500) || 'Evaluation completed.',
+      evidence: sanitizedEvidence,
+      missingConcepts: toStringArray(rawCrit.missingConcepts),
+      improvements: toStringArray(rawCrit.improvements),
+    };
+  });
+
+  // Calculate authoritative overall score
+  const computedScore = calculateAuthoritativeScore(sanitizedCriteria, category);
+  const reportedScore = Number(raw.overallScore);
+  let overallScore = computedScore;
+
+  if (!isNaN(reportedScore) && Math.abs(reportedScore - computedScore) <= 0.5) {
+    overallScore = Math.max(0, Math.min(10, Math.round(reportedScore * 10) / 10));
+  } else if (!isNaN(reportedScore)) {
+    warnings.push(`Reported overallScore (${reportedScore}) diverged from computed (${computedScore}). Overridden.`);
+  }
+
+  const toStringArray = (arr, maxLen = 300) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((item) => typeof item === 'string' && item.trim()).map((s) => s.trim().slice(0, maxLen));
+  };
+
+  let rawConf = Number(raw.evaluationConfidence);
+  if (isNaN(rawConf) || rawConf < 0 || rawConf > 1) {
+    rawConf = 0.85;
+  }
+  const evaluationConfidence = Math.round(rawConf * 100) / 100;
+
+  const summaryFeedback = String(raw.summaryFeedback || raw.feedback || '').trim().slice(0, 300) ||
+    'Response evaluated across all core dimensions.';
+
+  const sanitized = {
+    overallScore,
+    maxScore: 10,
+    category,
+    criteria: sanitizedCriteria,
+    strengths: toStringArray(raw.strengths),
+    weaknesses: toStringArray(raw.weaknesses),
+    missingConcepts: toStringArray(raw.missingConcepts),
+    improvements: toStringArray(raw.improvements),
+    summaryFeedback,
+    evaluationConfidence,
+  };
+
+  return { isValid: true, sanitized, warnings };
+};
+
+/**
+ * Evaluates a candidate's answer against a question using evidence-based evaluation.
+ * Includes automatic retry on malformed JSON and deterministic fallback.
+ *
+ * @param {object} params
+ * @param {string} params.question
+ * @param {string} params.answer
+ * @param {string} [params.role]
+ * @param {string} [params.experience]
+ * @param {string} [params.mode]
+ * @param {string} [params.difficulty]
+ * @param {function} [params.askAIFn]
+ * @returns {Promise<object>} The validated evaluation object
+ */
