@@ -630,69 +630,113 @@ node --test Backend/tests/crossExamination.e2e.test.js Backend/tests/answerAnaly
 
 ---
 
-## 📁 Repository Directory Structure
+## 📁 Domain-Driven Directory Architecture
 
 ```text
 Prepper/
 ├── Backend/                             # Express REST API Server
-│   ├── config/                          # Database connection & runtime setup
-│   ├── controllers/                     # Business logic controllers
-│   │   ├── auth.controller.js           # Auth & JWT management
-│   │   ├── interview.controller.js      # Module 1 standard interview
-│   │   ├── crossExamination.controller.js # Module 2 cross-examination
+│   ├── config/                          # Database connection & token configuration
+│   ├── contracts/                       # Shared evaluation schemas & contract types
+│   ├── controllers/                     # REST API business logic controllers
+│   │   ├── auth.controller.js           # Authentication & session token management
+│   │   ├── interview.controller.js      # Module 1 standard conversational interview
+│   │   ├── crossExamination.controller.js # Module 2 resume project probing
 │   │   ├── coding.controller.js         # Module 4 live coding endpoints
-│   │   └── payment.controller.js        # Razorpay payment verification
-│   ├── middleware/                      # Auth guards, upload & rate limiting
-│   ├── models/                          # Mongoose schemas
-│   │   ├── User.js                      # User profile & credit balance
-│   │   ├── Interview.js                 # Unified interview sessions & trajectory
-│   │   ├── CodingProblem.js             # Problem descriptions & test cases
-│   │   ├── CodingSubmission.js          # Execution attempts & verdicts
-│   │   └── Payment.js                   # Razorpay transaction log
-│   ├── services/                        # Domain logic services
+│   │   ├── payment.controller.js        # Razorpay payment verification
+│   │   └── user.controller.js           # Candidate profile & credit balance
+│   ├── middleware/                      # Auth verification, rate limiting, and uploads
+│   ├── models/                          # Mongoose data models
+│   │   ├── user.model.js                # Candidate accounts & credit wallet
+│   │   ├── interview.model.js           # Unified interview state, answers & trajectory
+│   │   ├── crossExaminationSession.model.js # High-pressure project defense sessions
+│   │   ├── codingProblem.model.js       # Algorithmic problem bank & driver code
+│   │   ├── codingSubmission.model.js    # Code execution attempts, verdicts & memory
+│   │   └── payment.model.js             # Razorpay transactions & order audit log
+│   ├── routes/                          # Express REST API route definitions
+│   │   ├── auth.routes.js               # /api/auth routes
+│   │   ├── interview.routes.js          # /api/interview routes
+│   │   ├── crossExamination.routes.js   # /api/cross-examination routes
+│   │   ├── coding.routes.js             # /api/coding routes
+│   │   └── payment.routes.js            # /api/payment routes
+│   ├── services/                        # Domain logic services & registries
+│   │   ├── index.js                     # Domain-driven unified service export barrel
 │   │   ├── openRouter.service.js        # LLM integration & fault-tolerant retries
-│   │   ├── interviewPricing.service.js  # Dynamic credit computation & refund guards
-│   │   ├── adaptiveQuestion.service.js  # Module 3 dynamic difficulty & steering
-│   │   ├── answerAnalysis.service.js    # Module 2 project probing & claims
-│   │   ├── answerEvaluation.service.js  # 6-rubric evidence grounding
-│   │   ├── codeExecution/               # In-backend zero-cost execution
-│   │   │   ├── execution.service.js     # Sandboxed process spawning & timeouts
+│   │   ├── credit.service.js            # Atomic wallet balance & refund management
+│   │   ├── interviewPricing.service.js  # Dynamic credit computation formulas
+│   │   ├── adaptiveDifficulty.service.js# Module 3 streak decision engine
+│   │   ├── adaptiveSteering.service.js  # Module 3 anti-looping & topic pivot rules
+│   │   ├── knowledgeGap.service.js      # Grounded topic mastery & weakness radar
+│   │   ├── answerAnalysis.service.js    # Module 2 claim verification & trap logic
+│   │   ├── projectClaimAnalysis.service.js # PDF project metric & claim harvesting
+│   │   ├── questionEngine.service.js    # Question formulation & pressure ladder
+│   │   ├── resumeIntelligence.service.js# In-memory PDF parsing via pdfjs-dist
+│   │   ├── evidenceEvaluation.service.js# 6-criterion evidence grounding
+│   │   ├── reportGeneration.service.js  # Executive scorecard & roadmap compiler
+│   │   ├── codeExecution/               # Zero-cost in-backend process sandboxing
+│   │   │   ├── execution.service.js     # Sandboxed child process spawning & timeouts
 │   │   │   ├── languageRegistry.js      # Dynamic host compiler discovery
 │   │   │   ├── testCaseRunner.js        # Test case evaluation & hidden masking
 │   │   │   ├── executionLimits.js       # Hard caps (5000ms, 64KB, 256MB)
 │   │   │   └── executionValidator.js    # Payload size & language validation
-│   │   └── coding/
+│   │   └── coding/                      # Execution provider adapters
 │   │       ├── executionAdapter.service.js # Pluggable provider router
-│   │       └── providers/
-│   │           └── local.provider.js    # Local sandboxed execution provider
-│   ├── tests/                           # Unit, integration & security test suites
-│   └── server.js                        # Express app entrypoint
+│   │       └── providers/               # Provider implementations (local, go-judge)
+│   ├── tests/                           # Exhaustive unit, integration & audit tests
+│   └── server.js                        # Express server entrypoint
 │
 ├── Frontend/                            # React 19 + Vite Single Page Application
 │   ├── src/
-│   │   ├── components/                  # Modular UI components
-│   │   │   ├── Navbar.jsx               # Navigation bar with dedicated pills
-│   │   │   ├── coding/
-│   │   │   │   └── CodingWorkspace.jsx  # Monaco editor, splitters, drawer, modes
-│   │   │   └── cross-examination/       # Probing cards & claim inspectors
-│   │   ├── pages/                       # Primary route views
-│   │   │   ├── Home.jsx                 # Landing page & feature showcase
-│   │   │   ├── Step1Setup.jsx           # Module 1 interview setup form
+│   │   ├── components/                  # Domain-organized UI components
+│   │   │   ├── index.js                 # Unified component export registry
+│   │   │   ├── Navbar.jsx               # Top navigation bar with dedicated pills
+│   │   │   ├── Timer.jsx                # Visual circular & text countdown timer
+│   │   │   ├── AuthModel.jsx            # Authentication modal overlay
+│   │   │   ├── CapabilityCard.jsx       # Landing page capability card
+│   │   │   ├── FeatureCard.jsx          # Feature showcase item
+│   │   │   ├── ModeCard.jsx             # Interview mode selector card
+│   │   │   ├── coding/                  # Live coding workspace components
+│   │   │   │   ├── CodingWorkspace.jsx  # Monaco editor, dual splitters, console drawer
+│   │   │   │   └── CodingReportSection.jsx # Report submission summary & verdict
+│   │   │   └── cross-examination/       # Cross-examination components
+│   │   │       ├── QuestionCard.jsx     # High-pressure question presenter
+│   │   │       ├── AnswerAnalysisCard.jsx # Claim analysis & grounding inspector
+│   │   │       ├── SessionProgress.jsx  # Pressure tier & progress indicator
+│   │   │       └── SessionSummaryModal.jsx # Interrogation defense summary
+│   │   ├── pages/                       # Module route pages
+│   │   │   ├── index.js                 # Domain-driven page export registry
+│   │   │   ├── Home.jsx                 # Public landing page
+│   │   │   ├── Auth.jsx                 # Authentication page
+│   │   │   ├── Pricing.jsx              # Credit purchase & tier pricing
+│   │   │   ├── InterViewHistory.jsx     # Unified session history with type filters
+│   │   │   ├── Step1Setup.jsx           # Module 1 setup & resume upload
 │   │   │   ├── Step2Interview.jsx       # Module 1 live conversational session
-│   │   │   ├── Step3Report.jsx          # Scorecard, trajectory, study roadmap
-│   │   │   ├── CrossExaminationSetup.jsx# Module 2 setup & claim anchor review
-│   │   │   ├── CrossExaminationPage.jsx # Module 2 high-pressure interrogation
+│   │   │   ├── Step3Report.jsx          # Module 1 & 3 scorecard & trajectory
+│   │   │   ├── CrossExaminationSetup.jsx# Module 2 setup & anchor selection
+│   │   │   ├── CrossExaminationSession.jsx # Module 2 interrogation arena
 │   │   │   ├── CodingSetup.jsx          # Module 4 setup, questions & timer selector
-│   │   │   ├── CodingSessionPage.jsx    # Module 4 live coding session mount
-│   │   │   └── InterViewHistory.jsx     # Unified session history & discriminators
-│   │   ├── redux/                       # Redux store & slices
-│   │   ├── App.jsx                      # Route registry
-│   │   └── main.jsx                     # Vite root mount
-│   ├── tests/                           # Frontend integration test suites
+│   │   │   └── CodingSessionPage.jsx    # Module 4 live coding session runner
+│   │   ├── hooks/                       # Custom React hooks (speech, timer)
+│   │   ├── redux/                       # Redux Toolkit store & user slices
+│   │   ├── utils/                       # API helpers & timer utilities
+│   │   ├── App.jsx                      # Route registry & modal providers
+│   │   └── main.jsx                     # Vite root DOM mounting
+│   ├── tests/                           # Frontend integration & UI test suites
 │   └── package.json
 │
-└── README.md                            # Comprehensive Platform Documentation
-```
+├── docs/                                # In-depth Architectural Documentation
+│   ├── MODULE_1_CONVERSATIONAL_INTERVIEW.md # Module 1 technical deep dive
+│   ├── CROSS_EXAMINATION_REPORT.md      # Module 2 project probing specification
+│   ├── MODULE_3_ADAPTIVE_STEERING.md    # Module 3 dynamic difficulty mechanics
+│   ├── MODULE_4_LIVE_CODING_ENGINE.md   # Module 4 execution sandbox specification
+│   └── SECURITY_HARDENING.md            # Zero-budget security audit & boundaries
+│
+├── infrastructure/                      # Deployment & Worker Infrastructure
+│   ├── worker/                          # Standalone Go-Judge Linux worker setup
+│   │   ├── deploy-go-judge-worker.sh    # Production deployment automation script
+│   │   └── go-judge.service             # Systemd service unit definition
+│   └── judge0/                          # Legacy local Docker Compose configuration
+│
+└── README.md                            # Master System Documentation
 
 ---
 
