@@ -4,7 +4,7 @@ import { getOrGenerateCompanyProfile, recommendInterviewStructure } from './comp
 import { generateCompanyQuestions } from './companyQuestionGenerator.service.js';
 import { evaluateCompanyInterview } from './companyEvaluation.service.js';
 import { checkUserCredits, deductInterviewCredits, refundInterviewCredits, INTERVIEW_CREDIT_COST } from '../credit.service.js';
-import { evaluateAnswerEvidence } from '../evidenceEvaluation.service.js';
+import { evaluateAnswerWithEvidence } from '../evidenceEvaluation.service.js';
 
 /**
  * Creates and initializes a new company-specific interview simulation session.
@@ -24,9 +24,11 @@ export const createCompanyInterviewSession = async ({
   if (!companyName) throw new Error('companyName is required');
 
   const creditCost = INTERVIEW_CREDIT_COST || 50;
+  const checkCredits = options.checkUserCredits || checkUserCredits;
+  const deductCredits = options.deductInterviewCredits || deductInterviewCredits;
 
   // 1. Enforce credit check
-  const creditCheck = await checkUserCredits(userId, creditCost);
+  const creditCheck = await checkCredits(userId, creditCost);
   if (!creditCheck.hasCredits) {
     const error = new Error(creditCheck.message || 'Insufficient credits to start company interview simulation');
     error.statusCode = 400;
@@ -62,7 +64,7 @@ export const createCompanyInterviewSession = async ({
   // 4. Deduct credits atomically
   let creditsDeducted = false;
   try {
-    const deductRes = await deductInterviewCredits(userId, creditCost);
+    const deductRes = await deductCredits(userId, creditCost);
     if (!deductRes.success) {
       throw new Error(deductRes.message || 'Failed to deduct credits');
     }
@@ -191,7 +193,7 @@ export const submitCompanyAnswer = async ({
   };
 
   try {
-    const evaluated = await evaluateAnswerEvidence({
+    const evaluated = await evaluateAnswerWithEvidence({
       question: currentQ.question,
       answer: currentQ.answer,
       jobRole: interview.companySimulation?.targetDesignation || interview.role,

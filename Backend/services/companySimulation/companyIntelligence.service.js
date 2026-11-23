@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import CompanyProfile from '../../models/companyProfile.model.js';
 import { getCuratedProfiles, findCuratedProfile } from './curatedCompanyProfiles.js';
 import { askAI as defaultAskAI } from '../openRouter.service.js';
@@ -143,13 +144,15 @@ export const getOrGenerateCompanyProfile = async ({
   }
 
   // 2. Check MongoDB for previously cached company profile
-  try {
-    const existing = await CompanyProfile.findOne({ slug }).lean();
-    if (existing) {
-      return existing;
+  if (mongoose.connection?.readyState === 1) {
+    try {
+      const existing = await CompanyProfile.findOne({ slug }).lean();
+      if (existing) {
+        return existing;
+      }
+    } catch (err) {
+      // If DB check fails, proceed to dynamic generation
     }
-  } catch (err) {
-    // If DB check fails, proceed to dynamic generation
   }
 
   // 3. Synthesize via OpenRouter AI
@@ -217,19 +220,22 @@ RETURN STRICT JSON matching this schema:
     if (userId) synthesizedData.createdBy = userId;
   }
 
-  // 4. Cache in MongoDB
-  try {
-    const newDoc = new CompanyProfile(synthesizedData);
-    await newDoc.save();
-    return newDoc.toObject();
-  } catch (saveErr) {
-    // If concurrent insert occurred, fetch existing
+  // 4. Cache in MongoDB if database is actively connected
+  if (mongoose.connection?.readyState === 1) {
     try {
-      const existing = await CompanyProfile.findOne({ slug }).lean();
-      if (existing) return existing;
-    } catch (e) {}
-    return synthesizedData;
+      const newDoc = new CompanyProfile(synthesizedData);
+      await newDoc.save();
+      return newDoc.toObject();
+    } catch (saveErr) {
+      // If concurrent insert occurred, fetch existing
+      try {
+        const existing = await CompanyProfile.findOne({ slug }).lean();
+        if (existing) return existing;
+      } catch (e) {}
+    }
   }
+
+  return synthesizedData;
 };
 
 /**
