@@ -403,5 +403,35 @@ export const harvestInterviewEvidence = async (interviewId, userId) => {
     }
   }
 
+  // 6. Harvest from ATS Analysis (Module 7)
+  try {
+    const ATSAnalysisModel = mongoose.models.ATSAnalysis;
+    if (ATSAnalysisModel) {
+      const atsDoc = await ATSAnalysisModel.findOne({ userId }).sort({ createdAt: -1 }).lean();
+      if (atsDoc && Array.isArray(atsDoc.skillGaps)) {
+        atsDoc.skillGaps.forEach((gap, idx) => {
+          if (gap && gap.skill) {
+            addWeakness({
+              topic: normalizeTopic(`ATS Requirement: ${gap.skill}`),
+              severity: gap.importance === 'mandatory' ? 'critical' : 'medium',
+              description: `ATS Skill Gap: ${gap.skill}. ${gap.whyItMatters || 'Targeted technical requirement.'}`,
+              misconceptionSnippet: gap.suggestedActivity || '',
+              evidence: {
+                sourceType: 'ats_analysis',
+                sourceId: atsDoc._id,
+                questionOrProblemId: `ats_gap_${idx}`,
+                competency: `ATS: ${gap.skill}`,
+                evidenceExcerpt: `Missing requirement from job description: ${gap.skill}`,
+                identifiedFinding: `${gap.skill} (${gap.importance || 'mandatory'})`,
+              },
+            });
+          }
+        });
+      }
+    }
+  } catch (err) {
+    // ATS Analysis is optional; proceed smoothly if not present
+  }
+
   return harvestedData;
 };
