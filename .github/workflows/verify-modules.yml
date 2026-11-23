@@ -10,6 +10,12 @@ jobs:
   test-backend:
     name: Backend Test Suites & Regression Verification
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      CI: "true"
+      CODE_EXECUTION_ENABLED: "true"
+      CODE_EXECUTION_PROVIDER: "mock"
+      JWT_SECRET: "ci-test-jwt-secret-key-32-chars-long"
 
     steps:
       - name: Checkout Code
@@ -36,6 +42,8 @@ jobs:
   test-frontend:
     name: Frontend Test Suites & Production Build
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
 
     steps:
       - name: Checkout Code

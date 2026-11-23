@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import judge0Service, { JUDGE0_STATUS } from '../services/coding/judge0.service.js';
 
 test('Judge0 Integration Test Suite (Local Self-Hosted Instance)', async (t) => {
+  if (process.env.CI || process.env.SKIP_LIVE_JUDGE0) {
+    t.skip('Skipping Judge0 live execution integration tests in CI environment.');
+    return;
+  }
+
   const health = await judge0Service.checkHealth();
 
   if (!health.healthy) {
