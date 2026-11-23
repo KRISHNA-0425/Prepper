@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
-import Navbar from '../components/Navbar'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useSelector } from 'react-redux'
-import { HiSparkles, HiArrowRight } from "react-icons/hi";
-import { RiHistoryLine, RiRobot2Line, RiBarChartGroupedLine, RiShieldFlashLine, RiCodeSSlashLine } from "react-icons/ri";
+import React, { useState } from 'react';
+import Navbar from '../components/Navbar';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector } from 'react-redux';
+import { HiSparkles, HiArrowRight } from 'react-icons/hi';
+import { RiHistoryLine, RiRobot2Line, RiBarChartGroupedLine, RiShieldFlashLine, RiCodeSSlashLine } from 'react-icons/ri';
 import AuthModel from '../components/AuthModel';
 import { useNavigate } from 'react-router-dom';
 import FeatureCard from '../components/FeatureCard';
@@ -34,7 +34,7 @@ function Home() {
     };
 
     return (
-        <div className='min-h-screen bg-[#F5EC5A] flex flex-col relative overflow-x-hidden font-poppins selection:bg-slate-900 selection:text-yellow-400'>
+        <div className='min-h-screen bg-[#F5EC5A] dark:bg-slate-950 flex flex-col relative overflow-x-hidden font-poppins selection:bg-slate-900 selection:text-yellow-400 transition-colors duration-200'>
             
             {/* Ambient Background Animations */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -45,7 +45,7 @@ function Home() {
                         x: [0, 20, 0]
                     }}
                     transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                    className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-white/20 rounded-full blur-[100px]"
+                    className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-white/20 dark:bg-yellow-500/10 rounded-full blur-[100px]"
                 />
             </div>
 
@@ -58,9 +58,9 @@ function Home() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     whileHover={{ scale: 1.05 }}
-                    className='bg-white/40 backdrop-blur-md text-[10px] md:text-xs px-5 py-2.5 rounded-full flex items-center gap-2 border border-white/50 text-yellow-950 font-black shadow-sm mb-10 cursor-default tracking-widest'
+                    className='bg-white/40 dark:bg-slate-900/60 backdrop-blur-md text-[10px] md:text-xs px-5 py-2.5 rounded-full flex items-center gap-2 border border-white/50 dark:border-slate-800 text-yellow-950 dark:text-yellow-300 font-black shadow-sm mb-10 cursor-default tracking-widest'
                 >
-                    <HiSparkles className='text-yellow-600 animate-pulse text-lg' />
+                    <HiSparkles className='text-yellow-600 dark:text-yellow-400 animate-pulse text-lg' />
                     AI-POWERED INTERVIEW PREPARATION
                 </motion.div>
 
@@ -71,20 +71,20 @@ function Home() {
                     animate="visible"
                     className='text-center max-w-5xl'
                 >
-                    <motion.h1 variants={itemVariants} className='text-5xl md:text-8xl font-black leading-[1.1] text-slate-900 mb-8 tracking-tighter'>
+                    <motion.h1 variants={itemVariants} className='text-5xl md:text-8xl font-black leading-[1.1] text-slate-900 dark:text-white mb-8 tracking-tighter'>
                         Master Your Next <br />
                         <span className='relative inline-block'>
                             Interview with
                             <motion.span
                                 whileHover={{ scale: 1.05, rotate: 0 }}
-                                className='ml-3 bg-slate-900 text-[#F5EC5A] px-6 py-2 rounded-2xl inline-block -rotate-2 transition-all duration-300 shadow-xl cursor-default'
+                                className='ml-3 bg-slate-900 text-[#F5EC5A] dark:bg-yellow-400 dark:text-slate-950 px-6 py-2 rounded-2xl inline-block -rotate-2 transition-all duration-300 shadow-xl cursor-default'
                             >
                                 PREPPER
                             </motion.span>
                         </span>
                     </motion.h1>
 
-                    <motion.p variants={itemVariants} className='text-lg md:text-xl text-yellow-950/70 font-medium max-w-2xl mx-auto mb-10 leading-relaxed'>
+                    <motion.p variants={itemVariants} className='text-lg md:text-xl text-yellow-950/70 dark:text-slate-300 font-medium max-w-2xl mx-auto mb-10 leading-relaxed'>
                         The AI companion that listens, evaluates, and coaches you through real-world job interview scenarios.
                     </motion.p>
 
@@ -97,10 +97,10 @@ function Home() {
                                 if (!userData) return setShowAuth(true);
                                 navigate('/interview');
                             }}
-                            className='group w-full sm:w-auto bg-slate-900 text-white px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(15,23,42,0.25)] hover:bg-slate-800 transition-all'
+                            className='  group w-full sm:w-auto bg-slate-900 dark:bg-yellow-400 text-white dark:text-slate-950 px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(15,23,42,0.25)] hover:bg-slate-800 dark:hover:bg-yellow-300 transition-all cursor-pointer'
                         >
                             Mock Interview
-                            <HiArrowRight className='text-yellow-400 group-hover:translate-x-1 transition-transform' />
+                            <HiArrowRight className=' text-yellow-400 dark:text-slate-950 group-hover:translate-x-1 transition-transform' />
                         </motion.button>
 
                         <motion.button
@@ -108,25 +108,12 @@ function Home() {
                             whileTap={{ scale: 0.97 }}
                             onClick={() => {
                                 if (!userData) return setShowAuth(true);
-                                navigate('/coding');
-                            }}
-                            className='group w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(79,70,229,0.3)] transition-all'
-                        >
-                            <RiCodeSSlashLine className='text-yellow-300 text-xl' />
-                            Live Coding
-                        </motion.button>
-
-                        <motion.button
-                            whileHover={{ scale: 1.03, backgroundColor: "rgba(255, 255, 255, 0.6)" }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => {
-                                if (!userData) return setShowAuth(true);
                                 navigate('/history');
                             }}
-                            className='w-full sm:w-auto flex items-center justify-center gap-3 bg-white/40 backdrop-blur-md text-slate-900 border-2 border-white/60 px-8 py-5 rounded-2xl font-black text-lg shadow-sm transition-all group'
+                            className='w-full sm:w-auto flex items-center justify-center gap-3 bg-white/40 dark:bg-slate-900/60 backdrop-blur-md text-slate-900 dark:text-white border-2 border-white/60 dark:border-slate-800 px-8 py-5 rounded-2xl font-black text-lg shadow-sm transition-all group cursor-pointer'
                         >
                             History
-                            <RiHistoryLine className='text-slate-500 group-hover:rotate-[360deg] transition-transform duration-700 ease-in-out' />
+                            <RiHistoryLine className='text-slate-500 dark:text-slate-400 group-hover:rotate-[360deg] transition-transform duration-700 ease-in-out' />
                         </motion.button>
                     </motion.div>
 
@@ -166,10 +153,10 @@ function Home() {
                             viewport={{ once: true }}
                             className='mb-12 flex-col text-center items-center gap-4 text-3xl md:text-5xl'
                         >
-                            <h2 className='text-4xl md:text-6xl font-black text-slate-900 tracking-tighter'>
-                                AI <span className='text-white bg-slate-900 px-5 py-1 rounded-2xl shadow-xl'>Capabilities</span>
+                            <h2 className='text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter'>
+                                AI <span className='text-white bg-slate-900 dark:bg-yellow-400 dark:text-slate-950 px-5 py-1 rounded-2xl shadow-xl'>Capabilities</span>
                             </h2>
-                            <p className='text-yellow-950/60 mt-4 font-medium text-lg'>Choose how you want to be challenged</p>
+                            <p className='text-yellow-950/60 dark:text-slate-400 mt-4 font-medium text-lg'>Choose how you want to be challenged</p>
                         </motion.div>
 
                         <motion.div 
@@ -210,10 +197,10 @@ function Home() {
                             viewport={{ once: true }}
                             className='text-center mb-16'
                         >
-                            <h2 className='text-4xl md:text-6xl font-black text-slate-900 tracking-tighter'>
-                                Tailored <span className='text-white bg-slate-900 px-5 py-1 rounded-2xl shadow-xl'>Modes</span>
+                            <h2 className='text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter'>
+                                Tailored <span className='text-white bg-slate-900 dark:bg-yellow-400 dark:text-slate-950 px-5 py-1 rounded-2xl shadow-xl'>Modes</span>
                             </h2>
-                            <p className='text-yellow-950/60 mt-4 font-medium text-lg'>Choose how you want to be challenged</p>
+                            <p className='text-yellow-950/60 dark:text-slate-400 mt-4 font-medium text-lg'>Choose how you want to be challenged</p>
                         </motion.div>
 
                         <motion.div 
@@ -251,9 +238,7 @@ function Home() {
                 {showAuth && <AuthModel onClose={() => setShowAuth(false)} />}
             </AnimatePresence>
         </div>
-    )
+    );
 }
-
-
 
 export default Home;
