@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // Set up mock provider environment for executionAdapter unit tests
+process.env.NODE_ENV = 'test';
 process.env.CODE_EXECUTION_ENABLED = 'true';
 process.env.CODE_EXECUTION_PROVIDER = 'mock';
 
