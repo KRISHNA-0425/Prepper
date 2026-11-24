@@ -298,83 +298,65 @@ function Home() {
                         </motion.div>
 
                         {/* 2-Column Split Cards Grid */}
-                        <motion.div 
-                            layout
-                            variants={containerVariants}
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true }}
-                            className='grid grid-cols-1 lg:grid-cols-2 gap-6 w-full'
-                        >
-                            <AnimatePresence mode="popLayout">
-                                {filteredCapabilities.map((cap) => (
-                                    <motion.article
-                                        layout
-                                        key={cap.id}
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.25 }}
-                                        whileHover={{ y: -4 }}
-                                        onClick={() => handleFeatureAction(cap.route)}
-                                        className='group h-full flex flex-col sm:flex-row rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md hover:shadow-xl hover:border-yellow-400/50 transition-all duration-300 cursor-pointer'
-                                    >
-                                        {/* Image Panel */}
-                                        <div className='sm:w-5/12 min-h-48 sm:min-h-full bg-slate-100 dark:bg-slate-950 overflow-hidden flex items-center justify-center shrink-0 relative'>
-                                            <img 
-                                                src={cap.image} 
-                                                alt={cap.title}
-                                                className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
-                                                loading="lazy"
-                                            />
-                                        </div>
+                        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 w-full'>
+                            {filteredCapabilities.map((cap) => (
+                                <motion.article
+                                    key={cap.id}
+                                    whileHover={{ scale: 1.02 }}
+                                    transition={{ duration: 0.2 }}
+                                    onClick={() => handleFeatureAction(cap.route)}
+                                    className='group h-full flex flex-col sm:flex-row rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/80 dark:border-slate-800 overflow-hidden shadow-md hover:shadow-xl hover:border-yellow-400/50 transition-colors duration-200 cursor-pointer'
+                                >
+                                    {/* Image Panel */}
+                                    <div className='sm:w-5/12 min-h-48 sm:min-h-full bg-slate-100 dark:bg-slate-950 overflow-hidden flex items-center justify-center shrink-0 relative'>
+                                        <img 
+                                            src={cap.image} 
+                                            alt={cap.title}
+                                            className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+                                            loading="lazy"
+                                        />
+                                    </div>
 
-                                        {/* Content Panel */}
-                                        <div className='sm:w-7/12 p-6 flex flex-col justify-between gap-4'>
-                                            <div className='flex flex-col gap-2'>
-                                                <div className='flex items-center justify-between gap-2'>
-                                                    <span className='inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-slate-900 text-[#F5EC5A] dark:bg-yellow-400 dark:text-slate-950 font-black text-[11px] uppercase tracking-wider'>
-                                                        {cap.moduleNumber}
-                                                    </span>
-                                                    <span className='text-[11px] font-bold text-yellow-950/60 dark:text-slate-400 uppercase tracking-wider'>
-                                                        {cap.tierBadge}
-                                                    </span>
-                                                </div>
-
-                                                <h3 className='font-black text-xl text-slate-900 dark:text-white tracking-tight leading-snug group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors'>
-                                                    {cap.title}
-                                                </h3>
-
-                                                <p className='text-xs sm:text-sm text-yellow-950/75 dark:text-slate-300 font-medium leading-relaxed'>
-                                                    {cap.desc}
-                                                </p>
+                                    {/* Content Panel */}
+                                    <div className='sm:w-7/12 p-6 flex flex-col justify-between gap-4'>
+                                        <div className='flex flex-col gap-2'>
+                                            <div className='flex items-center justify-between gap-2'>
+                                                <span className='inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-slate-900 text-[#F5EC5A] dark:bg-yellow-400 dark:text-slate-950 font-black text-[11px] uppercase tracking-wider'>
+                                                    {cap.moduleNumber}
+                                                </span>
+                                                <span className='text-[11px] font-bold text-yellow-950/60 dark:text-slate-400 uppercase tracking-wider'>
+                                                    {cap.tierBadge}
+                                                </span>
                                             </div>
 
-                                            {/* Footer */}
-                                            <div className='flex items-center justify-between gap-2 pt-3 border-t border-slate-900/10 dark:border-slate-800'>
-                                                <div className='flex items-center gap-2'>
-                                                    <span className='w-2 h-2 rounded-full bg-slate-900 dark:bg-yellow-400' aria-hidden="true" />
-                                                    <span className='text-[10px] font-black text-slate-800 dark:text-slate-300 uppercase tracking-widest'>
-                                                        {cap.tag}
-                                                    </span>
-                                                </div>
-                                                <HiArrowRight className='text-slate-900 dark:text-yellow-400 text-lg group-hover:translate-x-1 transition-transform' />
-                                            </div>
+                                            <h3 className='font-black text-xl text-slate-900 dark:text-white tracking-tight leading-snug group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors'>
+                                                {cap.title}
+                                            </h3>
+
+                                            <p className='text-xs sm:text-sm text-yellow-950/75 dark:text-slate-300 font-medium leading-relaxed'>
+                                                {cap.desc}
+                                            </p>
                                         </div>
-                                    </motion.article>
-                                ))}
-                            </AnimatePresence>
-                        </motion.div>
+
+                                        {/* Footer */}
+                                        <div className='flex items-center justify-between gap-2 pt-3 border-t border-slate-900/10 dark:border-slate-800'>
+                                            <div className='flex items-center gap-2'>
+                                                <span className='w-2 h-2 rounded-full bg-slate-900 dark:bg-yellow-400' aria-hidden="true" />
+                                                <span className='text-[10px] font-black text-slate-800 dark:text-slate-300 uppercase tracking-widest'>
+                                                    {cap.tag}
+                                                </span>
+                                            </div>
+                                            <HiArrowRight className='text-slate-900 dark:text-yellow-400 text-lg group-hover:translate-x-1 transition-transform' />
+                                        </div>
+                                    </div>
+                                </motion.article>
+                            ))}
+                        </div>
                     </div>
 
                     {/* ── SECTION 2: DELIVERY TIERS (TAILORED SCOPE - 3 ICON CARDS) ── */}
                     <div id="delivery-tiers" className='w-full max-w-6xl mb-28 text-left'>
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className='text-center mb-12 flex flex-col items-center gap-3'
-                        >
+                        <div className='text-center mb-12 flex flex-col items-center gap-3'>
                             <h2 className='text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3 flex-wrap'>
                                 <span>Tailored</span>
                                 <span className='text-white bg-slate-900 dark:bg-yellow-400 dark:text-slate-950 px-5 py-1 rounded-2xl shadow-xl'>
@@ -384,23 +366,17 @@ function Home() {
                             <p className='text-yellow-950/70 dark:text-slate-400 font-medium text-base md:text-lg max-w-2xl text-pretty'>
                                 Six modular capabilities sharing one interview session, rubric, and analytics foundation.
                             </p>
-                        </motion.div>
+                        </div>
 
-                        <motion.div 
-                            variants={containerVariants}
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true }}
-                            className='grid grid-cols-1 md:grid-cols-3 gap-6'
-                        >
-                            {DELIVERY_TIERS.map((tier, idx) => {
+                        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+                            {DELIVERY_TIERS.map((tier) => {
                                 const IconComponent = tier.icon;
                                 return (
                                     <motion.article
                                         key={tier.id}
-                                        variants={itemVariants}
-                                        whileHover={{ y: -6 }}
-                                        className='h-full flex flex-col justify-between gap-6 p-8 rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/80 dark:border-slate-800 shadow-md hover:shadow-xl hover:border-yellow-400/40 transition-all duration-300 group'
+                                        whileHover={{ scale: 1.02 }}
+                                        transition={{ duration: 0.2 }}
+                                        className='h-full flex flex-col justify-between gap-6 p-8 rounded-3xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/80 dark:border-slate-800 shadow-md hover:shadow-xl hover:border-yellow-400/40 transition-colors duration-200 group'
                                     >
                                         <div className='flex flex-col gap-4'>
                                             <div className='w-14 h-14 rounded-2xl bg-slate-900 text-[#F5EC5A] dark:bg-yellow-400 dark:text-slate-950 flex items-center justify-center text-3xl shadow-inner group-hover:scale-105 transition-transform duration-300 shrink-0'>
@@ -422,7 +398,7 @@ function Home() {
                                     </motion.article>
                                 );
                             })}
-                        </motion.div>
+                        </div>
                     </div>
 
                     {/* ── SECTION 3: PRODUCT PRINCIPLES STRIP ── */}
