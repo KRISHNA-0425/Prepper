@@ -191,17 +191,6 @@ function Home() {
 
             <main className='flex-1 flex flex-col items-center px-6 py-12 md:py-20 z-10'>
                 
-                {/* ── AI Badge ── */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    className='bg-white/40 dark:bg-slate-900/60 backdrop-blur-md text-[10px] md:text-xs px-5 py-2.5 rounded-full flex items-center gap-2 border border-white/50 dark:border-slate-800 text-yellow-950 dark:text-yellow-300 font-black shadow-sm mb-10 cursor-default tracking-widest'
-                >
-                    <HiSparkles className='text-yellow-600 dark:text-yellow-400 animate-pulse text-lg' />
-                    AI-POWERED INTERVIEW PREPARATION
-                </motion.div>
-
                 {/* ── Hero Section ── */}
                 <motion.div
                     variants={containerVariants}
