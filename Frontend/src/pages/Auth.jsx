@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
 import { useNavigate } from 'react-router-dom';
 import ThemedLogo from '../components/ui/ThemedLogo';
+import { setAuthToken } from '../utils/authToken';
 
 function Auth({ isModel = false }) {
     const dispatch = useDispatch();
@@ -25,6 +26,9 @@ function Auth({ isModel = false }) {
                 { withCredentials: true }
             );
 
+            if (result.data?.token) {
+                setAuthToken(result.data.token);
+            }
             dispatch(setUserData(result.data.user));
 
             if (!isModel) {

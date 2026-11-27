@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { 
     HiOutlineArrowLeft, 
     HiOutlineCheckCircle, 
@@ -15,11 +15,14 @@ import toast from 'react-hot-toast';
 // Internal Imports
 import { backendServerUrl } from '../App';
 import { setUserData } from '../redux/userSlice';
+import AuthModel from '../components/AuthModel';
 
 function Pricing() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const { userData } = useSelector((state) => state.user);
     const [loading, setLoading] = useState(false);
+    const [showAuth, setShowAuth] = useState(false);
 
     // Animation Config
     const containerVars = {
@@ -66,6 +69,17 @@ function Pricing() {
     ];
 
     const handlePayment = async (tier) => {
+        if (!userData) {
+            toast.error("Please sign in to purchase credits.");
+            setShowAuth(true);
+            return;
+        }
+
+        if (!window.Razorpay) {
+            toast.error("Payment gateway could not be loaded. Please disable ad-blockers or refresh the page.");
+            return;
+        }
+
         setLoading(true);
         try {
             // 1. Create Order on Backend
@@ -87,6 +101,10 @@ function Pricing() {
                 name: "Prepper AI",
                 description: `${tier.name} - ${tier.credits} Credits`,
                 order_id: order.id,
+                prefill: {
+                    name: userData?.name || '',
+                    email: userData?.email || '',
+                },
                 handler: async function (response) {
                     try {
                         // 3. Verify Payment
@@ -102,13 +120,17 @@ function Pricing() {
 
                         if (data.success) {
                             // 4. Update Redux State instantly
-                            dispatch(setUserData(data.user)); 
+                            dispatch(setUserData(data.user));
                             toast.success("Credits added successfully!");
                             navigate('/');
+                        } else {
+                            toast.error(data.message || "Payment verification failed. Please contact support.");
                         }
                     } catch (err) {
                         console.error("Verification Error:", err);
-                        toast.error("Payment verification failed. Please contact support.");
+                        toast.error(err.response?.data?.message || "Payment verification failed. Please contact support.");
+                    } finally {
+                        setLoading(false);
                     }
                 },
                 theme: { color: "#fbbf24" },
@@ -118,11 +140,23 @@ function Pricing() {
             };
 
             const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                console.error("Razorpay payment failed:", response.error);
+                toast.error(response?.error?.description || "Payment could not be processed. Please try again.");
+                setLoading(false);
+            });
             rzp.open();
 
         } catch (error) {
             console.error("Payment initiation failed", error);
-            toast.error("Failed to start payment process.");
+            const status = error?.response?.status;
+            const serverMsg = error?.response?.data?.message;
+            if (status === 401) {
+                toast.error("Your session has expired. Please sign in again.");
+                setShowAuth(true);
+            } else {
+                toast.error(serverMsg || "Failed to start payment process.");
+            }
             setLoading(false);
         }
     };
@@ -221,6 +255,7 @@ function Pricing() {
                     ))}
                 </motion.div>
             </div>
+            {showAuth && <AuthModel onClose={() => setShowAuth(false)} />}
         </div>
     );
 }

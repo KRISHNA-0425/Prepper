@@ -9,6 +9,7 @@ import { setUserData } from '../redux/userSlice';
 import AuthModel from './AuthModel';
 import ThemeToggle from './ui/ThemeToggle';
 import ThemedLogo from './ui/ThemedLogo';
+import { clearAuthToken } from '../utils/authToken';
 
 function Navbar() {
     const { userData } = useSelector((state) => state.user);
@@ -29,10 +30,12 @@ function Navbar() {
     const handleLogout = async () => {
         try {
             await axios.get(`${backendServerUrl}/api/auth/logout`, { withCredentials: true });
-            dispatch(setUserData(null));
-            setIsDropdownOpen(false);
         } catch (error) {
             console.error("Logout failed", error);
+        } finally {
+            clearAuthToken();
+            dispatch(setUserData(null));
+            setIsDropdownOpen(false);
         }
     };
 

@@ -18,24 +18,26 @@ export const googleAuthController = async (req, res) => {
             return res.status(400).json({ message: "Invalid Credentials" })
         }
 
-        let user = await User.findOne({ email })
+        const normalizedEmail = email.trim().toLowerCase();
+        let user = await User.findOne({ email: normalizedEmail })
 
         if (!user) {
             user = await User.create({
-                name: name,
-                email: email,
+                name: name.trim(),
+                email: normalizedEmail,
             })
         }
 
+        const isProd = process.env.NODE_ENV === "production";
         let token = genToken(user._id)
         res.cookie("token", token, {
             maxAge: 7 * 24 * 60 * 60 * 1000,
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : 'lax'
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax"
         })
 
-        return res.status(200).json({ message: "user created", user })
+        return res.status(200).json({ message: "user created", user, token })
 
     } catch (error) {
         return res.status(500).json({ message: `internal server error in googleAuthController ${error}` })
@@ -45,7 +47,12 @@ export const googleAuthController = async (req, res) => {
 
 export const logout = async (_, res) => {
     try {
-        await res.clearCookie('token') // clears the cookie of name token
+        const isProd = process.env.NODE_ENV === "production";
+        res.clearCookie('token', {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax"
+        });
         return res.status(200).json({ message: "logout successful" });
     } catch (error) {
         return res.status(500).json({ message: "internal server error in logout controller" });
