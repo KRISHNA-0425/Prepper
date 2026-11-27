@@ -6,6 +6,7 @@ import { backendServerUrl } from '../App';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
 import { useNavigate } from 'react-router-dom';
+import ThemedLogo from '../components/ui/ThemedLogo';
 
 function Auth({ isModel = false }) {
     const dispatch = useDispatch();
@@ -49,10 +50,8 @@ function Auth({ isModel = false }) {
             <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 sm:p-10 relative z-10 shadow-xl transition-colors duration-200">
                 {/* Logo Section */}
                 <div className="flex items-center justify-center gap-3 mb-6">
-                    <img 
-                        src="/logo.svg" 
-                        alt="Prepper Logo" 
-                        className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(0,242,254,0.4)] hover:scale-110 transition-transform duration-300 cursor-pointer"
+                    <ThemedLogo 
+                        className="w-10 h-10 object-contain hover:scale-110 transition-transform duration-300 cursor-pointer"
                     />
                     <span className="font-black text-2xl tracking-tighter text-slate-900 dark:text-white">
                         PREPPER

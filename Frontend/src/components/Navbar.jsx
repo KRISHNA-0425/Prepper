@@ -8,6 +8,7 @@ import { backendServerUrl } from '../App';
 import { setUserData } from '../redux/userSlice';
 import AuthModel from './AuthModel';
 import ThemeToggle from './ui/ThemeToggle';
+import ThemedLogo from './ui/ThemedLogo';
 
 function Navbar() {
     const { userData } = useSelector((state) => state.user);
@@ -47,10 +48,8 @@ function Navbar() {
                 <div className='flex items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar max-w-[calc(100vw-180px)] md:max-w-none py-1'>
                     <Link to="/" aria-label="Prepper AI Home">
                         <motion.div whileHover={{ scale: 1.05 }} className='flex items-center gap-2 md:gap-3 cursor-pointer group'>
-                            <img 
-                                src="/logo.svg" 
-                                alt="Prepper Logo" 
-                                className="w-9 h-9 md:w-11 md:h-11 object-contain drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] group-hover:rotate-6 transition-transform duration-300"
+                            <ThemedLogo 
+                                className="w-9 h-9 md:w-11 md:h-11 object-contain group-hover:rotate-6 transition-transform duration-300"
                             />
                             <h1 className='text-lg md:text-xl font-black text-slate-800 dark:text-white tracking-tighter'>PREPPER</h1>
                         </motion.div>
