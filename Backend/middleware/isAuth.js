@@ -3,24 +3,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const isAuth = async (req, res, next) => {
-
-    // for debugging purpose
-    // console.log("JWT_SECRET:", process.env.JWT_SECRET) 
-    // console.log("Cookie:", req.cookies.token)
     try {
-        let { token } = req.cookies;
+        let token = req.cookies?.token;
 
-        if (!token) {
-            // ✅ Removed undefined `error` reference
-            return res.status(400).json({ message: "Token not found" });
+        // Fallback to Authorization: Bearer <token> header when third-party cookies are blocked
+        if (!token && req.headers?.authorization?.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1]?.trim();
         }
 
-        // ✅ jwt.verify throws if invalid — wrap in try/catch or let the outer catch handle it
+        if (!token || token === 'null' || token === 'undefined') {
+            return res.status(401).json({ message: "Token not found" });
+        }
+
         const verifyToken = jwt.verify(token, process.env.JWT_SECRET);
 
-
-        if(!verifyToken) {
-            return res.status(400).json({message:"user don't have verified token"})
+        if (!verifyToken) {
+            return res.status(401).json({ message: "user don't have verified token" });
         }
 
         req.userId = verifyToken.userId;
