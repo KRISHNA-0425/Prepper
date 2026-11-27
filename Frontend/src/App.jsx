@@ -24,10 +24,12 @@ import AtsDashboard from './pages/AtsDashboard'
 import AtsSetupPage from './pages/AtsSetupPage'
 import AtsAnalysisReport from './pages/AtsAnalysisReport'
 import AtsHistoryPage from './pages/AtsHistoryPage'
+import { setupAxiosAuthInterceptor } from './utils/authToken'
 
 
 
 export const backendServerUrl = import.meta.env.VITE_SERVER_URL
+setupAxiosAuthInterceptor(backendServerUrl)
 
 
 function App() {
